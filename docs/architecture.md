@@ -47,22 +47,30 @@ Go, with these choices measured rather than assumed:
 ## Layout
 
 ```
-cmd/wamux-http/      main: config, store, core client, workers, HTTP server
+cmd/wamux-http/      main: config, store, core client, then app.Wire and serve
+cmd/coverage/        writes docs/coverage.md from the routes the server registers
+contract/            the pinned WAHA OpenAPI, embedded (operations, test oracle)
+proto/               the pinned wamux contract (version in WAMUX_VERSION)
 internal/
+├── app/             wires every part; main and the tests build the same graph
 ├── config/          env config (WAHA's variable names where one exists)
 ├── core/            the only package that speaks gRPC
 │   ├── wamuxv1/         generated code (buf generate)
 │   └── client.go        connection over the Unix socket, status -> error
 ├── waha/            WAHA's data model, independent of HTTP and gRPC transport
-│                    (ids, WAMessage, webhook event envelopes)
-├── store/           persistence behind the `Store` interface
-│   └── sqlite/          first implementation, with its own migrations
+│                    (ids, WAMessage, payloads, envelopes, mimetypes)
+├── store/           persistence behind the `Store` interface, one
+│   │                sub-interface per area (ingest, outbound, directory)
+│   ├── sqlite/          first implementation, with its own migrations
+│   └── storetest/       the conformance suite every engine must pass
 ├── sessions/        session manager: desired state, leases, pairing, status
-├── ingest/          per-session event pump: core stream -> store + outbox
+├── ingest/          core events -> stored records + WAHA events
+├── events/          envelope + webhook selection (publisher), log tail (/ws)
 ├── webhooks/        outbox workers: delivery, retries, HMAC, custom headers
-├── media/           remote fetch (SSRF guard), ffmpeg conversion, file serving
+├── media/           remote fetch (SSRF guard), ffmpeg conversion, /api/files
 ├── httpapi/         chi router, one file per WAHA tag; auth; error shape
-└── fakecore/        in-process wamux server on a Unix socket, for tests
+├── fakecore/        in-process wamux server on a Unix socket, for tests
+└── testenv/         the whole edge on the fake core, plus the contract checks
 ```
 
 Dependency direction: `httpapi -> {sessions, store, core, waha, media}`;
@@ -157,3 +165,20 @@ which no client should depend on, in any engine.
 An endpoint the core has no mechanism for answers `501 Not Implemented` with a
 body naming the missing capability, never a fake success. The list is in
 [coverage.md](coverage.md) and shrinks as the core grows.
+
+## Testing
+
+- **The fake core imitates the real one, quirks included.** It registers an
+  event subscriber only after answering `SubscribeEvents` (as the core's
+  forwarder task does) and keeps a replay ring, so an edge that does not
+  replay loses the first QR in tests too. It answers `server_timestamp` 0,
+  as the core does. A behavior found in the real core belongs in the fake.
+- **Every response and webhook is checked against WAHA's OpenAPI.**
+  `testenv` validates each body a test receives, and `CheckWebhook` each
+  event payload. Where WAHA's document is wrong and its server right, the
+  fix is a field-level entry in `specFixes` (`internal/testenv/contract.go`)
+  with the reason; a whole-response divergence is the last resort.
+- **Store engines share one conformance suite** (`store/storetest`), which
+  runs two handles on one database to cover the multi-instance paths.
+- **`scripts/live-smoke.sh`** runs the server against a real wamux daemon,
+  up to a QR code, with a throwaway store.

@@ -138,15 +138,6 @@ func ParseMessageID(s string) (MessageID, error) {
 	return m, nil
 }
 
-// MessageIDFromKey builds the serialized id for a core message key.
-func MessageIDFromKey(k *pb.MessageKey) MessageID {
-	m := MessageID{FromMe: k.GetFromMe(), Chat: FromPB(k.GetChat()), ID: k.GetId()}
-	if IsGroup(m.Chat) {
-		m.Participant = FromPB(k.GetParticipant())
-	}
-	return m
-}
-
 // Key converts back to a core message key.
 func (m MessageID) Key() (*pb.MessageKey, error) {
 	chat, err := ToPB(m.Chat)

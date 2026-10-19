@@ -66,13 +66,13 @@ func TestMessageIDRoundTrip(t *testing.T) {
 	}
 }
 
-func TestMessageIDFromKey(t *testing.T) {
+func TestInboundIDFromKey(t *testing.T) {
 	k := &pb.MessageKey{
 		Chat:        &pb.Jid{Value: "120363000000000000@g.us"},
 		Id:          "ABC",
 		Participant: &pb.Jid{Value: "5511999999999:4@s.whatsapp.net"},
 	}
-	got := MessageIDFromKey(k).String()
+	got := InboundID(&pb.InboundMessage{Key: k}, Me{}).String()
 	if want := "false_120363000000000000@g.us_ABC_5511999999999@c.us"; got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
@@ -87,7 +87,7 @@ func TestMessageIDFromKey(t *testing.T) {
 	if key.GetChat().GetValue() != "120363000000000000@g.us" || key.GetParticipant().GetValue() != "5511999999999@s.whatsapp.net" {
 		t.Fatalf("Key() = %v", key)
 	}
-	dm := MessageIDFromKey(&pb.MessageKey{Chat: &pb.Jid{Value: "1@s.whatsapp.net"}, Id: "X", FromMe: true, Participant: &pb.Jid{Value: "2@s.whatsapp.net"}})
+	dm := InboundID(&pb.InboundMessage{Key: &pb.MessageKey{Chat: &pb.Jid{Value: "1@s.whatsapp.net"}, Id: "X", FromMe: true, Participant: &pb.Jid{Value: "2@s.whatsapp.net"}}}, Me{})
 	if dm.String() != "true_1@c.us_X" {
 		t.Fatalf("a DM carries no participant suffix: %q", dm)
 	}
