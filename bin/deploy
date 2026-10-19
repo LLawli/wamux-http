@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Builds the image, pushes it, and rolls the compose project on the host.
+# Reads IMAGE, DEPLOY_HOST and DEPLOY_PATH from config/deploy.env.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+env_file=config/deploy.env
+[ -f "$env_file" ] || { echo "missing $env_file (copy config/deploy.env.example)"; exit 1; }
+# shellcheck source=/dev/null
+. "$env_file"
+: "${IMAGE:?}" "${DEPLOY_HOST:?}" "${DEPLOY_PATH:?}"
+
+tag=$(jj log -r @- --no-graph -T 'commit_id.short(12)' 2>/dev/null || git rev-parse --short=12 HEAD)
+./scripts/ci.sh
+docker build -t "$IMAGE:$tag" -t "$IMAGE:latest" .
+docker push "$IMAGE:$tag"
+docker push "$IMAGE:latest"
+ssh "$DEPLOY_HOST" "cd '$DEPLOY_PATH' && WAMUX_HTTP_IMAGE='$IMAGE:$tag' docker compose pull && WAMUX_HTTP_IMAGE='$IMAGE:$tag' docker compose up -d"
+echo "deployed $IMAGE:$tag to $DEPLOY_HOST:$DEPLOY_PATH"

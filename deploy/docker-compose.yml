@@ -1,0 +1,36 @@
+# Reference deployment: the wamux core and this edge sharing the core's
+# socket through a volume. Copy next to a .env holding WAHA_API_KEY and
+# WAHA_BASE_URL. Pin WAMUX_IMAGE to the core version proto/WAMUX_VERSION names.
+services:
+  wamux:
+    image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.0}
+    restart: unless-stopped
+    user: "10001:10001"
+    environment:
+      WAMUX_SOCKET_PATH: /run/wamux/wamux.sock
+      WAMUX_DATABASE_URL: sqlite:///var/lib/wamux/wamux.db
+      WAMUX_MEDIA_SPOOL_DIR: /var/cache/wamux
+    volumes:
+      - wamux-run:/run/wamux
+      - wamux-data:/var/lib/wamux
+      - wamux-spool:/var/cache/wamux
+
+  wamux-http:
+    image: ${WAMUX_HTTP_IMAGE:-wamux-http:latest}
+    restart: unless-stopped
+    depends_on: [wamux]
+    environment:
+      WAHA_API_KEY: ${WAHA_API_KEY:?set WAHA_API_KEY}
+      WAHA_BASE_URL: ${WAHA_BASE_URL:-http://localhost:3000}
+      WAMUX_HTTP_CORE_SOCKET: /run/wamux/wamux.sock
+    ports:
+      - "3000:3000"
+    volumes:
+      - wamux-run:/run/wamux
+      - wamux-http-data:/var/lib/wamux-http
+
+volumes:
+  wamux-run:
+  wamux-data:
+  wamux-spool:
+  wamux-http-data:

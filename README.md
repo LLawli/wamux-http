@@ -59,8 +59,18 @@ What is implemented and what answers 501: [docs/coverage.md](docs/coverage.md).
 Where this server knowingly differs from WAHA: [docs/differences.md](docs/differences.md).
 How it is built: [docs/architecture.md](docs/architecture.md).
 
+## Deploy
+
+`deploy/docker-compose.yml` runs the core and this server side by side,
+sharing the core's socket through a volume. `bin/deploy` builds and pushes
+the image and rolls the compose project on a host over ssh; it reads
+`config/deploy.env` (copy `config/deploy.env.example`).
+
 ## Develop
 
 `./scripts/ci.sh` runs every gate (format, generated code, vet, lint, tests
 with the race detector, coverage document, vulnerabilities); CI runs the same
-script.
+script. Tests run against an in-process fake of the core.
+`WAMUX_BIN=/path/to/wamux scripts/live-smoke.sh` checks the server against a
+real wamux daemon with a throwaway store, up to a QR code from WhatsApp (no
+phone pairs).
