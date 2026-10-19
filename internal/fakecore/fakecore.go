@@ -437,7 +437,9 @@ func (s *messaging) sent(acc *pb.AccountRef, to *pb.Jid, fill func(m *pb.Inbound
 		fill(echo)
 	}
 	s.c.emitLocked(a.UUID, &pb.EventEnvelope{Event: &pb.EventEnvelope_Message{Message: echo}})
-	return &pb.SendResult{Key: key, ServerTimestamp: now}, nil
+	// The core always answers server_timestamp 0; the send time is the
+	// ServerAckEvent's.
+	return &pb.SendResult{Key: key}, nil
 }
 
 func (s *messaging) SendText(_ context.Context, r *pb.SendTextRequest) (*pb.SendResult, error) {

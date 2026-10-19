@@ -20,15 +20,6 @@ func directoryEnv(t *testing.T, opts fakecore.Options) *testenv.Env {
 	return e
 }
 
-// withDivergence skips the contract check of one route and status while do
-// runs: WAHA itself answers null where its OpenAPI says string there.
-// Tests in this package do not run in parallel, so the shared map is safe.
-func withDivergence(key, why string, do func()) {
-	testenv.Divergences[key] = why
-	defer delete(testenv.Divergences, key)
-	do()
-}
-
 func TestContactsFromStore(t *testing.T) {
 	e := directoryEnv(t, fakecore.Options{})
 	ctx := context.Background()
@@ -152,11 +143,9 @@ func TestLids(t *testing.T) {
 	if len(got) != 1 || got[0].GetJids()[0].GetValue() != "100@lid" {
 		t.Fatalf("core got %v", got)
 	}
-	withDivergence("GET /api/{session}/lids/{lid} 200", "WAHA answers pn null for an unknown lid", func() {
-		if r := e.Do("GET", "/api/default/lids/999@lid", nil); r.Status != 200 || string(r.Body) != `{"lid":"999@lid","pn":null}`+"\n" {
-			t.Fatalf("unknown lid: %d %s", r.Status, r.Body)
-		}
-	})
+	if r := e.Do("GET", "/api/default/lids/999@lid", nil); r.Status != 200 || string(r.Body) != `{"lid":"999@lid","pn":null}`+"\n" {
+		t.Fatalf("unknown lid: %d %s", r.Status, r.Body)
+	}
 	if r := e.Do("GET", "/api/default/lids/5511@c.us", nil); r.Status != 422 || r.Map(t)["message"] != "Invalid LID - it must end with @lid" {
 		t.Fatalf("not a lid: %d %s", r.Status, r.Body)
 	}
@@ -167,18 +156,16 @@ func TestLids(t *testing.T) {
 	if got := fakecore.Logged[*pb.ResolveLidPnRequest](&contacts.RequestLog); got[len(got)-1].GetJids()[0].GetValue() != "5511300000000@s.whatsapp.net" {
 		t.Fatalf("the core gets the phone jid: %v", got[len(got)-1])
 	}
-	withDivergence("GET /api/{session}/lids/pn/{phoneNumber} 200", "WAHA answers lid null for an unknown phone", func() {
-		if r := e.Do("GET", "/api/default/lids/pn/5511000000000@c.us", nil); r.Status != 200 || string(r.Body) != `{"lid":null,"pn":"5511000000000@c.us"}`+"\n" {
-			t.Fatalf("unknown pn: %d %s", r.Status, r.Body)
-		}
-		before := len(fakecore.Logged[*pb.ResolveLidPnRequest](&contacts.RequestLog))
-		if r := e.Do("GET", "/api/default/lids/pn/100@lid", nil); r.Status != 200 || string(r.Body) != `{"lid":"100@lid","pn":null}`+"\n" {
-			t.Fatalf("a lid passes through: %d %s", r.Status, r.Body)
-		}
-		if after := len(fakecore.Logged[*pb.ResolveLidPnRequest](&contacts.RequestLog)); after != before {
-			t.Fatal("a lid must not reach the core")
-		}
-	})
+	if r := e.Do("GET", "/api/default/lids/pn/5511000000000@c.us", nil); r.Status != 200 || string(r.Body) != `{"lid":null,"pn":"5511000000000@c.us"}`+"\n" {
+		t.Fatalf("unknown pn: %d %s", r.Status, r.Body)
+	}
+	before := len(fakecore.Logged[*pb.ResolveLidPnRequest](&contacts.RequestLog))
+	if r := e.Do("GET", "/api/default/lids/pn/100@lid", nil); r.Status != 200 || string(r.Body) != `{"lid":"100@lid","pn":null}`+"\n" {
+		t.Fatalf("a lid passes through: %d %s", r.Status, r.Body)
+	}
+	if after := len(fakecore.Logged[*pb.ResolveLidPnRequest](&contacts.RequestLog)); after != before {
+		t.Fatal("a lid must not reach the core")
+	}
 }
 
 func TestDirectoryPolicies(t *testing.T) {

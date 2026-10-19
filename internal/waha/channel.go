@@ -1,7 +1,6 @@
 package waha
 
 import (
-	"encoding/json"
 	"strings"
 
 	"google.golang.org/protobuf/encoding/protojson"
@@ -66,62 +65,31 @@ func IsNewsletter(id string) bool { return strings.HasSuffix(id, "@newsletter") 
 // ChannelMessage is WAHA's ChannelMessage.
 type ChannelMessage struct {
 	Reactions map[string]uint64 `json:"reactions"`
-	Message   ChannelPost       `json:"message"`
+	Message   Message           `json:"message"`
 	ViewCount uint64            `json:"viewCount"`
 }
-
-// ChannelPost is the WAMessage of one channel history row, with the fields
-// GOWS fills for it: no sender inside a channel, so `to` and `participant` are
-// null, and media is not downloaded (`media` null).
-type ChannelPost struct {
-	ID          string          `json:"id"`
-	Timestamp   int64           `json:"timestamp"`
-	From        string          `json:"from"`
-	FromMe      bool            `json:"fromMe"`
-	Source      string          `json:"source"`
-	To          *string         `json:"to"`
-	Participant *string         `json:"participant"`
-	Body        *string         `json:"body"`
-	HasMedia    bool            `json:"hasMedia"`
-	Media       any             `json:"media"`
-	Ack         int             `json:"ack"`
-	AckName     string          `json:"ackName"`
-	Data        json.RawMessage `json:"_data,omitempty"`
-}
-
-// Acks a received or own channel row gets, as live messages do.
-const (
-	ackServer = 1
-	ackDevice = 2
-)
 
 // ChannelMessageFromPB maps one channel history row. `_data` is the core's
 // row as protojson.
 func ChannelMessageFromPB(channel string, r *pb.NewsletterMessage) ChannelMessage {
 	m := r.GetMessage()
-	key := &pb.MessageKey{Chat: &pb.Jid{Value: channel}, Id: m.GetKey().GetId(), FromMe: m.GetKey().GetFromMe()}
-	post := ChannelPost{
-		ID:        MessageIDFromKey(key).String(),
-		Timestamp: m.GetTimestamp() / 1000,
-		From:      ChatIDFromJID(channel),
-		FromMe:    key.FromMe,
-		Source:    "app",
-		HasMedia:  m.GetMedia() != nil,
-		Ack:       ackDevice,
-		AckName:   "DEVICE",
+	// A history row names the channel only through the request; key it there
+	// so the id is the channel's, as a live channel message would be.
+	in := &pb.InboundMessage{
+		Key:        &pb.MessageKey{Chat: &pb.Jid{Value: channel}, Id: m.GetKey().GetId(), FromMe: m.GetKey().GetFromMe()},
+		Chat:       &pb.Jid{Value: channel},
+		Timestamp:  m.GetTimestamp(),
+		Text:       m.GetText(),
+		Caption:    m.GetCaption(),
+		Media:      m.GetMedia(),
+		RawMessage: m.GetRawMessage(),
 	}
-	if post.FromMe {
-		post.Ack, post.AckName = ackServer, "SERVER"
-	}
-	if body := m.GetText(); body != "" {
-		post.Body = &body
-	} else if body := m.GetCaption(); body != "" {
-		post.Body = &body
-	}
+	// Channel rows are not stored, so their media has no /api/files link.
+	msg := NewMessage(in, MessageContext{})
 	if raw, err := protojson.Marshal(r); err == nil {
-		post.Data = raw
+		msg.Data = raw // the whole row: server id, reactions, votes
 	}
-	out := ChannelMessage{Reactions: map[string]uint64{}, Message: post}
+	out := ChannelMessage{Reactions: map[string]uint64{}, Message: msg}
 	for _, rc := range r.GetReactions() {
 		out.Reactions[rc.GetCode()] += rc.GetCount()
 	}

@@ -54,6 +54,9 @@ server's own settings:
 | `WAMUX_HTTP_LISTEN` | `:$PORT` | bind address |
 | `WAMUX_HTTP_EVENT_RETENTION` | `24h` | how long the event log keeps events |
 | `WAMUX_HTTP_WEBHOOK_TIMEOUT` | `30s` | one webhook attempt |
+| `WAMUX_HTTP_MEDIA_ALLOW_PRIVATE` | `false` | let client URLs reach private addresses (trusted setups only) |
+| `WAMUX_HTTP_MEDIA_MAX_BYTES` | 100 MiB | largest file fetched from a client URL |
+| `WAMUX_HTTP_MEDIA_FETCH_TIMEOUT` | `60s` | one fetch of a client URL |
 
 What is implemented and what answers 501: [docs/coverage.md](docs/coverage.md).
 Where this server knowingly differs from WAHA: [docs/differences.md](docs/differences.md).

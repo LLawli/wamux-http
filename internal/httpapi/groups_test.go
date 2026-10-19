@@ -12,12 +12,6 @@ import (
 	"github.com/LLawli/wamux-http/internal/testenv"
 )
 
-func init() {
-	// GOWS answers the group list as an array (PaginatorInMemory over the
-	// engine's list); WAHA's OpenAPI types it as an object.
-	testenv.Divergences["GET /api/{session}/groups 200"] = "GOWS answers an array"
-}
-
 const (
 	family = "120363000000000001@g.us"
 	work   = "120363000000000002@g.us"
@@ -240,8 +234,9 @@ func TestGroupsWrite(t *testing.T) {
 	if string(groups.Photo(family)) != string(img) {
 		t.Fatalf("core got photo %q", groups.Photo(family))
 	}
-	if r := e.Do("PUT", "/api/default/groups/"+family+"/picture", map[string]any{"file": map[string]string{"mimetype": "image/jpeg", "url": "https://example.com/a.jpg"}}); r.Status != 400 || r.Map(t)["message"] != "file.url is not supported yet" {
-		t.Fatalf("url picture: %d %s", r.Status, r.Body)
+	// A URL goes through the media layer's SSRF guard: a local address is refused.
+	if r := e.Do("PUT", "/api/default/groups/"+family+"/picture", map[string]any{"file": map[string]string{"mimetype": "image/jpeg", "url": e.URL + "/ping"}}); r.Status != 422 {
+		t.Fatalf("local url picture: %d %s", r.Status, r.Body)
 	}
 	if r := e.Do("PUT", "/api/default/groups/"+family+"/picture", map[string]any{"file": map[string]string{"data": "%%%"}}); r.Status != 400 {
 		t.Fatalf("bad base64: %d %s", r.Status, r.Body)
@@ -271,11 +266,9 @@ func TestGroupsPictureAndInvites(t *testing.T) {
 	if r := e.Do("GET", "/api/default/groups/"+family+"/picture?refresh=true", nil); r.Status != 200 || r.Map(t)["url"] != "https://pps.whatsapp.net/family.jpg" {
 		t.Fatalf("picture: %d %s", r.Status, r.Body)
 	}
-	withDivergence("GET /api/{session}/groups/{id}/picture 200", "WAHA answers url null for a group with no picture", func() {
-		if r := e.Do("GET", "/api/default/groups/"+work+"/picture", nil); r.Status != 200 || string(r.Body) != `{"url":null}`+"\n" {
-			t.Fatalf("no picture: %d %s", r.Status, r.Body)
-		}
-	})
+	if r := e.Do("GET", "/api/default/groups/"+work+"/picture", nil); r.Status != 200 || string(r.Body) != `{"url":null}`+"\n" {
+		t.Fatalf("no picture: %d %s", r.Status, r.Body)
+	}
 
 	preview := &pb.GroupMetadata{Id: pbJid("120363000000000099@g.us"), Subject: proto.String("Open club"), Size: proto.Uint32(57)}
 	groups.Invite("CLUB123", preview)

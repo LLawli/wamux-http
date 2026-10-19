@@ -41,7 +41,7 @@ func TestChannelMessageFromPB(t *testing.T) {
 		t.Fatalf("reactions %v, data %s", m.Reactions, p.Data)
 	}
 	own := ChannelMessageFromPB("123@newsletter", &pb.NewsletterMessage{Message: &pb.InboundMessage{Key: &pb.MessageKey{Id: "X", FromMe: true}}})
-	if own.Message.ID != "true_123@newsletter_X" || own.Message.Ack != ackServer || own.Message.Body != nil {
+	if own.Message.ID != "true_123@newsletter_X" || own.Message.Ack != 1 || own.Message.Body != nil {
 		t.Fatalf("own post: %+v", own.Message)
 	}
 }

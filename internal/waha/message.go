@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"mime"
 	"strconv"
 	"strings"
 
@@ -102,53 +101,6 @@ func (o MediaOptions) allows(mimetype string) bool {
 		}
 	}
 	return false
-}
-
-// mimeExtensions is the first extension the mime-db (WAHA's `mime-types`)
-// gives each type WhatsApp commonly carries, so file names match WAHA's
-// whatever the host's mime tables say.
-var mimeExtensions = map[string]string{
-	"audio/ogg":                     "oga",
-	"audio/mpeg":                    "mpga",
-	"audio/mp4":                     "m4a",
-	"audio/aac":                     "aac",
-	"audio/amr":                     "amr",
-	"audio/wav":                     "wav",
-	"image/jpeg":                    "jpeg",
-	"image/png":                     "png",
-	"image/webp":                    "webp",
-	"image/gif":                     "gif",
-	"video/mp4":                     "mp4",
-	"video/3gpp":                    "3gp",
-	"video/quicktime":               "qt",
-	"video/webm":                    "webm",
-	"application/pdf":               "pdf",
-	"application/zip":               "zip",
-	"application/was":               "zip",
-	"application/json":              "json",
-	"application/msword":            "doc",
-	"application/vnd.ms-excel":      "xls",
-	"application/vnd.ms-powerpoint": "ppt",
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   "docx",
-	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         "xlsx",
-	"application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
-	"application/octet-stream": "bin",
-	"text/plain":               "txt",
-	"text/csv":                 "csv",
-	"text/vcard":               "vcf",
-}
-
-// MediaExtension is the file extension for a mimetype ("audio/ogg;
-// codecs=opus" gives "oga"), "bin" when nothing is known.
-func MediaExtension(mimetype string) string {
-	base := strings.ToLower(strings.TrimSpace(strings.SplitN(mimetype, ";", 2)[0]))
-	if ext, ok := mimeExtensions[base]; ok {
-		return ext
-	}
-	if exts, _ := mime.ExtensionsByType(base); len(exts) > 0 {
-		return strings.TrimPrefix(exts[0], ".")
-	}
-	return "bin"
 }
 
 // Media is WAHA's WAMedia. URL is null when the file is not served.

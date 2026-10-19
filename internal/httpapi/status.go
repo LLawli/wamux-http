@@ -117,7 +117,7 @@ func (s *Server) statusText(c *Ctx) error {
 		return err
 	}
 	s.postedTo(c, res.GetKey(), to)
-	return c.JSON(http.StatusCreated, sent(c, statusChat, res.GetKey(), res))
+	return c.JSON(http.StatusCreated, sent(c, statusChat, res.GetKey(), res, sentDetail{Body: req.Text}))
 }
 
 // statusMedia posts an image or a video status, with a JPEG thumbnail made
@@ -182,7 +182,7 @@ func (s *Server) statusMedia(kind media.Kind) Handler {
 			return err
 		}
 		s.postedTo(c, res.GetKey(), to)
-		return c.JSON(http.StatusCreated, sent(c, statusChat, res.GetKey(), res))
+		return c.JSON(http.StatusCreated, sent(c, statusChat, res.GetKey(), res, sentDetail{Body: hdr.GetCaption(), HasMedia: true}))
 	}
 }
 

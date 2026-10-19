@@ -61,32 +61,30 @@ func TestChannels(t *testing.T) {
 		t.Fatalf("unknown channel: %d %s", r.Status, r.Body)
 	}
 
-	withDivergence("GET /api/{session}/channels/{id}/messages/preview 200", "GOWS sends to/participant null and no mediaUrl", func() {
-		r := e.Do("GET", "/api/default/channels/"+news+"/messages/preview?limit=1&downloadMedia=false", nil)
-		var rows []map[string]any
-		if r.JSON(t, &rows); r.Status != 200 || len(rows) != 1 {
-			t.Fatalf("preview: %d %s", r.Status, r.Body)
-		}
-		msg := rows[0]["message"].(map[string]any)
-		if msg["id"] != "false_"+news+"_M2" || msg["body"] != "Second" || msg["timestamp"] != float64(1_700_000_100) || msg["from"] != news {
-			t.Fatalf("message: %v", msg)
-		}
-		if rows[0]["reactions"].(map[string]any)["👍"] != float64(5) {
-			t.Fatalf("reactions: %v", rows[0]["reactions"])
-		}
-		reqs := fakecore.Logged[*pb.GetNewsletterMessagesRequest](&nl.RequestLog)
-		if len(reqs) != 1 || reqs[0].GetCount() != 1 || reqs[0].GetJid().GetValue() != news {
-			t.Fatalf("core got %v", reqs)
-		}
-		r = e.Do("GET", "/api/default/channels/"+news+"/messages/preview?downloadMedia=false", nil)
-		rows = nil
-		if r.JSON(t, &rows); len(rows) != 2 || rows[1]["message"].(map[string]any)["hasMedia"] != true {
-			t.Fatalf("default limit takes both: %s", r.Body)
-		}
-		if reqs := fakecore.Logged[*pb.GetNewsletterMessagesRequest](&nl.RequestLog); reqs[1].GetCount() != 10 {
-			t.Fatalf("default limit is 10: %v", reqs[1])
-		}
-	})
+	r = e.Do("GET", "/api/default/channels/"+news+"/messages/preview?limit=1&downloadMedia=false", nil)
+	var rows []map[string]any
+	if r.JSON(t, &rows); r.Status != 200 || len(rows) != 1 {
+		t.Fatalf("preview: %d %s", r.Status, r.Body)
+	}
+	msg := rows[0]["message"].(map[string]any)
+	if msg["id"] != "false_"+news+"_M2" || msg["body"] != "Second" || msg["timestamp"] != float64(1_700_000_100) || msg["from"] != news {
+		t.Fatalf("message: %v", msg)
+	}
+	if rows[0]["reactions"].(map[string]any)["👍"] != float64(5) {
+		t.Fatalf("reactions: %v", rows[0]["reactions"])
+	}
+	reqs := fakecore.Logged[*pb.GetNewsletterMessagesRequest](&nl.RequestLog)
+	if len(reqs) != 1 || reqs[0].GetCount() != 1 || reqs[0].GetJid().GetValue() != news {
+		t.Fatalf("core got %v", reqs)
+	}
+	r = e.Do("GET", "/api/default/channels/"+news+"/messages/preview?downloadMedia=false", nil)
+	rows = nil
+	if r.JSON(t, &rows); len(rows) != 2 || rows[1]["message"].(map[string]any)["hasMedia"] != true {
+		t.Fatalf("default limit takes both: %s", r.Body)
+	}
+	if reqs := fakecore.Logged[*pb.GetNewsletterMessagesRequest](&nl.RequestLog); reqs[1].GetCount() != 10 {
+		t.Fatalf("default limit is 10: %v", reqs[1])
+	}
 	if r := e.Do("GET", "/api/default/channels/"+news+"/messages/preview?limit=many", nil); r.Status != 400 {
 		t.Fatalf("bad limit: %d %s", r.Status, r.Body)
 	}

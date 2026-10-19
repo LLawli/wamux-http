@@ -43,8 +43,9 @@ func TestProfile(t *testing.T) {
 	if string(contacts.Picture()) != string(img) {
 		t.Fatalf("core picture %q", contacts.Picture())
 	}
-	if r := e.Do("PUT", "/api/default/profile/picture", map[string]any{"file": map[string]string{"url": "https://example.com/p.png"}}); r.Status != 400 || r.Map(t)["message"] != "file.url is not supported yet" {
-		t.Fatalf("url picture: %d %s", r.Status, r.Body)
+	// A URL goes through the media layer's SSRF guard: a local address is refused.
+	if r := e.Do("PUT", "/api/default/profile/picture", map[string]any{"file": map[string]string{"url": e.URL + "/ping"}}); r.Status != 422 {
+		t.Fatalf("local url picture: %d %s", r.Status, r.Body)
 	}
 	if r := e.Do("PUT", "/api/default/profile/picture", map[string]any{}); r.Status != 400 {
 		t.Fatalf("no file: %d %s", r.Status, r.Body)

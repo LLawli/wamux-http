@@ -144,22 +144,6 @@ func TestNewMessageMedia(t *testing.T) {
 	}
 }
 
-func TestMediaExtension(t *testing.T) {
-	cases := map[string]string{
-		"audio/ogg; codecs=opus": "oga",
-		"image/jpeg":             "jpeg",
-		"video/mp4":              "mp4",
-		"application/was":        "zip",
-		"IMAGE/PNG":              "png",
-		"x-unknown/whatever":     "bin",
-	}
-	for in, want := range cases {
-		if got := MediaExtension(in); got != want {
-			t.Errorf("MediaExtension(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
 func TestNewMessageLocationVCardsReply(t *testing.T) {
 	loc := &waE2E.Message{LocationMessage: &waE2E.LocationMessage{
 		DegreesLatitude: proto.Float64(-23.55), DegreesLongitude: proto.Float64(-46.633), Name: proto.String("Sé"),

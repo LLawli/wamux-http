@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.mau.fi/whatsmeow/proto/waE2E"
@@ -114,23 +115,60 @@ func mentions(ids []string) ([]*pb.Mention, error) {
 	return out, nil
 }
 
-// sent is WAHA's answer to a send (messageResponse in GOWS): the serialized
-// id of the new message, from me, in the chat it went to, with my id as the
-// participant in a group or a status; and `_data`, the core's own result.
-func sent(c *Ctx, to *pb.Jid, key *pb.MessageKey, result proto.Message) map[string]any {
+// sentDetail is what a send knows about the message it sent, beyond the key.
+type sentDetail struct {
+	Body     string
+	HasMedia bool
+}
+
+// SentMessage is WAHA's answer to a send. GOWS answers only `id` and
+// `_data`; WAHA's document (and its other engines) answer a WAMessage. This
+// is both: a WAMessage, with `_data` the core's own result.
+type SentMessage struct {
+	ID          string          `json:"id"`
+	Timestamp   int64           `json:"timestamp"`
+	From        string          `json:"from"`
+	FromMe      bool            `json:"fromMe"`
+	Source      string          `json:"source"`
+	To          *string         `json:"to"`
+	Participant *string         `json:"participant"`
+	Body        *string         `json:"body"`
+	HasMedia    bool            `json:"hasMedia"`
+	Ack         int             `json:"ack"`
+	AckName     string          `json:"ackName"`
+	Data        json.RawMessage `json:"_data"`
+}
+
+// sent builds the answer to a send: the serialized id of the new message,
+// from me, in the chat it went to, with my id as the participant in a group
+// or a status (messageResponse in GOWS). The core gives no send time (its
+// server_timestamp is always 0), so the time is the edge's.
+func sent(c *Ctx, to *pb.Jid, key *pb.MessageKey, result proto.Message, detail ...sentDetail) SentMessage {
 	chat := waha.FromPB(key.GetChat())
 	if chat == "" {
 		chat = waha.FromPB(to)
 	}
 	id := waha.MessageID{FromMe: true, Chat: chat, ID: key.GetId()}
+	out := SentMessage{From: chat, FromMe: true, Source: "api", Ack: 1, AckName: "SERVER", Timestamp: time.Now().Unix()}
 	if waha.IsGroup(chat) || strings.HasSuffix(chat, "@broadcast") {
-		id.Participant = c.me().ID
+		me := c.me().ID
+		id.Participant = me
+		out.To, out.Participant = &me, &me
+	}
+	out.ID = id.String()
+	if len(detail) > 0 {
+		out.HasMedia = detail[0].HasMedia
+		if detail[0].Body != "" {
+			body := detail[0].Body
+			out.Body = &body
+		}
 	}
 	data, err := protojson.Marshal(result)
 	if err != nil {
 		data = []byte("null")
 	}
-	return map[string]any{"id": id.String(), "_data": json.RawMessage(data)}
+	out.Data = data
+	return out
 }
 
 // bareID is the WhatsApp id inside a serialized message id, or the string
@@ -294,7 +332,7 @@ func (s *Server) doSendText(c *Ctx, req textRequest, status int, preview *pb.Lin
 	if err != nil {
 		return err
 	}
-	return c.JSON(status, sent(c, to, res.GetKey(), res))
+	return c.JSON(status, sent(c, to, res.GetKey(), res, sentDetail{Body: req.Text}))
 }
 
 // sendLinkPreview is the deprecated {chatId, url, title}: the URL as the
@@ -462,7 +500,7 @@ func (s *Server) sendMediaAs(kind media.Kind) Handler {
 		if err != nil {
 			return err
 		}
-		return c.JSON(http.StatusCreated, sent(c, to, res.GetKey(), res))
+		return c.JSON(http.StatusCreated, sent(c, to, res.GetKey(), res, sentDetail{Body: hdr.GetCaption(), HasMedia: true}))
 	}
 }
 

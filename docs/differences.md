@@ -46,7 +46,76 @@ Headers, signature, body, retry counts and delays follow WAHA.
 - `_data` carries wamux's own message, never GOWS's. No client should rely on
   `_data` in any engine.
 
+## Sends answer a full WAMessage
+
+GOWS answers a send with `{id, _data}` only; WAHA's document and its other
+engines answer a WAMessage. Here the answer is both: a WAMessage (`id`,
+`timestamp`, `from`, `fromMe`, `source`, `to`, `participant`, `body`,
+`hasMedia`, `ack`) with `_data` set to the core's own result. A client that
+reads only `id` sees no difference. The core gives no send time, so
+`timestamp` is the edge's clock.
+
+## More than GOWS does
+
+GOWS answers 501 for these (verified in its source); the core can do them,
+so they work here:
+
+- `PUT /api/star`, `POST /api/send/buttons/reply`, `POST /api/sendLinkPreview`.
+- `GET /api/contacts/about`.
+- Archive, unarchive and delete chat (answering `{"success": true}`).
+- The events GOWS never emits: `chat.archive`, and the legacy
+  `group.join` / `group.leave`.
+- `message.revoked` carries the stored original message in `before` (GOWS
+  always sends null), and the revoked message leaves the store.
+- `label.chat.added` / `label.chat.deleted` carry the stored label instead
+  of null.
+
+## Reads come from the store
+
+Chats, messages, labels and presences are answered from the store even while
+the session is stopped, where WAHA answers 422. Contacts too: a contact's
+name is what the phone synced or the push name last seen.
+
+## Stricter than WAHA
+
+- `/api/files` needs `read` on the session in the path; WAHA serves its
+  files to any valid key.
+- Client URLs (media, link previews, pictures) are fetched behind an SSRF
+  guard: loopback, private, link-local, multicast and reserved addresses
+  are refused, after DNS resolution and on every redirect, and TLS is
+  verified. A refused or failed fetch answers 422 (WAHA: 500).
+  `WAMUX_HTTP_MEDIA_ALLOW_PRIVATE=true` turns the guard off.
+- A missing `chatId` or `text`, or a malformed message id, answers 400
+  (WAHA: 500).
+- A missing picture answers `url: null` only when the core says the picture
+  does not exist or is not visible; any other core failure is an error
+  (WAHA swallows every error into null).
+
+## Smaller differences
+
+- `sendText` previews the first link unless `linkPreview` is false, as GOWS
+  does (`?? true`): the server fetches that URL, behind the SSRF guard.
+  `linkPreviewHighQuality` is ignored.
+- `sendContactVcard` with several contacts sends one message per contact and
+  answers with the last one.
+- `sendSeen` with no ids also marks the chat read on the account's other
+  devices.
+- `reply_to` on `sendPoll` is ignored: the core's poll has no quote.
+- A text status with no `backgroundColor` uses WAHA's documented `#38b42f`.
+  With no `contacts`, a status goes to every `@c.us` contact in the store,
+  and its delete reuses that list.
+- Group answers use `@c.us` ids where GOWS shows whatsmeow's
+  `@s.whatsapp.net`.
+- A channel is looked up by its `@newsletter` id only (an invite code
+  answers 501); `invite` is empty, and the preview's `viewCount` is 0 with
+  no media downloaded.
+- Quoted media in `replyTo` is never downloaded (`media: null`).
+- The LID list holds only mappings that have both sides.
+
 ## Not available
 
-Operations the core has no mechanism for answer WAHA's 501; the list is
-[coverage.md](coverage.md).
+Operations the core has no mechanism for answer WAHA's 501, as GOWS itself
+does for several of them (delete group, for one). The list is
+[coverage.md](coverage.md); the ones waiting on a core RPC are block and
+unblock, profile status, the group approval and add modes, channel writes
+and call rejection.

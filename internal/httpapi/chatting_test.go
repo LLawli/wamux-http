@@ -27,12 +27,6 @@ import (
 	"github.com/LLawli/wamux-http/internal/waha"
 )
 
-func init() {
-	// WAHA's OpenAPI types these answers as a full WAMessage, but GOWS
-	// answers {id, _data} (docs/waha-behavior.md 9), and so does this edge.
-	testenv.Divergences["POST /api/sendText 201"] = "GOWS answers {id, _data}, not a WAMessage"
-}
-
 const (
 	peer  = "5511888888888@c.us"
 	peerJ = "5511888888888@s.whatsapp.net"

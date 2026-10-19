@@ -23,3 +23,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Every WAHA operation not implemented yet answers WAHA's 501;
   `docs/coverage.md` lists them.
 - Built to run several instances on one store: sessions are owned by lease.
+- `/ws`: every event, in the webhook envelope, filtered by session and event.
+- Incoming messages, acks, reactions, edits, revokes, poll votes, presence,
+  group, call, label and archive events as WAHA webhooks, honoring
+  `config.ignore`; history sync fills chats, messages and contacts without
+  webhooks.
+- Chats (list, overview, messages, picture, read, archive, unread, delete,
+  edit), label reads, presence, and the deprecated `GET /api/messages`.
+- Sends: text with link previews, image, file, voice, video, sticker,
+  contact, poll and poll vote, buttons reply, reactions, stars, read
+  receipts and typing. Sends answer a WAMessage carrying `_data`.
+- Text, image and video statuses, and status delete.
+- Voice and video conversion with ffmpeg, and `/api/files` serving received
+  media, downloaded from the core on first request.
+- Client URLs are fetched behind an SSRF guard
+  (`WAMUX_HTTP_MEDIA_ALLOW_PRIVATE`, `WAMUX_HTTP_MEDIA_MAX_BYTES`,
+  `WAMUX_HTTP_MEDIA_FETCH_TIMEOUT`).
+- Contacts and LIDs, groups (create, list, participants, admins, invites,
+  join requests, security settings, picture), profile (name, picture) and
+  channels (list, info, message preview).

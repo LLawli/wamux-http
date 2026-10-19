@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"io/fs"
-	"mime"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,60 +16,15 @@ import (
 
 	pb "github.com/LLawli/wamux-http/internal/core/wamuxv1"
 	"github.com/LLawli/wamux-http/internal/store"
+	"github.com/LLawli/wamux-http/internal/waha"
 )
 
 // ErrFileNotFound is a file name that names no media this edge can serve.
 var ErrFileNotFound = errors.New("file not found")
 
-// extensions maps a mimetype to the extension WAHA's `mime-types` gives it
-// (the first one mime-db lists), so file names match WAHA's.
-var extensions = map[string]string{
-	"image/jpeg":                    "jpeg",
-	"image/png":                     "png",
-	"image/gif":                     "gif",
-	"image/webp":                    "webp",
-	"image/heic":                    "heic",
-	"audio/ogg":                     "oga",
-	"audio/mpeg":                    "mpga",
-	"audio/mp4":                     "m4a",
-	"audio/aac":                     "aac",
-	"audio/amr":                     "amr",
-	"audio/wav":                     "wav",
-	"audio/webm":                    "weba",
-	"video/mp4":                     "mp4",
-	"video/3gpp":                    "3gp",
-	"video/quicktime":               "mov",
-	"video/webm":                    "webm",
-	"application/pdf":               "pdf",
-	"application/zip":               "zip",
-	"application/was":               "zip", // a sticker pack
-	"application/json":              "json",
-	"application/msword":            "doc",
-	"application/vnd.ms-excel":      "xls",
-	"application/vnd.ms-powerpoint": "ppt",
-	"application/vnd.openxmlformats-officedocument.wordprocessingml.document":   "docx",
-	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":         "xlsx",
-	"application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
-	"text/plain": "txt",
-	"text/csv":   "csv",
-	"text/html":  "html",
-}
-
-// Extension is the file extension for a mimetype, without the dot; "bin"
-// when nothing better is known.
-func Extension(mimetype string) string {
-	mt, _, err := mime.ParseMediaType(mimetype)
-	if err != nil {
-		mt = strings.ToLower(strings.TrimSpace(mimetype))
-	}
-	if ext, ok := extensions[mt]; ok {
-		return ext
-	}
-	if exts, _ := mime.ExtensionsByType(mt); len(exts) > 0 {
-		return strings.TrimPrefix(exts[0], ".")
-	}
-	return "bin"
-}
+// Extension is the file extension a received file is served under; the
+// table is waha's, so the link a message carries and this route agree.
+func Extension(mimetype string) string { return waha.MediaExtension(mimetype) }
 
 // FileName is the name a received media file is served under:
 // `<WhatsApp message id>.<ext>`, as in WAHA.
@@ -113,7 +67,7 @@ func (s *Service) File(ctx context.Context, session, name string) (Served, error
 		// A file cached before its message was purged is still served
 		// until it expires, like WAHA's static folder.
 		if s.fresh(path) {
-			return Served{Path: path, Mimetype: mime.TypeByExtension("." + ext)}, nil
+			return Served{Path: path, Mimetype: waha.MimetypeOfExtension(ext)}, nil
 		}
 		return Served{}, ErrFileNotFound
 	}

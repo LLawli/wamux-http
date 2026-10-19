@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"encoding/base64"
 	"net/http"
 	"sort"
 	"strings"
@@ -9,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	pb "github.com/LLawli/wamux-http/internal/core/wamuxv1"
+	"github.com/LLawli/wamux-http/internal/media"
 	"github.com/LLawli/wamux-http/internal/waha"
 )
 
@@ -494,30 +494,21 @@ func excludeParticipants(c *Ctx) (bool, error) {
 	return drop, nil
 }
 
-// dirFile reads WAHA's ProfilePictureRequest and returns the image bytes.
-// Only `file.data` (base64) is taken: fetching `file.url` needs the media
-// fetcher and its SSRF guard.
+// dirFile reads a picture from the request's `file`, a URL (fetched behind
+// the media layer's SSRF guard) or base64 data.
 func dirFile(c *Ctx) ([]byte, error) {
 	var req struct {
-		File *struct {
-			URL  string `json:"url"`
-			Data string `json:"data"`
-		} `json:"file"`
+		File *media.File `json:"file"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return nil, err
 	}
-	switch {
-	case req.File == nil:
+	if req.File == nil {
 		return nil, ErrBadRequest([]string{"file must be an object"})
-	case req.File.URL != "":
-		return nil, ErrBadRequest("file.url is not supported yet")
-	case req.File.Data == "":
-		return nil, ErrBadRequest([]string{"file.data must be a base64 string"})
 	}
-	image, err := base64.StdEncoding.DecodeString(req.File.Data)
+	blob, err := c.S.Media.Load(c.R.Context(), req.File, media.KindImage)
 	if err != nil {
-		return nil, ErrBadRequest([]string{"file.data must be a base64 string"})
+		return nil, mediaError(err)
 	}
-	return image, nil
+	return blob.Data, nil
 }

@@ -262,3 +262,14 @@ func (h *Hook) Events(name string) []map[string]any {
 	}
 	return out
 }
+
+// NewFileServer serves body with the given content type at every path and
+// returns its URL, for routes that fetch a file by URL.
+func (e *Env) NewFileServer(body []byte, contentType string) string {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", contentType)
+		_, _ = w.Write(body)
+	}))
+	e.T.Cleanup(srv.Close)
+	return srv.URL + "/file"
+}
