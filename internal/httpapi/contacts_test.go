@@ -11,8 +11,6 @@ import (
 	"github.com/LLawli/wamux-http/internal/testenv"
 )
 
-const meJID = "5511999999999:7@s.whatsapp.net"
-
 // directoryEnv is an edge with one WORKING session "default" and the given
 // fakes behind it.
 func directoryEnv(t *testing.T, opts fakecore.Options) *testenv.Env {
