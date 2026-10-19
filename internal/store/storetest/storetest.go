@@ -27,6 +27,10 @@ func Run(t *testing.T, open Opener) {
 	t.Run("Chats", func(t *testing.T) { chats(t, open(t, "ch")) })
 	t.Run("ContactsAndLabels", func(t *testing.T) { contactsLabels(t, open(t, "cl")) })
 	t.Run("Purge", func(t *testing.T) { purge(t, open(t, "p")) })
+	t.Run("Outbound", func(t *testing.T) { outbound(t, open(t, "o")) })
+	runIngest(t, open)
+	runOutbound(t, open)
+	runDirectory(t, open)
 }
 
 func must(t *testing.T, err error) {
@@ -371,5 +375,25 @@ func purge(t *testing.T, s store.Store) {
 	}
 	if _, err := s.GetMessage(ctx, "q", "m"); err != nil {
 		t.Fatalf("purge touched another session: %v", err)
+	}
+}
+
+func outbound(t *testing.T, s store.Store) {
+	ctx := context.Background()
+	if _, err := s.PollSecret(ctx, "s", "P1"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("missing secret: %v", err)
+	}
+	must(t, s.PutPollSecret(ctx, "s", "P1", []byte{1, 2, 3}))
+	if b, err := s.PollSecret(ctx, "s", "P1"); err != nil || len(b) != 3 {
+		t.Fatalf("secret: %v %v", b, err)
+	}
+	must(t, s.PutStatusRecipients(ctx, "s", "S1", []string{"1@s.whatsapp.net", "2@s.whatsapp.net"}))
+	if r, err := s.StatusRecipients(ctx, "s", "S1"); err != nil || len(r) != 2 {
+		t.Fatalf("recipients: %v %v", r, err)
+	}
+	must(t, s.CreateSession(ctx, store.Session{Name: "s", Status: "STOPPED"}))
+	must(t, s.PurgeSession(ctx, "s"))
+	if _, err := s.PollSecret(ctx, "s", "P1"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("purge kept the poll secret: %v", err)
 	}
 }
