@@ -98,8 +98,11 @@ func (s *Server) authenticate(ctx context.Context, r *http.Request) (Principal, 
 	if s.Config.NoAPIKey {
 		return Principal{Admin: true}, nil
 	}
+	// An excluded path is that exact path, as Nest's exclude() matches a
+	// route in WAHA: excluding /api/sessions must not open
+	// /api/sessions/{session}/logout as well.
 	for _, p := range s.Config.APIKeyExcludeDir {
-		if strings.HasPrefix(r.URL.Path, p) {
+		if r.URL.Path == p || r.URL.Path == strings.TrimSuffix(p, "/") {
 			return Principal{Admin: true}, nil
 		}
 	}

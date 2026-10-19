@@ -5,6 +5,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -76,6 +77,7 @@ type Ctx struct {
 	Session   string // the session name the route acts on ("" for NoSession)
 	Body      []byte // the request body, read once
 
+	from SessionFrom
 	sess *store.Session
 }
 
@@ -175,7 +177,7 @@ func (s *Server) serve(c *Ctx, rt Route, h Handler) error {
 	if err != nil {
 		return err
 	}
-	c.Principal = p
+	c.Principal, c.from = p, rt.From
 	if c.R.Body != nil && c.R.Method != http.MethodGet {
 		body, err := io.ReadAll(http.MaxBytesReader(c.W, c.R.Body, s.Config.MaxRequestBytes))
 		if err != nil {
@@ -296,7 +298,17 @@ func (c *Ctx) Bind(v any) error {
 	if len(c.Body) == 0 {
 		return nil
 	}
-	dec := json.NewDecoder(strings.NewReader(string(c.Body)))
+	body := c.Body
+	if c.S.Config.HTTPStrictMode && c.from == FromBody {
+		// The session names the route, not a field of its request: strict
+		// mode refuses unknown fields, never that one.
+		var obj map[string]json.RawMessage
+		if json.Unmarshal(body, &obj) == nil {
+			delete(obj, "session")
+			body, _ = json.Marshal(obj)
+		}
+	}
+	dec := json.NewDecoder(bytes.NewReader(body))
 	if c.S.Config.HTTPStrictMode {
 		dec.DisallowUnknownFields()
 	}

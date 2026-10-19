@@ -885,16 +885,6 @@ func (s *Server) setStar(c *Ctx) error {
 	return c.Empty(http.StatusOK)
 }
 
-// The unread incoming messages sendSeen without ids reads, as WAHA's
-// readChatMessages: the last 7 days, at most 100 in a group and 30
-// elsewhere, still at the DEVICE ack.
-const (
-	seenDays       = 7
-	seenLimitGroup = 100
-	seenLimitChat  = 30
-	ackDevice      = 2
-)
-
 // sendSeen sends read receipts. With ids, one receipt per sender for the
 // incoming ones (mine are skipped, as in WAHA). Without, for the chat's
 // unread incoming messages this edge stored, and the chat is marked read on
@@ -921,34 +911,33 @@ func (s *Server) sendSeen(c *Ctx) error {
 	if req.MessageID != "" {
 		ids = append(ids, req.MessageID)
 	}
-	explicit := len(ids) > 0
-	if !explicit {
-		limit := seenLimitChat
-		if waha.IsGroup(to.GetValue()) {
-			limit = seenLimitGroup
+	if len(ids) == 0 {
+		chat := waha.FromPB(to)
+		limit := defaultReadLimitDM
+		if waha.IsGroup(chat) {
+			limit = defaultReadLimitGroup
 		}
-		fromMe, ack := false, ackDevice
-		since := waha.NowMs() - seenDays*24*3600*1000
-		msgs, err := s.Store.ListMessages(c.R.Context(), c.Session, waha.FromPB(to),
-			store.MessageFilter{Limit: limit, FromMe: &fromMe, Ack: &ack, TimestampGTE: &since})
+		read, err := s.readUnread(c.R.Context(), c.Session, acc, chat, to, limit, defaultReadDays)
 		if err != nil {
 			return err
 		}
-		ids = []string{}
-		for _, m := range msgs {
-			ids = append(ids, m.ID)
-		}
+		return c.JSON(http.StatusCreated, map[string]any{"ids": read})
 	}
 	if err := s.markRead(c, acc, ids, req.Participant); err != nil {
 		return err
 	}
-	if explicit {
-		return c.Empty(http.StatusCreated)
+	waIDs := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if m, err := waha.ParseMessageID(id); err == nil {
+			waIDs = append(waIDs, m.ID)
+		} else {
+			waIDs = append(waIDs, id)
+		}
 	}
-	if _, err := s.Core.Messaging.MarkChatRead(c.R.Context(), &pb.MarkReadRequest{Account: acc, Chat: to}); err != nil {
+	if err := s.Store.UpdateAck(c.R.Context(), c.Session, waIDs, waha.AckRead); err != nil {
 		return err
 	}
-	return c.JSON(http.StatusCreated, map[string]any{"ids": ids})
+	return c.Empty(http.StatusCreated)
 }
 
 // markRead sends one MarkRead per (chat, sender) for the serialized ids not

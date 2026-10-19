@@ -39,11 +39,34 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(8)
 	s := &Store{db: db}
+	if err := firstConnection(ctx, db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	if err := s.migrate(ctx); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 	return s, nil
+}
+
+// firstConnection opens the first connection, retrying while the file is
+// busy: processes starting together on a new database race to switch it to
+// WAL, and SQLite answers that switch with SQLITE_BUSY at once, without
+// waiting out busy_timeout.
+func firstConnection(ctx context.Context, db *sql.DB) error {
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		err := db.PingContext(ctx)
+		if err == nil || !strings.Contains(err.Error(), "SQLITE_BUSY") || time.Now().After(deadline) {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
 }
 
 // Close closes the database.
@@ -61,19 +84,17 @@ func (s *Store) migrate(ctx context.Context) error {
 	sort.Strings(names)
 	for _, name := range names {
 		version := strings.TrimSuffix(strings.TrimPrefix(name, "migrations/"), ".sql")
-		var n int
-		if err := s.db.QueryRowContext(ctx,
-			`SELECT count(*) FROM schema_migrations WHERE version = ?`, version).Scan(&n); err != nil {
-			return err
-		}
-		if n > 0 {
-			continue
-		}
 		body, err := migrations.ReadFile(name)
 		if err != nil {
 			return err
 		}
+		// The check and the migration share one immediate transaction, so a
+		// second process starting at the same time waits, then sees it done.
 		err = s.tx(ctx, func(tx *sql.Tx) error {
+			var n int
+			if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM schema_migrations WHERE version = ?`, version).Scan(&n); err != nil || n > 0 {
+				return err
+			}
 			if _, err := tx.ExecContext(ctx, string(body)); err != nil {
 				return err
 			}
@@ -449,6 +470,13 @@ func (s *Store) CompleteDelivery(ctx context.Context, id int64) error {
 	return err
 }
 
+// PostponeDelivery unlocks a claimed delivery, due at nextAt, without
+// counting an attempt.
+func (s *Store) PostponeDelivery(ctx context.Context, id int64, nextAt int64) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE deliveries SET next_attempt_at = ?, locked_until = 0, locked_by = '' WHERE id = ?`, nextAt, id)
+	return err
+}
+
 // RetryDelivery reschedules a failed attempt, or drops it when nextAt is 0.
 func (s *Store) RetryDelivery(ctx context.Context, id int64, lastErr string, nextAt int64) error {
 	if nextAt == 0 {
@@ -462,5 +490,7 @@ func (s *Store) RetryDelivery(ctx context.Context, id int64, lastErr string, nex
 func nowMs() int64 { return time.Now().UnixMilli() }
 
 // purgeTables are the per-session tables PurgeSession empties. A migration
-// that adds one adds it here.
-var purgeTables = []string{"messages", "chats", "contacts", "labels", "chat_labels", "deliveries", "events", "poll_secrets", "status_posts", "presences"}
+// that adds one adds it here. The event log and the outbox are left alone:
+// deleting a session publishes a last session.status, which must still go
+// out, and the log's retention removes the rest.
+var purgeTables = []string{"messages", "chats", "contacts", "labels", "chat_labels", "poll_secrets", "status_posts", "presences"}

@@ -289,6 +289,9 @@ func (s *Server) overview(c *Ctx, status, limit, offset int, ids []string) error
 	return c.JSON(status, out)
 }
 
+// pictureCacheMax bounds the picture cache.
+const pictureCacheMax = 10_000
+
 // pictures caches profile picture URLs per session and chat for a day, as
 // WAHA does (a miss is cached too: asking again costs a server round trip).
 var pictures = struct {
@@ -322,6 +325,18 @@ func (s *Server) picture(ctx context.Context, sess store.Session, chat string, r
 		}
 	}
 	pictures.Lock()
+	if len(pictures.m) >= pictureCacheMax {
+		// Bounded: expired entries go first; a cache still full of live
+		// ones (somebody walking made-up chat ids) starts over.
+		for k, v := range pictures.m {
+			if time.Since(v.at) >= pictureCacheTTL {
+				delete(pictures.m, k)
+			}
+		}
+		if len(pictures.m) >= pictureCacheMax {
+			clear(pictures.m)
+		}
+	}
 	pictures.m[key] = cachedPicture{url: url, at: time.Now()}
 	pictures.Unlock()
 	return url
@@ -642,12 +657,23 @@ func (s *Server) readChat(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	ctx := c.R.Context()
-	no, device := false, waha.AckDevice
-	after := time.Now().UnixMilli() - int64(days)*dayMs
-	ms, err := s.Store.ListMessages(ctx, c.Session, chat, store.MessageFilter{Limit: limit, FromMe: &no, Ack: &device, TimestampGTE: &after})
+	ids, err := s.readUnread(c.R.Context(), c.Session, acc, chat, jid, limit, days)
 	if err != nil {
 		return err
+	}
+	return c.JSON(http.StatusCreated, map[string][]string{"ids": ids})
+}
+
+// readUnread reads a chat the way WAHA does: a receipt for each unread
+// incoming message of the last `days` (at most `limit`), one MarkRead per
+// sender, then the chat marked read on the account's devices; the stored
+// acks and unread count follow. It returns the serialized ids it read.
+func (s *Server) readUnread(ctx context.Context, session string, acc *pb.AccountRef, chat string, jid *pb.Jid, limit, days int) ([]string, error) {
+	no, device := false, waha.AckDevice
+	after := time.Now().UnixMilli() - int64(days)*dayMs
+	ms, err := s.Store.ListMessages(ctx, session, chat, store.MessageFilter{Limit: limit, FromMe: &no, Ack: &device, TimestampGTE: &after})
+	if err != nil {
+		return nil, err
 	}
 	ids := make([]string, 0, len(ms))
 	waIDs := make([]string, 0, len(ms))
@@ -668,22 +694,22 @@ func (s *Server) readChat(c *Ctx) error {
 		req := &pb.MarkReadRequest{Account: acc, Chat: jid, MessageIds: bySender[sender]}
 		if sender != "" {
 			if req.Sender, err = waha.ToPB(sender); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		if _, err := s.Core.Messaging.MarkRead(ctx, req); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if _, err := s.Core.Messaging.MarkChatRead(ctx, &pb.MarkReadRequest{Account: acc, Chat: jid}); err != nil {
-		return err
+		return nil, err
 	}
-	if err := s.Store.UpdateAck(ctx, c.Session, waIDs, waha.AckRead); err != nil {
-		return err
+	if err := s.Store.UpdateAck(ctx, session, waIDs, waha.AckRead); err != nil {
+		return nil, err
 	}
 	zero := 0
-	if err := s.Store.PatchChat(ctx, c.Session, chat, store.ChatPatch{Unread: &zero}); err != nil {
-		return err
+	if err := s.Store.PatchChat(ctx, session, chat, store.ChatPatch{Unread: &zero}); err != nil {
+		return nil, err
 	}
-	return c.JSON(http.StatusCreated, map[string][]string{"ids": ids})
+	return ids, nil
 }

@@ -22,12 +22,15 @@ func scanMessage(row interface{ Scan(...any) error }) (store.Message, error) {
 }
 
 // UpsertMessages inserts or replaces messages. A replayed message keeps the
-// higher of the stored and the new ack.
+// higher of the stored and the new ack, in its column and in its body.
 func (s *Store) UpsertMessages(ctx context.Context, ms []store.Message) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		st, err := tx.PrepareContext(ctx, `INSERT INTO messages (`+msgCols+`) VALUES (?,?,?,?,?,?,?,?,?)
 			ON CONFLICT (session, id) DO UPDATE SET chat_id = excluded.chat_id, ts = excluded.ts,
-			ack = max(messages.ack, excluded.ack), body = excluded.body, raw = coalesce(excluded.raw, messages.raw)`)
+			ack = max(messages.ack, excluded.ack),
+			body = CASE WHEN excluded.ack >= messages.ack THEN excluded.body
+				ELSE json_set(excluded.body, '$.ack', messages.ack, '$.ackName', json_extract(messages.body, '$.ackName')) END,
+			raw = coalesce(excluded.raw, messages.raw)`)
 		if err != nil {
 			return err
 		}

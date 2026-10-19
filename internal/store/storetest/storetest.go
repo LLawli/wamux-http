@@ -176,6 +176,15 @@ func events(t *testing.T, s store.Store) {
 	if len(again) != 1 || again[0].Attempts != 1 || again[0].LastError != "boom" {
 		t.Fatalf("retry: %+v", again)
 	}
+	must(t, s.PostponeDelivery(ctx, again[0].ID, 3500))
+	if c, _ := s.ClaimDeliveries(ctx, "C", 3400, 1000, 10); len(c) != 0 {
+		t.Fatalf("postponed delivery claimed early: %+v", c)
+	}
+	again, err = s.ClaimDeliveries(ctx, "C", 3500, 1000, 10)
+	must(t, err)
+	if len(again) != 1 || again[0].Attempts != 1 {
+		t.Fatalf("a postpone must not count an attempt: %+v", again)
+	}
 	must(t, s.RetryDelivery(ctx, again[0].ID, "final", 0))
 	if left, _ := s.ClaimDeliveries(ctx, "B", 99999, 1000, 10); len(left) != 0 {
 		t.Fatalf("given-up delivery still there: %+v", left)
@@ -266,6 +275,15 @@ func messages(t *testing.T, s store.Store) {
 	must(t, s.UpdateAck(ctx, "s", []string{"A"}, 1))
 	if a, _ := s.GetMessage(ctx, "s", "x_A"); a.Ack != 3 {
 		t.Fatalf("UpdateAck lowered: %d", a.Ack)
+	}
+	// A replay with a lower ack keeps the higher one, in the column and in
+	// the body the routes serve.
+	must(t, s.UpsertMessages(ctx, []store.Message{mk("A", 1000, true, 1)}))
+	a, _ = s.GetMessage(ctx, "s", "x_A")
+	body = map[string]any{}
+	_ = json.Unmarshal(a.Body, &body)
+	if a.Ack != 3 || body["ack"] != float64(3) || body["ackName"] != "READ" {
+		t.Fatalf("a replay lowered the body's ack: %d %s", a.Ack, a.Body)
 	}
 	if m, err := s.GetMessageByWAID(ctx, "s", "B"); err != nil || m.ID != "x_B" {
 		t.Fatalf("by wa id: %+v %v", m, err)

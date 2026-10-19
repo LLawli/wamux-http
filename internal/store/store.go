@@ -131,6 +131,9 @@ type Base interface {
 	CompleteDelivery(ctx context.Context, id int64) error
 	// RetryDelivery records a failed attempt; nextAt 0 gives up for good.
 	RetryDelivery(ctx context.Context, id int64, lastErr string, nextAt int64) error
+	// PostponeDelivery hands a claimed delivery back, due at nextAt, without
+	// counting an attempt.
+	PostponeDelivery(ctx context.Context, id int64, nextAt int64) error
 
 	// PurgeSession removes every record a session owns, the session included.
 	PurgeSession(ctx context.Context, name string) error

@@ -65,7 +65,8 @@ func (s *Server) authenticateWS(req *http.Request) (Principal, error) {
 }
 
 func (s *Server) streamWS(ctx context.Context, conn *websocket.Conn, session string, selected []string) {
-	ctx = conn.CloseRead(ctx) // client messages are ignored; this notices a close
+	defer func() { _ = conn.CloseNow() }() // a failed write must not leave the connection open
+	ctx = conn.CloseRead(ctx)              // client messages are ignored; this notices a close
 	events, cancel := s.Tail.Subscribe(256)
 	defer cancel()
 	ping := time.NewTicker(wsPing)

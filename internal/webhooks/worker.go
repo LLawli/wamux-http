@@ -31,7 +31,9 @@ import (
 const (
 	DefaultDelaySeconds = 2
 	DefaultAttempts     = 15
-	claimBatch          = 32
+	maxBackoff          = time.Hour
+	defaultConcurrency  = 64
+	defaultPerURL       = 4
 	idlePoll            = 500 * time.Millisecond
 )
 
@@ -45,6 +47,9 @@ type Worker struct {
 	Now     func() time.Time
 	// Poll is how often an idle worker looks for due deliveries.
 	Poll time.Duration
+	// Concurrency bounds the deliveries in flight; PerURL bounds those to
+	// one URL.
+	Concurrency, PerURL int
 }
 
 func (w *Worker) defaults() {
@@ -63,44 +68,82 @@ func (w *Worker) defaults() {
 	if w.Poll == 0 {
 		w.Poll = idlePoll
 	}
+	if w.Concurrency == 0 {
+		w.Concurrency = defaultConcurrency
+	}
+	if w.PerURL == 0 {
+		w.PerURL = defaultPerURL
+	}
 }
 
-// Run claims and delivers until ctx ends.
+// Run claims and delivers until ctx ends, then waits for the deliveries in
+// flight. Deliveries run in a pool of Concurrency, refilled as each one ends,
+// and at most PerURL of them go to one URL at a time: a URL that hangs ties
+// up its own share, never the other sessions' webhooks.
 func (w *Worker) Run(ctx context.Context) {
 	w.defaults()
+	slots := make(chan struct{}, w.Concurrency)
+	freed := make(chan struct{}, 1)
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	var mu sync.Mutex
+	perURL := map[string]int{}
 	for ctx.Err() == nil {
-		n, err := w.RunOnce(ctx)
-		if err != nil {
-			w.Log.Error("webhook claim", "err", err)
-		}
-		if n == 0 || err != nil {
+		free := w.Concurrency - len(slots)
+		if free == 0 {
 			select {
 			case <-ctx.Done():
 				return
+			case <-freed:
+			}
+			continue
+		}
+		lock := w.Timeout + 30*time.Second
+		ds, err := w.Store.ClaimDeliveries(ctx, w.Worker, w.Now().UnixMilli(), lock.Milliseconds(), free)
+		if err != nil {
+			w.Log.Error("webhook claim", "err", err)
+		}
+		for _, d := range ds {
+			mu.Lock()
+			busy := perURL[d.URL] >= w.PerURL
+			if !busy {
+				perURL[d.URL]++
+			}
+			mu.Unlock()
+			if busy {
+				// Its URL is at its share: back in the queue, no attempt spent.
+				if err := w.Store.PostponeDelivery(ctx, d.ID, w.Now().Add(w.Poll).UnixMilli()); err != nil {
+					w.Log.Error("webhook postpone", "id", d.ID, "err", err)
+				}
+				continue
+			}
+			slots <- struct{}{}
+			wg.Add(1)
+			go func(d store.Delivery) {
+				defer wg.Done()
+				w.deliver(ctx, d)
+				mu.Lock()
+				perURL[d.URL]--
+				if perURL[d.URL] == 0 {
+					delete(perURL, d.URL)
+				}
+				mu.Unlock()
+				<-slots
+				select {
+				case freed <- struct{}{}:
+				default:
+				}
+			}(d)
+		}
+		if len(ds) == 0 || err != nil {
+			select {
+			case <-ctx.Done():
+				return
+			case <-freed:
 			case <-time.After(w.Poll):
 			}
 		}
 	}
-}
-
-// RunOnce claims one batch, delivers it concurrently and returns its size.
-func (w *Worker) RunOnce(ctx context.Context) (int, error) {
-	w.defaults()
-	lock := w.Timeout + 30*time.Second
-	ds, err := w.Store.ClaimDeliveries(ctx, w.Worker, w.Now().UnixMilli(), lock.Milliseconds(), claimBatch)
-	if err != nil || len(ds) == 0 {
-		return 0, err
-	}
-	var wg sync.WaitGroup
-	for _, d := range ds {
-		wg.Add(1)
-		go func(d store.Delivery) {
-			defer wg.Done()
-			w.deliver(ctx, d)
-		}(d)
-	}
-	wg.Wait()
-	return len(ds), nil
 }
 
 func (w *Worker) deliver(ctx context.Context, d store.Delivery) {
@@ -212,17 +255,19 @@ func retryPolicy(r *waha.RetriesConfig) (attempts int, delay time.Duration, poli
 // computes it for WAHA: constant, linear (n times the delay) or exponential
 // (2^n times the delay plus up to 20% jitter), never less than Retry-After.
 func Backoff(policy string, delay time.Duration, n int, retryAfter time.Duration) time.Duration {
-	var d time.Duration
+	var d float64
 	switch policy {
 	case "linear":
-		d = time.Duration(n) * delay
+		d = float64(n) * float64(delay)
 	case "exponential":
 		base := float64(delay) * math.Pow(2, float64(n))
-		d = time.Duration(base + base*0.2*rand.Float64())
+		d = base + base*0.2*rand.Float64()
 	default:
-		d = delay
+		d = float64(delay)
 	}
-	return max(d, retryAfter)
+	// Clamped as a float: 2^n overflows a Duration past n = 33, and the
+	// conversion would turn the wait into nothing.
+	return max(time.Duration(min(d, float64(maxBackoff))), retryAfter)
 }
 
 func parseRetryAfter(v string, now time.Time) time.Duration {
