@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package wamux.v1;
+
+import "common.proto";
+
+message CheckOnWhatsAppRequest {
+  AccountRef account = 1;
+  // Full JIDs to check, e.g. "<number>@s.whatsapp.net". The core does not guess
+  // or normalize: the edge picks the namespace and sends well-formed JIDs.
+  reserved 2;  // #121: was `repeated string jids`
+  repeated Jid jids = 3;
+}
+
+message CheckResult {
+  reserved 1, 3;  // #121: were `string query` and `string jid`
+  Jid query = 4;
+  bool is_on_whatsapp = 2;
+  Jid jid = 5;
+}
+
+message CheckOnWhatsAppResponse {
+  repeated CheckResult results = 1;
+}
+
+message JidRequest {
+  AccountRef account = 1;
+  reserved 2;  // #121: was `string jid`
+  Jid jid = 3;
+}
+
+message ProfilePictureResponse {
+  string url = 1;
+  bytes image = 2;
+}
+
+message SetProfilePictureRequest {
+  AccountRef account = 1;
+  bytes image = 2;
+}
+
+message PushNameResponse {
+  string push_name = 1;
+}
+
+message SetPushNameRequest {
+  AccountRef account = 1;
+  string push_name = 2;
+}
+
+message AboutResponse {
+  string about = 1;
+}
+
+message BusinessProfileResponse {
+  reserved 1;
+  reserved "raw";  // #132: was the library's profile as JSON
+  // Unset when the jid has no business profile (the library answers `None`).
+  BusinessProfile profile = 2;
+}
+
+// A business profile, every field the library parses (#132). Names follow the
+// library's.
+message BusinessProfile {
+  Jid wid = 1;
+  string description = 2;  // "" when the profile has none: the library's own default
+  optional string email = 3;
+  repeated string website = 4;
+  repeated BusinessCategory categories = 5;
+  optional string address = 6;
+  BusinessHours business_hours = 7;
+}
+
+message BusinessCategory {
+  string id = 1;
+  string name = 2;
+}
+
+message BusinessHours {
+  optional string timezone = 1;  // IANA name, e.g. "America/Sao_Paulo"
+  // One entry per opening range: a day with two ranges is two entries.
+  repeated BusinessHoursConfig business_config = 2;
+}
+
+message BusinessHoursConfig {
+  BusinessDayOfWeek day_of_week = 1;
+  // The server's token, only when `day_of_week` is UNKNOWN.
+  string day_of_week_raw = 2;
+  BusinessHourMode mode = 3;
+  // The server's token, only when `mode` is UNKNOWN.
+  string mode_raw = 4;
+  optional uint32 open_time = 5;   // minutes past local midnight
+  optional uint32 close_time = 6;  // minutes past local midnight
+}
+
+// The library names seven days and keeps any other token, so UNKNOWN carries
+// that token in `day_of_week_raw`.
+enum BusinessDayOfWeek {
+  BUSINESS_DAY_OF_WEEK_UNSPECIFIED = 0;
+  BUSINESS_DAY_OF_WEEK_UNKNOWN = 1;
+  BUSINESS_DAY_OF_WEEK_SUNDAY = 2;     // was "sun"
+  BUSINESS_DAY_OF_WEEK_MONDAY = 3;     // was "mon"
+  BUSINESS_DAY_OF_WEEK_TUESDAY = 4;    // was "tue"
+  BUSINESS_DAY_OF_WEEK_WEDNESDAY = 5;  // was "wed"
+  BUSINESS_DAY_OF_WEEK_THURSDAY = 6;   // was "thu"
+  BUSINESS_DAY_OF_WEEK_FRIDAY = 7;     // was "fri"
+  BUSINESS_DAY_OF_WEEK_SATURDAY = 8;   // was "sat"
+}
+
+// Same rule: UNKNOWN carries the server's token in `mode_raw`.
+enum BusinessHourMode {
+  BUSINESS_HOUR_MODE_UNSPECIFIED = 0;
+  BUSINESS_HOUR_MODE_UNKNOWN = 1;
+  BUSINESS_HOUR_MODE_OPEN_24H = 2;          // was "open_24h"
+  BUSINESS_HOUR_MODE_SPECIFIC_HOURS = 3;    // was "specific_hours"
+  BUSINESS_HOUR_MODE_APPOINTMENT_ONLY = 4;  // was "appointment_only"
+}
+
+message SubscribePresenceRequest {
+  AccountRef account = 1;
+  reserved 2;  // #121: was `string jid`
+  Jid jid = 3;
+}
+
+// One LID <-> phone-number pair, exactly as the library learned it. Both sides
+// render as full JIDs ("<user>@lid" / "<user>@s.whatsapp.net"): the store keeps
+// only the user parts, and each side's namespace is fixed by definition. A side
+// the store has no user part for comes back unset, never a bare "@lid".
+message LidPnMapping {
+  reserved 1, 2;  // #121: were `string lid` and `string pn`
+  Jid lid = 5;
+  Jid pn = 6;
+  int64 created_at = 3;        // unix seconds, when the mapping was first learned
+  // The library's own tag for how it learned the pair, verbatim:
+  // usync|pairing|peer_pn_message|peer_lid_message|recipient_latest_lid|
+  // migration_sync_latest|migration_sync_old|blocklist_active|
+  // blocklist_inactive|device_notification|other.
+  string learning_source = 4;
+}
+
+message ResolveLidPnRequest {
+  AccountRef account = 1;
+  // Full JIDs, either side of the mapping: a "<user>@lid" answers with its
+  // phone jid, a "<user>@s.whatsapp.net" with its LID. Any other namespace
+  // answers found=false. The core does not guess: it only reports what the
+  // client already knows.
+  reserved 2;  // #121: was `repeated string jids`
+  repeated Jid jids = 3;
+}
+
+// One answer per requested jid, in request order. `query` is the requested
+// jid exactly as it was sent: a `@c.us` query comes back `@c.us`.
+message LidPnResult {
+  reserved 1;  // #121: was `string query`
+  Jid query = 4;
+  bool found = 2;
+  LidPnMapping mapping = 3;  // unset when found=false
+}
+
+message ResolveLidPnResponse {
+  repeated LidPnResult results = 1;
+}
+
+message ListLidMappingsResponse {
+  repeated LidPnMapping mappings = 1;
+}
+
+service ContactService {
+  rpc CheckOnWhatsApp(CheckOnWhatsAppRequest) returns (CheckOnWhatsAppResponse);
+  rpc GetProfilePicture(JidRequest) returns (ProfilePictureResponse);
+  rpc SetProfilePicture(SetProfilePictureRequest) returns (Empty);
+  rpc RemoveProfilePicture(AccountRef) returns (Empty);
+  // The account's OWN push name (the getter that pairs with SetPushName).
+  // Takes an AccountRef, not a jid: WhatsApp gives a companion device no
+  // per-contact push-name store, so a jid argument would read as "what is this
+  // contact called" while meaning nothing (issue #1).
+  rpc GetPushName(AccountRef) returns (PushNameResponse);
+  rpc SetPushName(SetPushNameRequest) returns (Empty);
+  rpc GetAbout(JidRequest) returns (AboutResponse);
+  rpc GetBusinessProfile(JidRequest) returns (BusinessProfileResponse);
+  rpc SubscribePresence(SubscribePresenceRequest) returns (Empty);
+  // Targeted LID<->PN lookup, batched. Reads the live client (in-memory cache
+  // first, durable store on miss), so it also sees mappings learned during an
+  // offline history replay, which are cached before they are persisted.
+  rpc ResolveLidPn(ResolveLidPnRequest) returns (ResolveLidPnResponse);
+  // Every LID<->PN pair persisted for the account, for a consumer reconciling
+  // its own store in one pass. Reads storage directly, so it answers for a
+  // disconnected account too -- and, being the durable side, it misses the
+  // in-memory-only mappings ResolveLidPn can still answer.
+  rpc ListLidMappings(AccountRef) returns (ListLidMappingsResponse);
+}

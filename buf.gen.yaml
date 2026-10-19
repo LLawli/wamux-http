@@ -1,0 +1,13 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/LLawli/wamux-http/internal/core/wamuxv1
+plugins:
+  - local: ["go", "tool", "-modfile=tools/go.mod", "protoc-gen-go"]
+    out: internal/core/wamuxv1
+    opt: paths=source_relative
+  - local: ["go", "tool", "-modfile=tools/go.mod", "protoc-gen-go-grpc"]
+    out: internal/core/wamuxv1
+    opt: paths=source_relative

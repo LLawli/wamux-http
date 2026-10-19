@@ -1,0 +1,8 @@
+/wamux-http
+/dist/
+/files/
+*.db
+*.db-shm
+*.db-wal
+/config/deploy.env
+.env

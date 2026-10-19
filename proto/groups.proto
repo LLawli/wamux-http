@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package wamux.v1;
+
+import "common.proto";
+import "group_metadata.proto";
+
+// #121: every jid field below took a new number when it became a `Jid`, and
+// the old number is reserved (see `Jid` in common.proto).
+
+message CreateGroupRequest {
+  AccountRef account = 1;
+  string subject = 2;
+  reserved 3;  // #121: was `repeated string participants`
+  repeated Jid participants = 4;
+}
+
+message GroupJidResponse {
+  reserved 1;
+  reserved "group_jid";
+  Jid group = 3;
+  reserved 2;  // #132: was `bytes metadata` (JSON)
+  // Set by CreateGroup; unset by JoinWithInvite, whose answer carries no metadata.
+  GroupMetadata metadata = 4;
+  // Set by JoinWithInvite only (#96); CreateGroup leaves it UNSPECIFIED. `group`
+  // is the same in both outcomes, so this is the only way to tell a join from
+  // a request that waits for an admin.
+  JoinOutcome join_outcome = 5;
+}
+
+// What the library reported for an accepted invite (`JoinGroupResult`): a closed
+// set of two, so no raw fallback.
+enum JoinOutcome {
+  JOIN_OUTCOME_UNSPECIFIED = 0;
+  JOIN_OUTCOME_JOINED = 1;
+  // The group requires admin approval: the account is not a member yet.
+  JOIN_OUTCOME_PENDING_APPROVAL = 2;
+}
+
+message ParticipantsRequest {
+  AccountRef account = 1;
+  reserved 2, 3;
+  reserved "group_jid";
+  Jid group = 4;
+  repeated Jid participants = 5;
+}
+
+message GroupTextRequest {
+  AccountRef account = 1;
+  reserved 2;
+  reserved "group_jid";
+  Jid group = 4;
+  string text = 3;
+}
+
+message GroupRef {
+  AccountRef account = 1;
+  reserved 2;
+  reserved "group_jid";
+  Jid group = 3;
+}
+
+message GroupMetadataResponse {
+  reserved 1;  // #132: was `bytes metadata` (JSON)
+  GroupMetadata metadata = 2;
+}
+
+message InviteLinkResponse {
+  string link = 1;
+}
+
+message JoinWithInviteRequest {
+  AccountRef account = 1;
+  string code = 2;
+}
+
+message GroupSummary {
+  reserved 1;  // #121: was `string jid`
+  Jid jid = 5;
+  string subject = 2;
+  uint32 participants = 3;
+  reserved 4;  // #132: was `bytes metadata` (JSON)
+  GroupMetadata metadata = 6;
+}
+
+message ListGroupsResponse {
+  repeated GroupSummary groups = 1;
+}
+
+// Toggle a boolean group permission (announce / locked). Mirrors GroupTextRequest.
+message GroupToggleRequest {
+  AccountRef account = 1;
+  reserved 2;
+  reserved "group_jid";
+  Jid group = 4;
+  bool enabled = 3;
+}
+
+// Group-level disappearing-messages timer. Distinct from the per-message
+// ephemeral flag carried on SendText/SendMedia; 0 disables.
+message GroupEphemeralRequest {
+  AccountRef account = 1;
+  reserved 2;
+  reserved "group_jid";
+  Jid group = 4;
+  uint32 expiration_seconds = 3;
+}
+
+// Preview an invite's group metadata without joining.
+message PreviewInviteRequest {
+  AccountRef account = 1;
+  string code = 2;
+}
+
+// Set or remove a group's photo. An empty `image` means "remove the photo".
+message SetGroupPhotoRequest {
+  AccountRef account = 1;
+  reserved 2;
+  reserved "group_jid";
+  Jid group = 4;
+  bytes image = 3;
+}
+
+// Pending membership-approval requests, as the library parses them. The server
+// also sends each requester's `phone_number` and `request_method`; the library
+// does not expose them, so neither does the core.
+message MembershipRequestsResponse {
+  reserved 1;  // #132: was `bytes requests` (JSON, with each jid as an object)
+  repeated MembershipRequest requests = 2;
+}
+
+message MembershipRequest {
+  Jid jid = 1;
+  optional int64 request_time = 2;  // ms; unset when the server sent none
+}
+
+// V4 invite token the server attaches to a participant that a privacy setting
+// blocked from a direct add (error "403"). The edge composes the fallback
+// (send a GroupInviteMessage); the core only relays the token.
+message AddRequestInfo {
+  string code = 1;
+  uint64 expiration = 2;
+}
+
+// One server verdict for one participant of a participant-change request. The
+// server answers per participant, so a request can partially succeed: `error`
+// empty means that participant went through.
+message ParticipantChange {
+  reserved 1, 4;  // #121: were `string jid` and `string phone_number`
+  Jid jid = 7;
+  string status = 2;
+  string error = 3;
+  // The phone jid the roster carries next to a `@lid` participant; unset when
+  // the server sent none.
+  Jid phone_number = 8;
+  string username = 5;
+  AddRequestInfo add_request = 6;
+}
+
+// Relayed verbatim, one entry per participant the server answered for. The core
+// does not collapse this into a single ok/failed verdict: which partial failure
+// is retryable, invitable, or fatal is edge policy.
+message ParticipantsResponse {
+  repeated ParticipantChange results = 1;
+}
+
+service GroupService {
+  rpc CreateGroup(CreateGroupRequest) returns (GroupJidResponse);
+  rpc AddParticipants(ParticipantsRequest) returns (ParticipantsResponse);
+  rpc RemoveParticipants(ParticipantsRequest) returns (ParticipantsResponse);
+  rpc PromoteAdmins(ParticipantsRequest) returns (ParticipantsResponse);
+  rpc DemoteAdmins(ParticipantsRequest) returns (ParticipantsResponse);
+  rpc SetGroupSubject(GroupTextRequest) returns (Empty);
+  rpc SetGroupDescription(GroupTextRequest) returns (Empty);
+  rpc GetGroupMetadata(GroupRef) returns (GroupMetadataResponse);
+  rpc GetInviteLink(GroupRef) returns (InviteLinkResponse);
+  rpc RevokeInviteLink(GroupRef) returns (InviteLinkResponse);
+  rpc JoinWithInvite(JoinWithInviteRequest) returns (GroupJidResponse);
+  rpc ListParticipating(AccountRef) returns (ListGroupsResponse);
+  rpc LeaveGroup(GroupRef) returns (Empty);
+  rpc SetGroupAnnounce(GroupToggleRequest) returns (Empty);
+  rpc SetGroupLocked(GroupToggleRequest) returns (Empty);
+  rpc SetGroupEphemeral(GroupEphemeralRequest) returns (Empty);
+  rpc PreviewInvite(PreviewInviteRequest) returns (GroupMetadataResponse);
+  rpc SetGroupPhoto(SetGroupPhotoRequest) returns (Empty);
+  rpc GetMembershipRequests(GroupRef) returns (MembershipRequestsResponse);
+  rpc ApproveMembershipRequests(ParticipantsRequest) returns (ParticipantsResponse);
+  rpc RejectMembershipRequests(ParticipantsRequest) returns (ParticipantsResponse);
+}

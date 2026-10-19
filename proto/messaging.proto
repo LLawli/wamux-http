@@ -1,0 +1,523 @@
+syntax = "proto3";
+
+package wamux.v1;
+
+import "common.proto";
+import "app_state.proto";
+
+// Link-preview card for an outgoing text. The EDGE fetches the URL and
+// supplies every field here; the core relays them verbatim and performs no
+// outbound HTTP (same doctrine as media: fetch policy and the SSRF surface
+// belong to the edge). Note: this waproto has no canonical_url field, so
+// matched_text doubles as the URL the preview belongs to.
+message LinkPreview {
+  string matched_text = 1;
+  string title = 2;
+  string description = 3;
+  bytes jpeg_thumbnail = 4;
+  // Numeric wa ExtendedTextMessage.PreviewType (0=NONE, 1=VIDEO, ...).
+  // 0 is the proto3 default and is relayed as "field absent".
+  int32 preview_type = 5;
+}
+
+message SendTextRequest {
+  AccountRef account = 1;
+  Jid to = 2;
+  string text = 3;
+  repeated Mention mentions = 4;
+  QuoteContext quote = 5;
+  LinkPreview link_preview = 6;
+  // 0 = not ephemeral; otherwise relayed as ContextInfo.expiration. The edge
+  // supplies the chat's current disappearing-messages setting; the core never
+  // tracks or decides durations.
+  uint32 ephemeral_seconds = 7;
+}
+
+message SendResult {
+  MessageKey key = 1;
+  int64 server_timestamp = 2;
+  // What a DM's fan-out reached (#47). Absent for every other send: a group, a
+  // status, a delete-for-me that sent nothing. Zeros would read as "addressed
+  // nobody", which is a different fact.
+  RecipientFanout recipient_fanout = 3;
+}
+
+// The recipient half of a DM send, as the library counted it (upstream #1362).
+// `SendResult` and the server ack only say the message was taken; this says
+// which of the recipient's devices got something to decrypt, at send time,
+// before any `delivered` receipt could arrive.
+//
+// Four facts, nothing derived: "partial" is `encrypted < addressed`, and what
+// to do about it (retry, warn, wait for a receipt) is the edge's call. A send
+// that reached no recipient device at all never answers with this: it fails.
+//
+// All zeros means a self-chat, which has no recipient half. It says nothing
+// about this account's own devices, so a note to self is NOT settled by it:
+// that case still has neither a receipt nor a count.
+message RecipientFanout {
+  uint32 addressed = 1;              // recipient devices the fan-out attempted
+  uint32 encrypted = 2;              // of those, how many got an <enc>
+  bool skipped_primary = 3;          // device 0 (the phone) was among the misses
+  bool had_unregistered_device = 4;  // the server answered 406 for at least one
+}
+
+message SendMediaHeader {
+  AccountRef account = 1;
+  Jid to = 2;
+  string mime_type = 3;
+  // Media bytes always stream inline as chunks after this header. The core does
+  // not fetch URLs (no outbound HTTP / SSRF surface): the edge downloads any
+  // remote media itself and streams the bytes.
+  reserved 4, 5;
+  reserved "inline", "url", "source";
+  string caption = 6;
+  repeated Mention mentions = 7;
+  QuoteContext quote = 8;
+  // #127: was `string media_type = 9`. IMAGE, VIDEO, AUDIO, DOCUMENT or
+  // STICKER; anything else is InvalidArgument.
+  reserved 9;
+  MediaType media_type = 16;
+  string filename = 10;
+  // Voice note (PTT): ptt=true plus seconds turn an audio into a voice note.
+  // WhatsApp only renders the PTT bubble for OGG/Opus payloads; the edge
+  // supplies the right bytes (the core does not transcode). waveform is the
+  // optional amplitude strip shown in the bubble.
+  bool ptt = 11;
+  uint32 seconds = 12;
+  bytes waveform = 13;
+  // 0 = not ephemeral; otherwise relayed as ContextInfo.expiration (the edge
+  // supplies the chat's setting, exactly as on SendTextRequest).
+  uint32 ephemeral_seconds = 14;
+  // Video note (PTV, the round "instant video"): when media_type is VIDEO and
+  // ptv=true, the built VideoMessage ships as Message.ptv_message instead of
+  // video_message. The edge supplies a square clip; the core does not transcode.
+  bool ptv = 15;
+}
+
+message SendMediaChunk {
+  oneof part {
+    SendMediaHeader header = 1;
+    bytes chunk = 2;
+  }
+}
+
+message SendReactionRequest {
+  AccountRef account = 1;
+  MessageKey target = 2;
+  string emoji = 3; // empty string removes the reaction
+}
+
+message EditMessageRequest {
+  AccountRef account = 1;
+  MessageKey target = 2;
+  string new_text = 3;
+}
+
+message DeleteMessageRequest {
+  AccountRef account = 1;
+  MessageKey target = 2;
+  // true=revoke for all, false=delete for me. A status (`chat` =
+  // `status@broadcast`) cannot be revoked here: that is RevokeStatus, which
+  // needs the recipient list this request has no field for (issue #41).
+  bool for_everyone = 3;
+}
+
+// On-demand history fetch (PDO HistorySyncOnDemand): asks the phone for `count`
+// messages OLDER than the anchor message the edge already has. The answer
+// arrives asynchronously on the event stream as HistorySyncEvent(s) whose
+// session_id matches the response below. Requires a live connection.
+message FetchMessageHistoryRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  string oldest_msg_id = 3;          // anchor: oldest message the edge holds
+  bool oldest_msg_from_me = 4;
+  int64 oldest_msg_timestamp_ms = 5;
+  int32 count = 6;                   // how many older messages to request
+}
+
+message FetchMessageHistoryResponse {
+  string session_id = 1;             // correlate with HistorySyncEvent.session_id
+}
+
+message SendPresenceRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  // #127: was `string state = 3`.
+  reserved 3;
+  PresenceState state = 4;
+}
+
+// What SendPresence raises: AVAILABLE and UNAVAILABLE are the account's own
+// presence, not scoped to `chat`; the other three are a chat state in `chat`.
+// UNSPECIFIED and UNKNOWN are InvalidArgument: a request has no raw field.
+enum PresenceState {
+  PRESENCE_STATE_UNSPECIFIED = 0;
+  PRESENCE_STATE_UNKNOWN = 1;      // never valid; refused
+  PRESENCE_STATE_AVAILABLE = 2;
+  PRESENCE_STATE_UNAVAILABLE = 3;
+  PRESENCE_STATE_COMPOSING = 4;
+  PRESENCE_STATE_RECORDING = 5;
+  PRESENCE_STATE_PAUSED = 6;
+}
+
+// Used by MarkRead (the receipt), MarkChatRead and MarkUnread (the app-state
+// mutations). The last two read only `account` and `chat` -- a chat's read
+// state is per chat, not per message.
+message MarkReadRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  // The messages being acknowledged. Empty acknowledges nothing and the
+  // library returns without emitting a stanza, so a caller with nothing to say
+  // costs nothing.
+  repeated string message_ids = 3;
+  // The message's author. Required for a group read: a receipt names whose
+  // messages are being acknowledged. Absent in a DM, where the chat is the
+  // author.
+  Jid sender = 4;
+}
+
+// --- Chat actions (mutations synced across the account's linked devices) ---
+
+// target.chat = the chat; target.participant = sender inside a group (unset
+// in a DM); target.id = message id; target.from_me = whether we sent it.
+message StarMessageRequest {
+  AccountRef account = 1;
+  MessageKey target = 2;
+  bool starred = 3; // true=star, false=unstar
+}
+
+message ArchiveChatRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  bool archived = 3; // true=archive, false=unarchive
+}
+
+message PinChatRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  bool pinned = 3; // true=pin, false=unpin
+}
+
+message MuteChatRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  bool muted = 3; // false=unmute (mute_until_ms ignored)
+  // 0 with muted=true means mute indefinitely; otherwise a future epoch-ms.
+  // The lib rejects a non-future timestamp; the core relays that error and the
+  // edge supplies a valid one (the core tracks no clock policy).
+  int64 mute_until_ms = 4;
+}
+
+message DeleteChatRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  bool delete_media = 3;
+}
+
+// --- Rich content sends ---
+
+message SendContactRequest {
+  AccountRef account = 1;
+  Jid to = 2;
+  string display_name = 3;
+  string vcard = 4;
+  QuoteContext quote = 5;
+}
+
+message SendPollRequest {
+  AccountRef account = 1;
+  Jid to = 2;
+  string name = 3;
+  repeated string options = 4;     // 2..=12 distinct names (lib validates)
+  uint32 selectable_count = 5;     // 1..=options.len() (lib validates)
+}
+
+// message_secret is the per-poll key the edge needs to decrypt incoming votes;
+// the core hands it back as a primitive and stores nothing (relay-pure).
+message SendPollResult {
+  MessageKey key = 1;
+  bytes message_secret = 2;
+  // Same as SendResult.recipient_fanout: a poll to a DM goes through the same
+  // fan-out as any other message (#47).
+  RecipientFanout recipient_fanout = 3;
+}
+
+// --- Polls: voting and tallying (issue #13) ---
+//
+// A vote is an encrypted add-on keyed by the poll's message_secret, its stanza
+// id, the CREATOR's jid and the VOTER's jid, in the namespace (LID or PN) the
+// poll was addressed in. That derivation is the library's, and the LID/PN half
+// of it reads the library's own identity store, which the edge does not have:
+// a vote authored across the LID migration opens under one addressing and not
+// the other. So these two are relayed rather than left to the edge.
+//
+// Both stay relay-pure: the edge supplies every stored value (secret, options,
+// the votes themselves) and the core persists nothing.
+
+// The poll is addressed by (chat, poll_id, poll_creator) rather than by a
+// MessageKey: the library derives the key's other fields itself (from_me from
+// the creator, participant from the chat's kind), so a MessageKey here would be
+// three fields the core ignores. The creator is explicit for the same reason it
+// is not derived -- guessing an identity is exactly what the core does not do.
+message SendPollVoteRequest {
+  AccountRef account = 1;
+  Jid chat = 2;
+  string poll_id = 3;             // message id of the poll-creation message
+  reserved 4;                     // #120: was `string poll_creator_jid`
+  reserved "poll_creator_jid";
+  Jid poll_creator = 7;           // who sent the poll
+  bytes message_secret = 5;       // 32 bytes, from SendPollResult or the payload
+  // Chosen option names, spelled exactly as the poll offered them (a vote
+  // references options by SHA-256 of the name). Empty retracts the vote, and
+  // a second vote replaces the first rather than adding to it.
+  repeated string options = 6;
+}
+
+// One vote as it arrived, straight out of a PollUpdateMessage.
+message PollVote {
+  // MUST be in the SAME namespace as poll_creator: both `@lid`, or both a
+  // phone jid. The key is derived from the creator/voter PAIR, and the library
+  // only ever swaps the two together, so a mixed pair is never tried in the
+  // combination the sender actually used -- it just fails to open. A vote
+  // arrives addressed by whichever namespace the stanza carried, which need
+  // not be the poll's; `InboundMessage.sender_alt` is the other form of the
+  // same sender, relayed for exactly this. Measured on 2026-09-02 against the
+  // live accounts: a PN-created poll voted from a `@lid` sender gives
+  // undecryptable=3 of 3 when the sender is passed verbatim, and a clean tally
+  // when the phone jid is passed instead.
+  reserved 1;  // #120: was `string voter_jid`
+  reserved "voter_jid";
+  Jid voter = 4;
+  bytes enc_payload = 2;
+  bytes enc_iv = 3;
+}
+
+message AggregatePollVotesRequest {
+  AccountRef account = 1;
+  string poll_id = 2;
+  reserved 3;  // #120: was `string poll_creator_jid`
+  reserved "poll_creator_jid";
+  Jid poll_creator = 7;
+  bytes message_secret = 4;
+  repeated string options = 5;    // in the order the poll offered them
+  // The edge holds these, not the core. ORDER IS THE CONTRACT: oldest first.
+  // Last vote wins, so a shuffled list tallies a stale answer. The core does
+  // not sort (it has no clock of its own to sort by, and picking one would be
+  // policy) -- it relays the order it was given.
+  repeated PollVote votes = 6;
+}
+
+message PollOptionResult {
+  string option = 1;
+  // Deduped by the voter's canonical identity, so someone who voted as a phone
+  // number and re-voted as a LID counts once. The count is `len(voters)`; a
+  // separate field could only ever disagree with it.
+  reserved 2;  // #120: was `repeated string voters`
+  repeated Jid voters = 3;
+}
+
+message PollTally {
+  repeated PollOptionResult results = 1;
+  // How many of the supplied votes could not be opened at all: a wrong
+  // message_secret, or a voter in a namespace with no known counterpart. The
+  // library drops those from the tally with nothing but a log line, which from
+  // the edge is indistinguishable from "nobody voted". Same reasoning as the
+  // two offline-sync counts: a silent loss has to be countable.
+  uint32 undecryptable = 2;
+}
+
+// --- Status / stories ---
+
+message PostStatusTextRequest {
+  AccountRef account = 1;
+  string text = 2;
+  uint32 background_argb = 3; // 0xAARRGGBB; 0 is a valid (transparent) value
+  int32 font = 4;             // font style index (0-4 on WhatsApp Web)
+  reserved 5;                     // #120: was `repeated string recipients`
+  repeated Jid recipients = 6;    // device set the status is encrypted to
+}
+
+message PostStatusMediaHeader {
+  AccountRef account = 1;
+  // #127: was `string media_type = 2`. IMAGE or VIDEO only (status supports
+  // no other kinds); anything else is InvalidArgument.
+  reserved 2;
+  MediaType media_type = 9;
+  string mime_type = 3;
+  bytes thumbnail = 4;   // JPEG preview; the edge generates it (no transcode)
+  string caption = 5;
+  uint32 seconds = 6;    // video duration; ignored for image
+  reserved 7;  // #120: was `repeated string recipients`
+  repeated Jid recipients = 8;
+}
+
+message PostStatusMediaChunk {
+  oneof part {
+    PostStatusMediaHeader header = 1;
+    bytes chunk = 2;
+  }
+}
+
+// Revoke a status this account posted (issue #41). A status revoke is encrypted
+// to the same device set as the status itself, so the edge hands back the
+// recipient list it posted with. The core keeps no record of it (relay-pure).
+message RevokeStatusRequest {
+  AccountRef account = 1;
+  string message_id = 2;          // the status's own id: PostStatus* SendResult.key.id
+  reserved 3;                     // #120: was `repeated string recipients`
+  repeated Jid recipients = 4;    // the same device set the status was posted to
+}
+
+// The account's status audience as the library last synced it from the phone
+// (#89): the same `StatusPrivacySetting` an `AccountSettingUpdate` carries, read
+// back on demand, because the event only comes live or from the full sync at
+// pairing and an edge that missed it has no other way to recover it.
+//
+// `audience` unset means no audience has been synced yet. That is NOT "all
+// contacts", and neither is an UNKNOWN mode. The audience is informative: a
+// status still goes to exactly the `recipients` the edge posts it to.
+message StatusAudienceResponse {
+  StatusPrivacySetting audience = 1;
+}
+
+// --- Answering a button, a list or a template (issue #28) ---
+//
+// An offer (`buttonsMessage`, `listMessage`, `templateMessage`,
+// `interactiveMessage`) is answered with a TYPED reply that names the choice by
+// id. Sending the button's label through SendText builds a `conversation`,
+// which is a different message: a bot matching on the id never sees the tap.
+//
+// The four shapes are kept apart rather than flattened into one `selected_id`,
+// because they do not carry the same fields: a template reply needs the
+// button's INDEX, a list reply carries the row's title and description, and a
+// native-flow reply carries a JSON blob. One RPC, one oneof, no lossy union.
+//
+// Field presence below is MEASURED, not assumed: 10 replies built by the
+// official client, captured in one live store on 2026-09-23 (5 button, 4 list,
+// 1 template). Where the core sets a constant instead of relaying an input, the
+// sample count is named on the field.
+
+// Answers a `buttonsMessage`.
+message ButtonReply {
+  string selected_id = 1;    // buttonsResponseMessage.selectedButtonId
+  string display_text = 2;   // selectedDisplayText
+}
+
+// Answers a `listMessage`. `title` and `description` are the chosen ROW's, and
+// the official client sends both (4 of 4) -- they are what the conversation
+// shows, while `selected_row_id` is what the bot matches on.
+message ListReply {
+  string selected_row_id = 1;  // singleSelectReply.selectedRowId
+  string title = 2;
+  string description = 3;
+}
+
+// Answers a `templateMessage`.
+message TemplateReply {
+  string selected_id = 1;      // templateButtonReplyMessage.selectedId
+  string display_text = 2;
+  // The button's position, and 0 is the FIRST one, not "unset": the captured
+  // reply carries an explicit 0. Relayed as-is, never folded away by the rule
+  // that maps proto3 zero defaults to an absent waproto field.
+  uint32 selected_index = 3;
+}
+
+// Answers an `interactiveMessage` (native flow).
+//
+// Built from the proto, NOT from a capture: the store held 13 interactive
+// offers and no reply to one, so unlike the three above nothing here is
+// confirmed against traffic the official client produced.
+message NativeFlowReply {
+  string name = 1;         // nativeFlowResponseMessage.name
+  string params_json = 2;  // nativeFlowResponseMessage.paramsJson
+  string body_text = 3;    // interactiveResponseMessage.body.text
+  // 0 leaves the field absent, which is the proto default of 1.
+  int32 version = 4;
+}
+
+message SendInteractiveReplyRequest {
+  AccountRef account = 1;
+  Jid to = 2;
+  // The offer being answered. REQUIRED, and InvalidArgument without it: a reply
+  // that names no offer is not a reply. All 10 captured ones quote the offer,
+  // and that is how the bot ties the tap back to what it asked.
+  QuoteContext quote = 3;
+  // The offer's own payload, verbatim -- the `raw_message` of the event that
+  // delivered it. OPTIONAL, and every captured reply carries it: the official
+  // client embeds the whole offer in `contextInfo.quotedMessage`, not just its
+  // id. The core looks nothing up; it relays this if the edge has it and omits
+  // it if not. Whether a given bot needs it is the bot's business, which is why
+  // this is a field and not a lookup.
+  bytes quoted_message = 4;
+  oneof reply {
+    ButtonReply button = 5;
+    ListReply list = 6;
+    TemplateReply template = 7;
+    NativeFlowReply native_flow = 8;
+  }
+}
+
+service MessagingService {
+  rpc SendText(SendTextRequest) returns (SendResult);
+  rpc SendMedia(stream SendMediaChunk) returns (SendResult);
+  rpc SendReaction(SendReactionRequest) returns (SendResult);
+  rpc EditMessage(EditMessageRequest) returns (SendResult);
+  rpc DeleteMessage(DeleteMessageRequest) returns (SendResult);
+  rpc FetchMessageHistory(FetchMessageHistoryRequest) returns (FetchMessageHistoryResponse);
+  rpc SendPresence(SendPresenceRequest) returns (Empty);
+  // Send a read receipt for `message_ids` from `sender`: the thing that turns
+  // the other person's ticks blue (#20).
+  //
+  // One WhatsApp operation per RPC. The official app does this AND syncs its
+  // own devices, but composing the two is the edge's call: bundling them here
+  // would leave no way to ask for one without the other.
+  //
+  // Two things the core cannot tell you, both upstream's to expose. WhatsApp
+  // downgrades the receipt to `read-self` when the account has read receipts
+  // switched off in its privacy settings, and only for a private DM -- a group
+  // read goes out as `read` regardless. The library reads that flag off a
+  // device snapshot it does not expose (`persistence_manager` is `pub(crate)`
+  // and there is no getter), so the core cannot report which of the two it
+  // sent. Silence here is not evidence of either.
+  rpc MarkRead(MarkReadRequest) returns (Empty);
+
+  // Mark the chat read on THIS account's own linked devices. No receipt, and
+  // nobody else sees it. Not MarkRead, which sends the receipt (#20): a
+  // different operation gets a name of its own.
+  rpc MarkChatRead(MarkReadRequest) returns (Empty);
+
+  // Mark a chat unread. Separate from MarkChatRead (which keeps its proto3
+  // default read=true): flipping that bool would be a silent breaking change.
+  rpc MarkUnread(MarkReadRequest) returns (Empty);
+
+  // Chat actions (synced across the account's linked devices).
+  rpc StarMessage(StarMessageRequest) returns (Empty);
+  rpc ArchiveChat(ArchiveChatRequest) returns (Empty);
+  rpc PinChat(PinChatRequest) returns (Empty);
+  rpc MuteChat(MuteChatRequest) returns (Empty);
+  // Deletes the whole chat locally (distinct from DeleteMessage, which revokes
+  // a single message for everyone).
+  rpc DeleteChat(DeleteChatRequest) returns (Empty);
+
+  // Rich content sends.
+  rpc SendContact(SendContactRequest) returns (SendResult);
+  // Answer a button / list / template / native-flow offer by id (issue #28).
+  rpc SendInteractiveReply(SendInteractiveReplyRequest) returns (SendResult);
+  rpc SendPoll(SendPollRequest) returns (SendPollResult);
+  // Vote in a poll (this account's own vote), and tally votes the edge holds.
+  // AggregatePollVotes reads nothing but its request plus the account's
+  // identity store, and sends no stanza -- but it still needs the account
+  // CONNECTED, because that store is reached through the live client.
+  rpc SendPollVote(SendPollVoteRequest) returns (SendResult);
+  rpc AggregatePollVotes(AggregatePollVotesRequest) returns (PollTally);
+
+  // Status / stories.
+  rpc PostStatusText(PostStatusTextRequest) returns (SendResult);
+  rpc PostStatusMedia(stream PostStatusMediaChunk) returns (SendResult);
+  // The answer's key is the revoke stanza's own, like EditMessage's; the
+  // status it revoked is the echo's `protocol_target`.
+  rpc RevokeStatus(RevokeStatusRequest) returns (SendResult);
+  // The status audience the library holds for this account; reads nothing
+  // from the server (#89).
+  rpc GetStatusAudience(AccountRef) returns (StatusAudienceResponse);
+}

@@ -1,0 +1,25 @@
+version: "2"
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - misspell
+    - nilerr
+    - unconvert
+    - gocritic
+  settings:
+    errcheck:
+      exclude-functions:
+        # Their errors surface through rows.Err() / the statement's Exec.
+        - (*database/sql.Rows).Close
+        - (*database/sql.Stmt).Close
+  exclusions:
+    paths:
+      - internal/core/wamuxv1
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt

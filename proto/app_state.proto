@@ -1,0 +1,249 @@
+syntax = "proto3";
+
+package wamux.v1;
+
+import "common.proto";
+
+// The payloads of `AppStateUpdate.action` and the server's logout copy (#134).
+// The rules of group_metadata.proto hold: absent is unset, a point in time is
+// int64 milliseconds, a value of unverified unit crosses verbatim.
+
+// Which messages a chat mutation covers (`wa.SyncActionValue.SyncActionMessageRange`).
+// The server counts these in seconds (measured live 2026-10-07: the last
+// message's own time); the core converts them to ms.
+message SyncMessageRange {
+  optional int64 last_message_timestamp = 1;         // ms
+  // Never seen set; read with the same unit as its sibling.
+  optional int64 last_system_message_timestamp = 2;  // ms
+  repeated SyncRangeMessage messages = 3;
+}
+
+message SyncRangeMessage {
+  MessageKey key = 1;
+  optional int64 timestamp = 2;  // ms
+}
+
+message ArchiveChange {
+  optional bool archived = 1;
+  SyncMessageRange message_range = 2;
+}
+
+message PinChange {
+  optional bool pinned = 1;
+}
+
+message MuteChange {
+  optional bool muted = 1;
+  // When the mute ends, in ms as the server sent it (measured live
+  // 2026-10-07: an 8 h mute ended at the mute time + 28 800 000). Unset on an
+  // unmute.
+  optional int64 mute_end_timestamp = 2;
+  optional bool auto_muted = 3;
+  // As the server sent it: always 0 when measured, so its unit is not verified.
+  optional int64 mute_everyone_mention_end_timestamp = 4;
+}
+
+// A message was starred or unstarred. `AppStateUpdate.chat` is the chat that
+// holds it.
+message StarChange {
+  // The sender, for someone else's message in a group; unset for your own
+  // message or in a direct chat.
+  Jid participant = 1;
+  string message_id = 2;
+  bool from_me = 3;
+  optional bool starred = 4;
+}
+
+message MarkReadChange {
+  optional bool read = 1;  // false is "mark as unread"
+  SyncMessageRange message_range = 2;
+}
+
+message DeleteChatChange {
+  bool delete_media = 1;  // from the mutation's index, not its action
+  // The messages the deletion covers; WA Web deletes by this range.
+  SyncMessageRange message_range = 2;
+}
+
+// Four more chat mutations and the account's sticker mutations (#148). Units
+// were measured live on 2026-10-08.
+
+// The chat was locked or unlocked (the "locked chats" folder on the phone).
+message LockChange {
+  optional bool locked = 1;
+}
+
+// The chat's messages were cleared, the chat itself kept.
+message ClearChatChange {
+  bool delete_starred = 1;  // from the mutation's index, not its action
+  bool delete_media = 2;    // from the mutation's index, not its action
+  // The messages the clear covers (seconds on the wire, as measured, so ms here).
+  SyncMessageRange message_range = 3;
+}
+
+// One message was deleted for this account only. `AppStateUpdate.chat` is
+// the chat that holds it.
+message DeleteMessageForMeChange {
+  // The sender, for someone else's message in a group; unset for your own
+  // message or in a direct chat.
+  Jid participant = 1;
+  string message_id = 2;
+  bool from_me = 3;
+  optional bool delete_media = 4;
+  // When the deleted message was sent, in ms. The server sends seconds
+  // (measured: the message's own time, seconds before the mutation).
+  optional int64 message_timestamp = 5;
+}
+
+// A contact's status updates were hidden from, or shown again in, the status
+// list. `AppStateUpdate.chat` is the contact. Measured: hiding sends
+// `muted` true; showing again sent nothing in two tries.
+message UserStatusMuteChange {
+  optional bool muted = 1;
+}
+
+// A sticker was favorited (`is_favorite` true) or unfavorited (false).
+message FavoriteStickerChange {
+  optional bool is_favorite = 1;
+  // What DownloadMedia takes, with `media_type` STICKER. `file_sha256` is
+  // `StickerUpdate.filehash` decoded: the library checks the decrypted bytes
+  // against it, and the mutation carries it nowhere else (measured: empty, the
+  // download is refused; decoded, it succeeds). Empty when the filehash is not
+  // a base64 SHA-256. Unset when the mutation has no `direct_path`.
+  // `file_length` crosses as sent (measured: 0 on one, 1244 on another).
+  MediaDescriptor media = 2;
+  optional string url = 3;
+  optional uint32 width = 4;
+  optional uint32 height = 5;
+  optional bool is_lottie = 6;
+  optional bool is_avatar_sticker = 7;
+  optional string image_hash = 8;
+  optional uint32 device_id_hint = 9;
+}
+
+// A sticker was removed from the recent-stickers list.
+message RemoveRecentStickerChange {
+  // When the sticker was last sent, in ms as the server sends it (measured).
+  // WA Web drops its recent entry only when that entry is not newer than
+  // this, and unconditionally when it is unset.
+  optional int64 last_sticker_sent_ts = 1;
+}
+
+// Labels, quick replies and account settings (#149). The library decodes
+// most of its enums closed (proto2): a number it does not know is dropped, so
+// `LabelListType` sees it as absent, crosses it as UNSPECIFIED, never emits
+// UNKNOWN and has no `*_code`, as with MediaType (#127). It opens
+// `StatusDistributionMode` on purpose (waproto/build.rs, `open_enums_in`), so
+// `StatusAudience` follows #73: UNKNOWN plus the server's number.
+
+// A label was created, edited or deleted. In the consumer app a label is a
+// chat list ("Lists"), measured live 2026-10-08 as `list_type` CUSTOM.
+// Deleting sends `deleted` true with an empty name and `is_active` false.
+message LabelEdit {
+  optional string name = 1;
+  optional int32 color = 2;          // the app's palette index, verbatim
+  optional int32 predefined_id = 3;  // set on the app's ready-made lists
+  optional bool deleted = 4;
+  optional int32 order_index = 5;
+  optional bool is_active = 6;
+  LabelListType list_type = 7;
+  optional bool is_immutable = 8;
+  optional int64 mute_end_time_ms = 9;  // ms, as its name says (always 0 when measured)
+}
+
+// A label was put on (`labeled` true) or taken off a chat.
+message LabelChatAssociation {
+  Jid chat = 1;
+  optional bool labeled = 2;
+  optional string model_meta_data = 3;
+}
+
+// A label was put on or taken off one message. Not measured: the app no
+// longer labels messages.
+message LabelMessageAssociation {
+  Jid chat = 1;
+  string message_id = 2;
+  optional bool labeled = 3;
+  optional string model_meta_data = 4;
+}
+
+// `wa.SyncActionValue.LabelEditAction.ListType`.
+enum LabelListType {
+  LABEL_LIST_TYPE_UNSPECIFIED = 0;
+  LABEL_LIST_TYPE_UNKNOWN = 1;  // never emitted (closed in the library)
+  LABEL_LIST_TYPE_NONE = 2;
+  LABEL_LIST_TYPE_UNREAD = 3;
+  LABEL_LIST_TYPE_GROUPS = 4;
+  LABEL_LIST_TYPE_FAVORITES = 5;
+  LABEL_LIST_TYPE_PREDEFINED = 6;
+  LABEL_LIST_TYPE_CUSTOM = 7;
+  LABEL_LIST_TYPE_COMMUNITY = 8;
+  LABEL_LIST_TYPE_SERVER_ASSIGNED = 9;
+  LABEL_LIST_TYPE_DRAFTED = 10;
+  LABEL_LIST_TYPE_AI_HANDOFF = 11;
+  LABEL_LIST_TYPE_CHANNELS = 12;
+  LABEL_LIST_TYPE_AI_RESPONDING = 13;
+  LABEL_LIST_TYPE_ARCHIVED = 14;
+  LABEL_LIST_TYPE_LOCKED = 15;
+  LABEL_LIST_TYPE_INVITES = 16;
+  LABEL_LIST_TYPE_THIRD_PARTY = 17;
+  LABEL_LIST_TYPE_LEAD = 18;
+  LABEL_LIST_TYPE_MENTIONS_AND_REPLIES = 19;
+}
+
+// The "disable link previews" privacy setting.
+message LinkPreviewsSetting {
+  optional bool previews_disabled = 1;
+}
+
+// One status audience mode. The library keeps this enum open, so a number it
+// does not know crosses as UNKNOWN with the number in `mode_code` (0 otherwise).
+message StatusAudience {
+  StatusAudienceMode mode = 1;
+  int32 mode_code = 2;
+}
+
+// A custom status audience list.
+message StatusCustomList {
+  optional string list_id = 1;
+  optional string name = 2;
+  optional string emoji = 3;
+  optional bool is_selected = 4;
+  repeated Jid users = 5;  // an empty entry is skipped
+}
+
+// The account's status audience (`status_privacy`). Measured live 2026-10-08:
+// "my contacts except..." sends `mode` DENY_LIST with the excluded users and
+// `modes` [DENY_LIST]; back to "my contacts" sends CONTACTS and no users. An
+// UNKNOWN mode is not "all contacts".
+message StatusPrivacySetting {
+  StatusAudience mode = 1;  // unset when the mutation had none
+  // The allow or deny list, as the mutation lists it; an empty entry is
+  // skipped, as in FavoritesChanged.
+  repeated Jid users = 2;
+  optional bool share_to_fb = 3;
+  optional bool share_to_ig = 4;
+  repeated StatusCustomList custom_lists = 5;
+  repeated StatusAudience modes = 6;
+}
+
+// `wa.SyncActionValue.StatusPrivacyAction.StatusDistributionMode`.
+enum StatusAudienceMode {
+  STATUS_AUDIENCE_MODE_UNSPECIFIED = 0;
+  STATUS_AUDIENCE_MODE_UNKNOWN = 1;  // with the server's number in `mode_code`
+  STATUS_AUDIENCE_MODE_ALLOW_LIST = 2;
+  STATUS_AUDIENCE_MODE_DENY_LIST = 3;
+  STATUS_AUDIENCE_MODE_CONTACTS = 4;
+  STATUS_AUDIENCE_MODE_CLOSE_FRIENDS = 5;
+  STATUS_AUDIENCE_MODE_CUSTOM_LIST = 6;
+}
+
+// Localized text the server wants shown on a forced logout (`<failure>`'s
+// logout_message_header / _subtext). WA Web shows it only when `locale`
+// equals the client's own, and falls back to generic copy otherwise; the
+// locale travels with the text so a consumer can apply the same rule.
+message LogoutMessage {
+  optional string header = 1;
+  optional string subtext = 2;
+  optional string locale = 3;  // e.g. "pt_BR"
+}

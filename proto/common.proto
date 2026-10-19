@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package wamux.v1;
+
+// Empty reply (kept local so the contract needs no well-known-types import).
+message Empty {}
+
+// How a client names an account: the core's canonical UUID, or the optional
+// client-supplied external reference.
+message AccountRef {
+  oneof ref {
+    string uuid = 1;
+    string external_ref = 2;
+  }
+}
+
+// A WhatsApp JID, e.g. "5511999999999@s.whatsapp.net" or a group/lid jid.
+// Every field that carries a jid is this message, never a bare string (#72).
+// In a request it is parsed: unset or an empty value is InvalidArgument
+// "missing jid" where the field is required, absence where it is optional.
+// In a response or an event it carries the value the core has, verbatim, and
+// a jid the core does not have is an unset field, never an empty value.
+message Jid {
+  string value = 1;
+}
+
+message MessageKey {
+  // #120: a jid field changed type, so it took a new number; an old client's
+  // string under the old number is an unknown field, never a misread Jid.
+  reserved 1, 4;
+  reserved "remote_jid";
+  Jid chat = 5;           // the conversation
+  string id = 2;          // message id
+  bool from_me = 3;
+  Jid participant = 6;    // the sender inside a group; unset in a DM
+}
+
+message Mention {
+  reserved 1;  // #120: was `string jid`
+  Jid jid = 2;
+}
+
+message QuoteContext {
+  MessageKey quoted = 1;
+  reserved 2;  // #120: was `string participant`
+  Jid participant = 3;
+}
+
+enum ConnectionState {
+  CONNECTION_STATE_UNSPECIFIED = 0;
+  DISCONNECTED = 1;
+  CONNECTING = 2;
+  CONNECTED = 3;
+  LOGGED_OUT = 4;
+  BANNED = 5;
+}
+
+// Carried on inbound media message events; passed back verbatim to DownloadMedia.
+message MediaDescriptor {
+  string direct_path = 1;
+  bytes media_key = 2;
+  bytes file_enc_sha256 = 3;
+  bytes file_sha256 = 4;
+  uint64 file_length = 5;
+  string mime_type = 6;
+  // #127: was `string media_type = 7`. Two values are download-only (issue
+  // #58): STICKER_PACK (a received pack's ZIP) and STICKER_PACK_THUMBNAIL (its
+  // thumbnail). SendMedia refuses those two; sending a pack is not relayed.
+  reserved 7;
+  MediaType media_type = 8;
+}
+
+// The kind of a media payload (#127). A closed set: the core builds every
+// descriptor from its own kinds, so UNKNOWN is never emitted and there is no
+// raw field. On a request, UNSPECIFIED, UNKNOWN and any value the operation
+// does not take are InvalidArgument.
+enum MediaType {
+  MEDIA_TYPE_UNSPECIFIED = 0;
+  MEDIA_TYPE_UNKNOWN = 1;                  // never emitted; refused on a request
+  MEDIA_TYPE_IMAGE = 2;
+  MEDIA_TYPE_VIDEO = 3;
+  MEDIA_TYPE_AUDIO = 4;
+  MEDIA_TYPE_DOCUMENT = 5;
+  MEDIA_TYPE_STICKER = 6;
+  MEDIA_TYPE_STICKER_PACK = 7;             // download only (#58)
+  MEDIA_TYPE_STICKER_PACK_THUMBNAIL = 8;   // download only (#58)
+}
+
+// A server stanza as the library received it, relayed whole (#138): the core
+// does not parse it, so data the library leaves alone (an account lock's
+// one-time `appeal_token`, `violation_reason`, `vt`) still reaches the edge.
+// Reading it is edge policy.
+//
+// `attrs` holds every attribute as text; a jid-valued attribute carries its
+// wire form ("5511999999999@s.whatsapp.net"). The binary protocol does not
+// forbid a repeated key; if one ever arrives, the last value wins.
+//
+// `content` keeps the library's three shapes apart: `bytes` for binary
+// content, `text` for content the codec read as a string, `children` for
+// child elements in order (an empty list when the element had an empty child
+// list). Unset when the element had no content at all.
+//
+// Depth: each level costs two nested messages (StanzaNode, StanzaNodeList).
+// A prost client decodes at most 100 nested messages, so a stanza deeper than
+// about 47 levels cannot be decoded there. The core relays what the library
+// decoded (up to 128 levels) without cutting it; real logout and ban stanzas
+// are two or three levels deep.
+message StanzaNode {
+  string tag = 1;
+  map<string, string> attrs = 2;
+  oneof content {
+    bytes bytes = 3;
+    string text = 4;
+    StanzaNodeList children = 5;
+  }
+}
+
+// The child elements of a StanzaNode, in the order the server sent them. A
+// message of its own because a oneof cannot hold a repeated field.
+message StanzaNodeList {
+  repeated StanzaNode nodes = 1;
+}

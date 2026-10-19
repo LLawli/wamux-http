@@ -1,0 +1,1008 @@
+syntax = "proto3";
+
+package wamux.v1;
+
+import "common.proto";
+import "account.proto";
+import "group_metadata.proto";
+import "group_update.proto";
+import "app_state.proto";
+import "call.proto";
+import "newsletter_tallies.proto";
+
+message SubscribeRequest {
+  oneof selector {
+    AccountRef account = 1;
+    // "all" is DYNAMIC: it includes accounts created after subscribing, so the
+    // stream stays open until the client hangs up or the daemon shuts down.
+    // On shutdown (SIGTERM) every subscription, "all" or per-account, ends
+    // with a clean end of stream (status OK) rather than a torn connection:
+    // the daemon is going away, reconnect when the socket is back. Under an
+    // extreme burst of creates the
+    // core may emit a `subscription_gap` RawEvent meaning some newly created
+    // accounts are missing from the stream: re-subscribe or reconcile via
+    // ListAccounts.
+    Empty all_accounts = 2;
+  }
+  // 0 = live only; N = replay up to N buffered events for quick reconnect.
+  // No duplicates within one stream: live events already delivered by the
+  // replay are skipped (filtered by monotonic_seq). Accounts created AFTER an
+  // all-accounts subscribe always replay their full ring regardless of N —
+  // "live only" cannot apply to events emitted before their forwarder
+  // attached, so e.g. a just-created account's pairing QR is never lost.
+  uint32 replay_from_ring = 3;
+}
+
+// A message in a chat. Almost always one WhatsApp delivered -- but ALSO the
+// echo of a message this relay itself sent, with `key.from_me` true.
+//
+// Issue #22: WhatsApp echoes a send to every device on the account except the
+// one that sent it. The relay holds ONE device session per account and every
+// consumer of the socket shares it, so a send made through MessagingService
+// comes from our own device and nothing comes back -- not live, not on the next
+// history read. Only the consumer that made the call ever learned the message
+// existed, while its receipts reached everyone, naming an id nobody had. So the
+// relay publishes the echo its own shape prevents. It is the only MESSAGE on
+// this bus that WhatsApp did not produce (the other events the core makes up
+// are the `raw` `gap` and `subscription_gap` markers of EventService).
+//
+// It goes to EVERY subscriber, the caller included: excluding the caller would
+// mean the bus knowing who called, and the core has no notion of client
+// identity. Drop the duplicate on `key.id`, which a consumer must handle
+// anyway, since a replayed event has to land on the same row.
+//
+// WHICH SENDS ECHO: every one that puts a message in a chat. SendText,
+// SendMedia, SendReaction, SendContact, SendInteractiveReply, SendPoll,
+// SendPollVote, EditMessage, DeleteMessage with `for_everyone`, PostStatusText,
+// PostStatusMedia and RevokeStatus. DeleteMessage for-me sends nothing to the chat (it is an
+// app-state mutation), so it has nothing to echo, and neither does
+// NewsletterService.SendNewsletterPollVote: a channel vote is an add-on on a
+// message, not a message in the channel (issue #26). The payload is always the
+// message the send encoded, handed back by the library (upstream #1406), never
+// a reconstruction -- including the half the library builds itself (issue #38):
+//
+//   - EditMessage / DeleteMessage echo their protocol message: `is_edit` or
+//     `is_delete`, `protocol_target` naming the edited/revoked message, and
+//     `key.id` the edit/revoke stanza's own id, same as the edit another device
+//     of the account receives.
+//   - SendPollVote echoes the encrypted vote (`pollUpdateMessage`), so `text`
+//     is empty and the vote is read from `raw_message` with the poll's secret,
+//     like any vote that arrives.
+//   - PostStatus* echo with `chat` = `status@broadcast`, and so does
+//     RevokeStatus, as a delete (`is_delete`) whose `protocol_target` is the
+//     status.
+//
+// One caveat on SendInteractiveReply (issue #28). An interactive reply echoes
+// with its `raw_message` whole — every id, label and the quoted offer — but
+// `text` comes back EMPTY, because `project_content` has no case for
+// `buttonsResponseMessage` / `listResponseMessage` /
+// `templateButtonReplyMessage` / `interactiveResponseMessage`. This is not
+// specific to the echo: an inbound reply from the other side projects the same
+// way today. A consumer that mirrors a conversation off `text` alone will show
+// a blank row where a tap happened, and must read `raw_message` for these.
+// Written down rather than papered over, because the display text IS in the
+// payload and looking blank is the kind of gap that reads as a delivery bug.
+//
+// The echo's `raw_message` is that payload AS THE SEND ENCODED IT, which is not
+// byte-identical to what the recipient decrypts. The library's send path hoists
+// a `messageContextInfo` (device-list metadata) into the encoded message when
+// the message carries none, so the recipient's copy is larger. Measured
+// 2026-09-03 on one text across both accounts of one relay: 30 bytes here, 69
+// on the receiving side, same message id. Everything a consumer decodes the
+// payload FOR -- text, media descriptors, poll options, sticker metadata -- is
+// identical; only the wire envelope the library adds per recipient is not.
+//
+// `chat` likewise names the conversation from THIS account's side: the echo
+// carries the jid the send was addressed to, while the recipient's own event
+// may name the same conversation by its `@lid` form. Neither is rewritten.
+message InboundMessage {
+  // #122: the four jid fields changed type, so each took a new number; an old
+  // client's string under the old number is an unknown field, never a misread Jid.
+  reserved 2, 3, 16, 17;
+  MessageKey key = 1;
+  Jid chat = 21;
+  // Unset on an echo when the account has no jid of its own yet, and on a
+  // channel-history row, which names no sender.
+  Jid sender = 22;
+  int64 timestamp = 4;
+  string push_name = 5;
+  string text = 6;
+  QuoteContext quote = 7;
+  repeated Mention mentions = 8;
+  MediaDescriptor media = 9;        // set for media messages
+  string caption = 10;
+  string reaction = 11;             // set for reaction messages
+  MessageKey reaction_target = 12;
+  bool is_edit = 13;
+  bool is_delete = 14;
+  // Set on an inbound edit (is_edit) or revoke (is_delete): the key of the
+  // message the protocol action targets (the edited/revoked message). It lives
+  // in the lib's protocol_message.key, distinct from this event's own key
+  // (which is the edit/revoke stanza id). For an edit, `text` carries the new
+  // text; a new-style E2E edit arrives un-decrypted (is_edit set, text empty).
+  MessageKey protocol_target = 15;
+  // The other-namespace form of the two ends, verbatim from the stanza: when
+  // `sender` is a `@lid`, `sender_alt` is the phone jid the stanza carried (and
+  // the reverse for a phone sender); `recipient_alt` is the same for the other
+  // end of a DM. Unset when the stanza carried none -- the core relays these,
+  // it never looks them up (that is ContactService.ResolveLidPn) and never
+  // guesses. This is what makes a `@lid` chat identifiable with no round trip
+  // (issue #1).
+  Jid sender_alt = 23;
+  Jid recipient_alt = 24;
+  // Set for a sticker PACK message (issue #58). `media` then carries the pack's
+  // archive under MEDIA_TYPE_STICKER_PACK; this says what is inside it and
+  // carries the thumbnail's own descriptor.
+  StickerPackInfo sticker_pack = 18;
+  bytes raw_message = 20;           // serialized wa.Message for advanced consumers
+}
+
+// A received sticker pack, as its StickerPackMessage states it. The pack is ONE
+// encrypted file, a ZIP holding each sticker under its `file_name` plus the tray
+// icon; unzipping it is the edge's business, the core relays the bytes.
+message StickerPackInfo {
+  string pack_id = 1;               // the maker app's id, verbatim
+  string name = 2;
+  string publisher = 3;
+  string description = 4;
+  repeated StickerPackEntry stickers = 5;
+  string tray_icon_file_name = 6;   // the tray icon's entry in the ZIP
+  // `stickerPackSize` verbatim. NOT the archive's length, which is
+  // `media.file_length`: the two differ (501503 vs 501859 on the pack #58 was
+  // measured on), and upstream does not document what this one counts.
+  uint64 pack_size = 7;
+  // #126: was `string origin = 8`. UNSPECIFIED when the message carries no
+  // origin: FIRST_PARTY is waproto's 0, and is not what absence means.
+  reserved 8;
+  StickerPackOrigin origin = 12;
+  // The pack's thumbnail, a second file encrypted under the pack's media key,
+  // under MEDIA_TYPE_STICKER_PACK_THUMBNAIL: DownloadMedia takes it as is.
+  // Unset when the message names no thumbnail path. Its `file_length` is 0
+  // because the message does not declare one; the download is still verified
+  // by both hashes and the MAC.
+  MediaDescriptor thumbnail = 9;
+  uint32 thumbnail_width = 10;
+  uint32 thumbnail_height = 11;
+}
+
+// One sticker inside a received pack, as the pack message lists it. `file_name`
+// is its entry in the ZIP, so an edge can match metadata to bytes after
+// unzipping.
+// The waproto enum is closed: the decoder drops a number it does not know, so
+// such a pack reads UNSPECIFIED and the number survives only in `raw_message`.
+// That is why there is no `origin_raw`.
+enum StickerPackOrigin {
+  STICKER_PACK_ORIGIN_UNSPECIFIED = 0;
+  STICKER_PACK_ORIGIN_UNKNOWN = 1;  // not emitted today: see above
+  STICKER_PACK_ORIGIN_FIRST_PARTY = 2;
+  STICKER_PACK_ORIGIN_THIRD_PARTY = 3;
+  STICKER_PACK_ORIGIN_USER_CREATED = 4;
+}
+
+message StickerPackEntry {
+  string file_name = 1;
+  bool is_animated = 2;
+  repeated string emojis = 3;
+  string accessibility_label = 4;
+  bool is_lottie = 5;
+  string mime_type = 6;
+}
+
+message ReceiptEvent {
+  reserved 1, 2;  // #122: were `string chat` and `string sender`
+  Jid chat = 6;
+  Jid sender = 7;
+  repeated string message_ids = 3;
+  // #126: was `string type = 4`, a lowercase token.
+  reserved 4;
+  ReceiptType type = 8;
+  // The stanza's own `type` attribute, verbatim, only when `type` is UNKNOWN:
+  // the core is a relay and never drops what the server said.
+  string type_raw = 9;
+  int64 timestamp = 5;
+}
+
+// Every receipt type the library names. One it does not name arrives as
+// UNKNOWN with the attribute in `type_raw`.
+enum ReceiptType {
+  RECEIPT_TYPE_UNSPECIFIED = 0;
+  RECEIPT_TYPE_UNKNOWN = 1;
+  RECEIPT_TYPE_DELIVERED = 2;        // was "delivered" (the stanza says "delivery")
+  RECEIPT_TYPE_SENT = 3;             // was "sent"
+  RECEIPT_TYPE_SENDER = 4;           // was "sender"
+  RECEIPT_TYPE_RETRY = 5;            // was "retry"
+  RECEIPT_TYPE_ENC_REKEY_RETRY = 6;  // was "enc_rekey_retry"
+  RECEIPT_TYPE_READ = 7;             // was "read"
+  RECEIPT_TYPE_READ_SELF = 8;        // was "read-self"
+  RECEIPT_TYPE_PLAYED = 9;           // was "played"
+  RECEIPT_TYPE_PLAYED_SELF = 10;     // was "played-self"
+  RECEIPT_TYPE_SERVER_ERROR = 11;    // was "server-error"
+  RECEIPT_TYPE_INACTIVE = 12;        // was "inactive"
+  RECEIPT_TYPE_PEER_MSG = 13;        // was "peer_msg"
+  RECEIPT_TYPE_HISTORY_SYNC = 14;    // was "hist_sync"
+}
+
+message UndecryptableEvent {
+  reserved 1, 2;  // #122: were `string chat` and `string sender`
+  Jid chat = 4;
+  Jid sender = 5;
+  // #126: was `string reason = 3`, the Rust `Debug` of the library's value.
+  reserved 3;
+  UnavailableReason reason = 6;
+}
+
+// Why the message could not be decrypted, as the library classifies the
+// stanza. The library's set is closed and has its own "unknown" (a stanza with
+// no recognised flag), which is UNKNOWN here; there is no raw to relay.
+enum UnavailableReason {
+  UNAVAILABLE_REASON_UNSPECIFIED = 0;
+  UNAVAILABLE_REASON_UNKNOWN = 1;    // was "Unknown"
+  UNAVAILABLE_REASON_VIEW_ONCE = 2;  // was "ViewOnce"
+  UNAVAILABLE_REASON_HOSTED = 3;     // was "Hosted"
+  UNAVAILABLE_REASON_BOT = 4;        // was "Bot"
+}
+
+message ConnectionStateChanged {
+  ConnectionState state = 1;
+  // #126: was `string detail = 2`, the Rust `Debug` of the logout reason or of
+  // the whole ban. Replaced by the two typed messages below, each set only in
+  // its own state and unset in every other.
+  reserved 2;
+  reserved "detail";
+  LoggedOutInfo logged_out = 3;   // set only when state is LOGGED_OUT
+  TemporaryBanInfo ban = 4;       // set only when state is BANNED
+}
+
+message LoggedOutInfo {
+  LogoutReason reason = 1;
+  // The server's numeric code, only when `reason` is UNKNOWN (a code the
+  // library does not name). 0 otherwise.
+  int32 reason_code = 2;
+  // The server's own copy for this logout, when it sent any (in practice on
+  // an account lock). Unset otherwise (#134).
+  LogoutMessage logout_message = 3;
+  // True when the server refused the connection itself (a `<failure>`), false
+  // for a logout that came later (a `<stream:error>`, or a local logout).
+  bool on_connect = 4;
+  // The whole stanza that caused the logout (#138): a `<failure>` when
+  // `on_connect` is true, a `<stream:error>` otherwise. An account lock puts
+  // its one-time `appeal_token` here, which nothing else carries. Unset for a
+  // local logout, which received nothing.
+  StanzaNode stanza = 5;
+}
+
+message TemporaryBanInfo {
+  BanReason reason = 1;
+  // The server's numeric code, only when `reason` is UNKNOWN. 0 otherwise.
+  int32 reason_code = 2;
+  // How long the ban lasts, in seconds, as the server's `expire` says: a
+  // duration, not a deadline.
+  int64 expire_seconds = 3;
+  string message = 4;  // the server's `message` attribute; empty when absent
+  string url = 5;      // the support/appeal link; empty when absent
+  // The whole `<failure>` stanza the ban came in (#138), for anything the
+  // fields above do not carry. Unset when the library had none.
+  StanzaNode stanza = 6;
+}
+
+// The server's `<failure>` reason codes the library names (code in comment).
+enum LogoutReason {
+  LOGOUT_REASON_UNSPECIFIED = 0;
+  LOGOUT_REASON_UNKNOWN = 1;
+  LOGOUT_REASON_GENERIC = 2;                // 400
+  LOGOUT_REASON_LOGGED_OUT = 3;             // 401
+  LOGOUT_REASON_TEMP_BANNED = 4;            // 402
+  LOGOUT_REASON_ACCOUNT_LOCKED = 5;         // 403
+  LOGOUT_REASON_CLIENT_OUTDATED = 6;        // 405
+  LOGOUT_REASON_UNKNOWN_LOGOUT = 7;         // 406, a code the server sends, not UNKNOWN
+  LOGOUT_REASON_BAD_USER_AGENT = 8;         // 409
+  LOGOUT_REASON_CAT_EXPIRED = 9;            // 413
+  LOGOUT_REASON_CAT_INVALID = 10;           // 414
+  LOGOUT_REASON_NOT_FOUND = 11;             // 415
+  LOGOUT_REASON_CLIENT_UNKNOWN = 12;        // 418
+  LOGOUT_REASON_INTERNAL_SERVER_ERROR = 13; // 500
+  LOGOUT_REASON_EXPERIMENTAL = 14;          // 501
+  LOGOUT_REASON_SERVICE_UNAVAILABLE = 15;   // 503
+}
+
+// The temporary-ban codes the library names (code in comment).
+enum BanReason {
+  BAN_REASON_UNSPECIFIED = 0;
+  BAN_REASON_UNKNOWN = 1;
+  BAN_REASON_SENT_TO_TOO_MANY_PEOPLE = 2;     // 101
+  BAN_REASON_BLOCKED_BY_USERS = 3;            // 102
+  BAN_REASON_CREATED_TOO_MANY_GROUPS = 4;     // 103
+  BAN_REASON_SENT_TOO_MANY_SAME_MESSAGE = 5;  // 104
+  BAN_REASON_BROADCAST_LIST = 6;              // 106
+}
+
+// Two library events share this message: real presence (Event::Presence) and a
+// chat state (Event::ChatPresence). They measure different things, so a field
+// only one of them can answer is left absent on the other rather than filled
+// with a literal (issue #24).
+message PresenceUpdate {
+  reserved 1, 5;  // #122: were `string jid` and `string chat`
+  Jid jid = 6;
+  // Present only on real presence. A chat state does not measure whether the
+  // contact is online, so it carries no value here.
+  optional bool online = 2;
+  int64 last_seen = 3;
+  // #126: was `string chat_state = 4`. UNSPECIFIED on real presence, which is
+  // not a chat state.
+  reserved 4;
+  ChatState chat_state = 8;
+  // The conversation a chat state happened in: the group jid when somebody is
+  // typing in a group, the contact's own jid in a direct chat. Unset on real
+  // presence, which is not scoped to a conversation. Without it a group
+  // "composing" and a DM "composing" are identical bytes (issue #24).
+  // Relayed verbatim, so in a direct chat it is whichever namespace the stanza
+  // used — measured live on 2026-09-11, that is the sender's `@lid`, equal to
+  // `jid`. The core does not rewrite it onto the phone namespace; resolve it
+  // with ContactService.ResolveLidPn if the edge files chats by number.
+  Jid chat = 7;
+}
+
+// The library models "recording" as composing with audio media; the contract
+// keeps the three states the edge draws. A closed set: no raw.
+enum ChatState {
+  CHAT_STATE_UNSPECIFIED = 0;
+  CHAT_STATE_UNKNOWN = 1;    // not emitted today: the set is closed
+  CHAT_STATE_COMPOSING = 2;  // was "composing"
+  CHAT_STATE_RECORDING = 3;  // was "recording"
+  CHAT_STATE_PAUSED = 4;     // was "paused"
+}
+
+// One action of a `<notification type="w:gp2">`; a notification with several
+// actions arrives as several GroupUpdates, numbered by `action_index`.
+message GroupUpdate {
+  reserved 1;
+  reserved "group_jid";  // #122: was `string group_jid`
+  Jid group = 4;
+  reserved 2, 3;
+  reserved "kind", "raw";  // #133: a constant, and the library's JSON
+  optional string notification_id = 5;
+  optional string notify = 6;   // push name of whoever caused it
+  optional string offline = 7;  // the server's offline-delivery marker, verbatim
+  uint32 action_index = 8;      // zero-based, within the notification
+  // Who caused the change. In a LID-addressed group a `@lid`, with the phone
+  // alias in `participant_pn`. Unset on a change the server made itself.
+  Jid participant = 9;
+  Jid participant_pn = 10;
+  optional string participant_username = 11;
+  optional string participant_country_code = 12;
+  int64 timestamp = 13;  // ms
+  bool is_lid_addressing_mode = 14;
+  bool has_incomplete_participant_information = 15;
+  // One field per library action, named by its wire tag (group_update.proto).
+  // The library match has no wildcard arm, so a new action breaks the build.
+  oneof action {
+    GroupParticipantsChange add = 20;
+    GroupParticipantsChange remove = 21;
+    GroupParticipantsChange promote = 22;
+    GroupParticipantsChange demote = 23;
+    GroupParticipantsChange modify = 24;  // a member changed number
+    GroupSubjectChange subject = 25;
+    GroupDescriptionChange description = 26;
+    GroupLockedChange locked = 27;
+    Empty unlocked = 28;
+    Empty announcement = 29;
+    Empty not_announcement = 30;
+    // `not_ephemeral` arrives as expiration_seconds 0, as the library reads it.
+    GroupEphemeralSettings ephemeral = 31;
+    GroupMembershipApprovalMode membership_approval_mode = 32;
+    GroupMembershipApprovalRequest membership_approval_request = 33;
+    GroupCreatedMembershipRequests created_membership_requests = 34;
+    GroupRevokedMembershipRequests revoked_membership_requests = 35;
+    GroupMemberAddModeChange member_add_mode = 36;
+    Empty no_frequently_forwarded = 37;
+    Empty frequently_forwarded_ok = 38;
+    GroupInviteJoin invite = 39;
+    Empty revoke = 40;  // the invite link was revoked
+    GrowthLockInfo growth_locked = 41;
+    Empty growth_unlocked = 42;
+    GroupCreated create = 43;
+    GroupDeleted delete = 44;
+    GroupLinked link = 45;
+    GroupUnlinked unlink = 46;
+    GroupParticipantsChange linked_group_promote = 47;
+    GroupParticipantsChange linked_group_demote = 48;
+    Empty suspended = 49;
+    Empty unsuspended = 50;
+    Empty auto_add_disabled = 51;
+    Empty is_capi_hosted_group = 52;
+    Empty group_safety_check = 53;
+    GroupLimitSharing limit_sharing_enabled = 54;
+    Empty allow_admin_reports = 55;
+    Empty not_allow_admin_reports = 56;
+    Empty reports = 57;
+    Empty allow_non_admin_sub_group_creation = 58;
+    Empty not_allow_non_admin_sub_group_creation = 59;
+    // The library keeps these two nodes unparsed, so they cross as the raw stanza (#146).
+    GroupSubGroupSuggestionCreated created_sub_group_suggestion = 60;
+    GroupSubGroupSuggestionsRevoked revoked_sub_group_suggestions = 61;
+    GroupChangeNumber change_number = 62;
+    GroupUnknownAction unknown = 63;
+  }
+}
+
+message PushNameUpdate {
+  reserved 1;  // #122: was `string jid`
+  Jid jid = 3;
+  string push_name = 2;
+}
+
+// A contact edited on a linked device (the `contact` sync action).
+message ContactUpdate {
+  reserved 1;  // #122: was `string jid`
+  Jid jid = 4;
+  reserved 2, 3;
+  reserved "kind", "raw";  // #133: a constant, and the library's JSON
+  // When the mutation was made (ms). Falls back to the epoch or the dispatch
+  // time when the mutation carried none: `action_timestamp` tells them apart.
+  int64 timestamp = 5;
+  // The instant the mutation itself carried (ms); unset when it carried none
+  // (upstream #1562).
+  optional int64 action_timestamp = 6;
+  bool from_full_sync = 7;  // replayed by a full app-state sync
+  // Unset when `removed` is true: a removal carries no action.
+  ContactAction action = 8;
+  // #153: true when the contact was deleted on a linked device (the syncd
+  // `Remove` of the same `contact` mutation).
+  bool removed = 9;
+}
+
+// This account's own push name changed (#153), from an app-state
+// `setting_pushName` mutation, a history sync or an account_sync notification.
+// Not the retired `PushNameUpdate`, which named a contact and is never emitted.
+message SelfPushNameUpdate {
+  string old_name = 1;  // empty when the account had none yet (first sync after pairing)
+  string new_name = 2;
+}
+
+// History-sync chunk, only emitted when the account connected with backfill
+// enabled (ConnectAccountRequest.backfill_history) or in answer to
+// FetchMessageHistory. The core relays the blob verbatim: the edge decodes
+// `raw` (a `wa.HistorySync` protobuf) itself. Delivered in chunks.
+message HistorySyncEvent {
+  int32 sync_type = 1;            // wa.HistorySync.HistorySyncType (InitialBootstrap|Recent|PushName|OnDemand|...)
+  optional uint32 chunk_order = 2;
+  optional uint32 progress = 3;   // 0-100
+  // Set for on-demand syncs: correlate with FetchMessageHistoryResponse.session_id.
+  optional string session_id = 4;
+  bytes raw = 20;                 // decompressed `wa.HistorySync` protobuf
+}
+
+// App-state (companion-sync) chat mutation made on a linked device: archive,
+// pin, mute, star, mark read, delete. The library emits one struct per kind;
+// the oneof case says which (#134), with that action's own fields.
+message AppStateUpdate {
+  reserved 1;  // #122: was `string chat`
+  // The chat the mutation applies to (for a star, the chat that holds the
+  // message).
+  Jid chat = 4;
+  reserved 2, 3, 5;
+  reserved "kind", "raw";  // #134: the oneof case names the kind; raw was the JSON
+  // When the mutation was made (ms). Falls back to the epoch or the dispatch
+  // time when the mutation carried none: `action_timestamp` tells them apart.
+  int64 timestamp = 6;
+  // The instant the mutation itself carried (ms); unset when it carried none
+  // (upstream #1562).
+  optional int64 action_timestamp = 7;
+  bool from_full_sync = 8;  // replayed by a full app-state sync
+  oneof action {
+    ArchiveChange archive = 10;
+    PinChange pin = 11;
+    MuteChange mute = 12;
+    StarChange star = 13;
+    MarkReadChange mark_read = 14;
+    DeleteChatChange delete_chat = 15;
+    LockChange lock = 16;                                   // #148
+    ClearChatChange clear_chat = 17;                        // #148
+    DeleteMessageForMeChange delete_message_for_me = 18;    // #148
+    UserStatusMuteChange user_status_mute = 19;             // #148
+  }
+}
+
+// A sticker mutation on a linked device (#148): favorited, unfavorited, or
+// removed from the recent list.
+//
+// Not an AppStateUpdate: stickers belong to the account, not to a chat, and
+// the mutation carries no time of its own beside `timestamp`.
+message StickerUpdate {
+  // WA Web's sticker key: the base64 SHA-256 of the decrypted file, verbatim.
+  string filehash = 1;
+  int64 timestamp = 2;      // mutation time (ms)
+  bool from_full_sync = 3;  // true when replayed by a full app-state sync
+  oneof action {
+    FavoriteStickerChange favorite = 10;
+    RemoveRecentStickerChange remove_recent = 11;
+  }
+}
+
+// The account's favorite chats changed on a linked device (the `favorites`
+// syncd mutation, upstream #1544, issue #48).
+//
+// Not an AppStateUpdate: favorites is ONE list for the whole account, and each
+// event carries the whole of it. It REPLACES whatever the consumer held before;
+// an empty `chats` means no favorites, not "nothing changed". The core relays
+// each list and keeps none, so replacing is the consumer's job.
+message FavoritesChanged {
+  // Chat JIDs in the phone's order, exactly as the phone sent them: no
+  // normalization, so a legacy or LID spelling is the consumer's to handle.
+  // An entry the wire sent without an id, or with an empty one, is skipped;
+  // `raw` still carries it.
+  reserved 1;  // #122: was `repeated string chats`
+  repeated Jid chats = 5;
+  int64 timestamp = 2;      // mutation time (ms)
+  bool from_full_sync = 3;  // true when replayed by a full app-state sync
+  bytes raw = 4;            // the serialized `wa.SyncActionValue.FavoritesAction`
+}
+
+// A label (a chat list, in the consumer app) changed on a linked device
+// (#149). The label belongs to the account, so it is not an AppStateUpdate.
+message LabelUpdate {
+  string label_id = 1;      // the mutation's index key, not a jid
+  int64 timestamp = 2;      // mutation time (ms)
+  bool from_full_sync = 3;  // true when replayed by a full app-state sync
+  oneof action {
+    LabelEdit edit = 10;
+    LabelChatAssociation chat = 11;
+    LabelMessageAssociation message = 12;
+  }
+}
+
+// A quick reply was created, edited or deleted on a linked device (#149).
+// Deleting is the same mutation with `deleted` true and empty texts, not a
+// removal, so check the flag.
+message QuickReplyUpdate {
+  string id = 1;            // the mutation's index key
+  int64 timestamp = 2;      // mutation time (ms)
+  bool from_full_sync = 3;
+  optional string shortcut = 4;
+  optional string message = 5;
+  repeated string keywords = 6;
+  optional int32 count = 7;
+  optional bool deleted = 8;
+  repeated string associated_label_ids = 9;
+}
+
+// An account-wide setting changed on a linked device (#149). One event for
+// every setting, each its own case.
+message AccountSettingUpdate {
+  int64 timestamp = 1;                    // mutation time (ms)
+  optional int64 action_timestamp = 2;    // the mutation's own time (ms); unset when it carried none
+  bool from_full_sync = 3;
+  oneof setting {
+    LinkPreviewsSetting link_previews = 10;
+    StatusPrivacySetting status_privacy = 11;
+  }
+}
+
+// A channel's tallies, pushed while this account is subscribed to it
+// (NewsletterService.SubscribeNewsletterLiveUpdates, upstream #1554, issue
+// #26).
+//
+// Measured live 2026-09-25 on the WhatsApp channel: the first push after
+// subscribing held the 10 latest messages, the next one (30 s later) only the
+// two whose counts had changed. So a message missing from a push is unchanged,
+// not zeroed. Counts are across every follower, the same numbers the history
+// page carries.
+message NewsletterLiveUpdate {
+  reserved 1;
+  reserved "newsletter_jid";  // #122: was `string newsletter_jid`
+  Jid newsletter = 3;
+  repeated NewsletterLiveUpdateMessage messages = 2;
+}
+
+message NewsletterLiveUpdateMessage {
+  uint64 server_id = 1;
+  repeated NewsletterReactionCount reactions = 2;
+  // Per-option tallies, on a poll only. Same hash as NewsletterMessage.votes.
+  repeated NewsletterPollVote votes = 3;
+  // Absent when the server sent no `<forwards_count>`, which is not a count of
+  // zero. (Every message in the measured pushes carried one.)
+  optional uint64 forwards_count = 4;
+}
+
+// Inbound `<call>` signaling stanza (lib `IncomingCall`). The core relays the
+// primitive; the edge composes any ring/answer policy. `call_id` is the
+// CallAction's id, distinct from `stanza_id`. #135: every field of the
+// library's struct, and the action as a oneof (payloads in call.proto), whose
+// case names the action.
+message CallEvent {
+  reserved 1;  // #122: was `string from`
+  reserved 3, 4, 6, 7;
+  reserved "action_raw", "raw";  // #135: the oneof case names the action; raw was the JSON
+  Jid from = 5;
+  string call_id = 2;
+  Jid call_creator = 8;
+  string stanza_id = 9;
+  optional string notify = 10;
+  optional string platform = 11;
+  optional string version = 12;
+  // Companion-routing metadata copied from the `<call>` wrapper; unset when absent.
+  Jid participant = 13;
+  Jid recipient = 14;
+  int64 timestamp = 15;  // ms (the stanza's `t`, unix seconds)
+  // An offline-queue replay. The library surfaces a replayed offer as a
+  // MissedCall instead, so here it marks the other actions.
+  bool offline = 16;
+  optional string caller_username = 17;  // an offer's `username`
+  // Camera rotation (quarter turns, 0..3) an offer or an accept announced.
+  optional uint32 video_orientation = 18;
+  GroupCallUpdate group = 19;  // the group snapshot an offer carried
+  oneof action {
+    CallOffer offer = 20;
+    CallOfferNotice offer_notice = 21;
+    CallAcceptance pre_accept = 22;
+    CallAcceptance accept = 23;
+    CallRejection reject = 24;
+    CallTermination terminate = 25;
+    CallTransport transport = 26;
+    Empty relay_latency = 27;
+    CallVideoState video_state = 28;
+    GroupCallUpdate group_update = 29;
+    GroupCallEncRekey enc_rekey = 30;
+    CallWaitingRoom waiting_room_update = 31;
+    CallRaiseHand raise_hand = 32;  // wire tag "user_action"
+    CallScreenShare screen_share = 33;
+    // The wire tag of a call action the library added after this core.
+    string unknown_action = 34;
+    // #151: a call that must not ring, surfaced instead of an offer. Today an
+    // offer replayed from the offline queue (`offline` is then true).
+    CallMissed missed = 35;
+  }
+}
+
+// Catch-all so the edge never silently loses an event type or a broadcast gap.
+// Reserved kinds (both carry monotonic_seq -1 and an empty payload):
+//   "gap"              one account's subscriber lagged its broadcast buffer;
+//                      account_uuid is set: resync it via GetAccountStatus.
+//   "subscription_gap" the all-accounts created-channel lagged; account_uuid
+//                      is empty: re-subscribe or reconcile via ListAccounts.
+// Any other kind is a forward-compat relay of a lib event (payload = JSON).
+message RawEvent {
+  string kind = 1;
+  bytes payload = 2;
+  string note = 3;
+}
+
+// The server's own verdict on one outgoing stanza, relayed verbatim.
+//
+// Issue #4: SendResult means "the relay handed the message to the library",
+// which is NOT the same as "the server took it" — a send whose device fan-out
+// comes out empty answers with a real key and puts nothing on the wire. The
+// core cannot see inside that fan-out, so it relays the only authority that
+// can settle it: the `<ack>` itself.
+//
+// Correlate `id` with `SendResult.key.id`. No ServerAck for a message id means
+// the server never took it. How long to wait before calling that a failure is
+// edge policy — a timeout in the core would be exactly the "if X did not
+// happen in N seconds" rule the core does not own.
+//
+// `error` is the nack code (e.g. "479") when the server REJECTED the stanza;
+// empty on a plain ack.
+message ServerAckEvent {
+  string id = 1;
+  // Stanza class: "message", "receipt", "notification", "call", ... Empty when
+  // the server omits it.
+  string class = 2;
+  // Chat/entity the ack refers to; unset when absent or unparseable.
+  reserved 3;  // #122: was `string from`
+  Jid from = 6;
+  // Server timestamp (ms). For a message ack this is the authoritative send
+  // time. 0 when the server omitted it.
+  int64 timestamp = 4;
+  string error = 5;
+}
+
+// What the server says it is holding for this account when a connection comes
+// back up, from the `offline_preview` node. `total` is authoritative; the
+// per-kind counts need not sum to it.
+//
+// Issue #11: this is the first half of the signal that a reconnect owes this
+// account a backlog. Compare `total` here with `count` on the
+// OfflineSyncCompleted that should follow.
+message OfflineSyncPreview {
+  int32 total = 1;
+  int32 messages = 2;
+  int32 notifications = 3;
+  int32 receipts = 4;
+  int32 calls = 5;
+  int32 statuses = 6;
+  int32 app_data_changes = 7;
+}
+
+// How many the drain actually delivered.
+//
+// Issue #11: this is dispatched only when the drain finishes. A resume whose
+// connection ends mid-drain never gets one; OfflineSyncInterrupted arrives in
+// its place.
+//
+// A missing completion means "not caught up yet", never "lost" (upstream
+// oxidezap/whatsapp-rust#1380). Offline stanzas are only confirmed by the
+// aggregate receipt flush that a COMPLETED drain performs, and teardown drops
+// that buffer, so nothing in an interrupted drain is acked and the server
+// redelivers all of it on the next connection.
+//
+// The library (upstream #1380, pinned by #30) does not answer with silence:
+// an armed resume whose connection ends emits OfflineSyncInterrupted, and the
+// client holds WA Web's own 60s stanza-inactivity timer, so a drain that stalls
+// on a LIVE connection finishes itself.
+//
+// The core puts no deadline on the wait. How long a missing completion may
+// stay missing is edge policy, same as a missing ack. Upstream agrees on where
+// that timer belongs, which is inside the client.
+message OfflineSyncCompleted {
+  int32 count = 1;
+}
+
+// A resume that did NOT finish: its connection ended mid-drain (issue #38,
+// upstream oxidezap/whatsapp-rust#1380). Emitted once per armed resume, in
+// place of the OfflineSyncCompleted it will never get.
+//
+// It means "not caught up, the remainder comes back", never "lost": the drain
+// acked nothing, so the server redelivers all of it and a fresh
+// OfflineSyncPreview announces it on the next connection. `delivered` is what
+// reached this stream before the cut; those events may arrive again with the
+// redelivery. Both numbers are the server's, so read them as a progress report,
+// not an invariant.
+message OfflineSyncInterrupted {
+  int32 total = 1;      // what the preview announced for this drain
+  int32 delivered = 2;  // offline stanzas processed before the connection ended
+}
+
+// The connection's lifecycle, past what ConnectionStateChanged says (#150).
+// None of these changes the account's state on its own: a terminal end still
+// arrives as ConnectionStateChanged.
+message ConnectionNotice {
+  oneof notice {
+    ConnectFailureInfo connect_failure = 10;
+    ClientOutdatedInfo client_outdated = 11;
+    StreamErrorInfo stream_error = 12;
+    // Another session took this one over (409, or `conflict type="replaced"`).
+    // The library stops reconnecting on its own.
+    Empty stream_replaced = 13;
+    AppStateSyncFailedInfo app_state_sync_failed = 14;
+    ClientExpirationInfo client_expiration = 15;
+  }
+}
+
+// The server refused the connection for a reason that is not a logout, a ban
+// or an outdated client (each of those has its own event).
+message ConnectFailureInfo {
+  LogoutReason reason = 1;    // the same codes as a logout's (#126)
+  int32 reason_code = 2;      // the server's number, only when `reason` is UNKNOWN
+  optional string message = 3;  // the `<failure>` stanza's `message` attribute
+  StanzaNode stanza = 4;      // the whole `<failure>` (#138); unset when the library had none
+}
+
+// The server rejected this client build (405).
+message ClientOutdatedInfo {
+  StanzaNode stanza = 1;  // the whole `<failure>`; unset when the library had none
+}
+
+// A `<stream:error>` the library does not act on as a logout or a takeover:
+// a 429 (rate limited; the library backs off and reconnects) or a code it does
+// not know. The connection is kept.
+message StreamErrorInfo {
+  string code = 1;        // verbatim; empty when the stanza carried none (e.g. `<ack/>`)
+  StanzaNode stanza = 2;  // the whole `<stream:error>`
+}
+
+// An app-state sync ended without every collection synced. Collections cross by
+// their wire names (`critical_block`, `regular_high`, ...), as the library keeps
+// them.
+message AppStateSyncFailedInfo {
+  repeated string fatal = 1;      // refused by the server; repeating gets the same answer
+  repeated string retryable = 2;  // a later attempt can sync them
+  repeated string skipped = 3;    // another writer held them, so this sync did nothing
+  bool connected = 4;             // the client still announced the connection as up
+}
+
+// The server set or withdrew a retirement deadline for this client build.
+// Notice, not an order: the library keeps connecting until it is refused.
+message ClientExpirationInfo {
+  optional int64 expires_at = 1;  // ms (the server sends seconds); unset when withdrawn
+  ClientBuildVersion version = 2;  // the build the deadline was issued against
+  bool withdrawn = 3;
+}
+
+message ClientBuildVersion {
+  uint32 primary = 1;
+  uint32 secondary = 2;
+  uint32 tertiary = 3;
+}
+
+// What the server says about a contact (#151): each from a `<notification>`
+// the library parsed. Times are ms; the server sends seconds.
+message ContactNotice {
+  oneof notice {
+    PictureChange picture = 10;
+    AboutChange about = 11;
+    ContactProfileChange profile = 12;
+    NumberChange number = 13;
+    ContactSyncRequest sync_requested = 14;
+    DisappearingModeChange disappearing_mode = 15;
+    BusinessStatusChange business = 16;
+  }
+}
+
+// A profile picture set or removed, a user's or a group's.
+message PictureChange {
+  Jid jid = 1;
+  Jid author = 2;      // the admin who changed a group's picture; unset for a person's
+  int64 timestamp = 3;
+  bool removed = 4;
+  optional string picture_id = 5;  // the server's id; absent on removals, and sometimes on sets
+}
+
+message AboutChange {
+  Jid jid = 1;
+  string about = 2;    // the new text (the library's `status`)
+  int64 timestamp = 3;
+}
+
+// A contact's profile changed (`<update>`): drop any cached presence and
+// picture for it. Not the app-state ContactUpdate (a contact saved on a
+// linked device).
+message ContactProfileChange {
+  Jid jid = 1;
+  int64 timestamp = 2;
+}
+
+// A contact changed their phone number (`<modify>`).
+message NumberChange {
+  Jid old_pn = 1;
+  Jid new_pn = 2;
+  Jid old_lid = 3;  // unset when the server sent none
+  Jid new_lid = 4;
+  int64 timestamp = 5;
+}
+
+// The server asks for a full contact re-sync (`<sync>`).
+message ContactSyncRequest {
+  optional int64 after = 1;
+  int64 timestamp = 2;
+}
+
+// A contact's default disappearing-messages timer changed. Apply it only when
+// `setting_timestamp` is newer than what you hold.
+message DisappearingModeChange {
+  Jid jid = 1;                   // the contact (the library's `from`)
+  uint32 duration_seconds = 2;   // 0 = off, 86400 = 24 h (measured)
+  int64 setting_timestamp = 3;
+}
+
+message BusinessStatusChange {
+  Jid jid = 1;
+  BusinessUpdateType update_type = 2;
+  int64 timestamp = 3;
+  Jid target = 4;
+  optional string hash = 5;
+  optional string verified_name = 6;
+  repeated string product_ids = 7;
+  repeated string collection_ids = 8;
+  repeated BusinessSubscriptionInfo subscriptions = 9;
+}
+
+message BusinessSubscriptionInfo {
+  string id = 1;
+  string status = 2;
+  optional int64 expiration_date = 3;  // ms (the stanza sends seconds)
+  optional int64 creation_time = 4;    // ms
+}
+
+// `wacore::types::events::BusinessUpdateType`. UNKNOWN is the library's own
+// `Unknown`: it does not keep the wire string, so there is no code.
+enum BusinessUpdateType {
+  BUSINESS_UPDATE_TYPE_UNSPECIFIED = 0;
+  BUSINESS_UPDATE_TYPE_UNKNOWN = 1;
+  BUSINESS_UPDATE_TYPE_REMOVED_AS_BUSINESS = 2;
+  BUSINESS_UPDATE_TYPE_VERIFIED_NAME_CHANGED = 3;
+  BUSINESS_UPDATE_TYPE_PROFILE_UPDATED = 4;
+  BUSINESS_UPDATE_TYPE_PRODUCTS_UPDATED = 5;
+  BUSINESS_UPDATE_TYPE_COLLECTIONS_UPDATED = 6;
+  BUSINESS_UPDATE_TYPE_SUBSCRIPTIONS_UPDATED = 7;
+}
+
+// Someone's devices or identity key changed (#151). The library has already
+// cleared the sessions and sender keys it had to; this is notice.
+message DeviceNotice {
+  oneof notice {
+    DeviceListChange device_list = 10;
+    IdentityChangeInfo identity = 11;
+  }
+}
+
+message DeviceListChange {
+  Jid user = 1;
+  Jid lid_user = 2;
+  DeviceListChangeType update_type = 3;
+  repeated DeviceKeyIndex devices = 4;
+  KeyIndexList key_index = 5;        // add and remove carry it
+  optional string contact_hash = 6;  // update carries it
+}
+
+message DeviceKeyIndex {
+  uint32 device_id = 1;
+  optional uint32 key_index = 2;
+}
+
+message KeyIndexList {
+  int64 timestamp = 1;              // ms (measured in seconds on the wire)
+  optional bytes signed_bytes = 2;  // the signed key index list, on add
+}
+
+// `wacore::types::events::DeviceListUpdateType`, closed in the library.
+enum DeviceListChangeType {
+  DEVICE_LIST_CHANGE_TYPE_UNSPECIFIED = 0;
+  DEVICE_LIST_CHANGE_TYPE_UNKNOWN = 1;  // never emitted (closed in the library)
+  DEVICE_LIST_CHANGE_TYPE_ADD = 2;
+  DEVICE_LIST_CHANGE_TYPE_REMOVE = 3;
+  DEVICE_LIST_CHANGE_TYPE_UPDATE = 4;
+}
+
+message IdentityChangeInfo {
+  Jid user = 1;
+  Jid lid_user = 2;
+  // True when the library noticed it while decrypting, false when the server
+  // sent `<identity/>`.
+  bool implicit = 3;
+}
+
+// `<notification type="mex">` (#151): a server GraphQL update, routed by
+// `op_name`. `payload_json` is the SERVER's JSON body, not the library's
+// shape: the library parses it and the core writes it back out, so keys come
+// sorted and the content is the same. Decode it by `op_name`.
+message MexNotification {
+  string op_name = 1;
+  Jid from = 2;
+  optional string stanza_id = 3;
+  optional string offline = 4;  // set on a backlog replay (often a timestamp, as the server sends it)
+  bytes payload_json = 5;
+}
+
+message EventEnvelope {
+  // Stays a string (#122): it is not a jid, and no other uuid in the contract
+  // is a message (`AccountRef.uuid`, `Account.uuid`), so a wrapper here would
+  // be the one uuid shaped differently from the rest.
+  string account_uuid = 1;
+  int64 monotonic_seq = 2;
+  int64 ts_unix_ms = 3;
+  oneof event {
+    InboundMessage message = 10;
+    ReceiptEvent receipt = 11;
+    UndecryptableEvent undecryptable = 12;
+    ConnectionStateChanged connection = 13;
+    PairingUpdate pairing = 14;
+    PresenceUpdate presence = 15;
+    GroupUpdate group = 16;
+    PushNameUpdate push_name = 17;
+    ContactUpdate contact = 18;
+    HistorySyncEvent history_sync = 19;
+    AppStateUpdate app_state = 20;
+    CallEvent call = 21;
+    ServerAckEvent server_ack = 22;
+    OfflineSyncPreview offline_sync_preview = 23;
+    OfflineSyncCompleted offline_sync_completed = 24;
+    OfflineSyncInterrupted offline_sync_interrupted = 25;
+    FavoritesChanged favorites_changed = 26;
+    NewsletterLiveUpdate newsletter_live_update = 27;
+    StickerUpdate sticker = 28;  // #148
+    LabelUpdate label = 29;                     // #149
+    QuickReplyUpdate quick_reply = 30;          // #149
+    AccountSettingUpdate account_setting = 31;  // #149
+    SelfPushNameUpdate self_push_name = 32;     // #153
+    CallLogUpdate call_log = 33;                // #153
+    ConnectionNotice connection_notice = 34;    // #150
+    ContactNotice contact_notice = 35;          // #151
+    DeviceNotice device_notice = 36;            // #151
+    MexNotification mex = 37;                   // #151
+    RawEvent raw = 99;
+  }
+}
+
+service EventService {
+  rpc SubscribeEvents(SubscribeRequest) returns (stream EventEnvelope);
+}
