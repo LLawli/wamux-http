@@ -7,13 +7,14 @@ COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/wamux-http ./cmd/wamux-http
 
 # Final stage: the binary and ffmpeg (voice and video conversion), as a
-# non-root user. The core's socket is mounted in; its group must let this
-# user open it.
+# non-root user. The core's socket is mounted in and is 0660 for the core's
+# group; uid and gid 10001 are the wamux image's own, so this user opens it.
 FROM debian:bookworm-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
- && useradd --system --uid 10001 --home /var/lib/wamux-http --create-home wamux-http
+ && groupadd --gid 10001 wamux \
+ && useradd --uid 10001 --gid 10001 --home /var/lib/wamux-http --create-home wamux-http
 COPY --from=build /out/wamux-http /usr/local/bin/wamux-http
 USER wamux-http
 WORKDIR /var/lib/wamux-http

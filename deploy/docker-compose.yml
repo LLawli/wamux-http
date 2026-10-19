@@ -5,15 +5,15 @@ services:
   wamux:
     image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.0}
     restart: unless-stopped
-    user: "10001:10001"
+    # The image runs as wamux (uid and gid 10001) and owns /run/wamux and
+    # /var/lib/wamux; the spool lives under the latter.
     environment:
       WAMUX_SOCKET_PATH: /run/wamux/wamux.sock
       WAMUX_DATABASE_URL: sqlite:///var/lib/wamux/wamux.db
-      WAMUX_MEDIA_SPOOL_DIR: /var/cache/wamux
+      WAMUX_MEDIA_SPOOL_DIR: /var/lib/wamux/spool
     volumes:
       - wamux-run:/run/wamux
       - wamux-data:/var/lib/wamux
-      - wamux-spool:/var/cache/wamux
 
   wamux-http:
     image: ${WAMUX_HTTP_IMAGE:-wamux-http:latest}
@@ -32,5 +32,4 @@ services:
 volumes:
   wamux-run:
   wamux-data:
-  wamux-spool:
   wamux-http-data:
