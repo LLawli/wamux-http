@@ -58,7 +58,8 @@ type Manager struct {
 
 	kick    chan struct{}
 	mu      sync.Mutex
-	runners map[string]context.CancelFunc
+	runners map[string]*runner
+	running sync.WaitGroup
 }
 
 // ErrExists is returned when creating a session whose name is taken.
@@ -69,7 +70,7 @@ func (m *Manager) init() {
 	defer m.mu.Unlock()
 	if m.kick == nil {
 		m.kick = make(chan struct{}, 1)
-		m.runners = map[string]context.CancelFunc{}
+		m.runners = map[string]*runner{}
 	}
 	if m.Log == nil {
 		m.Log = slog.Default()
@@ -88,7 +89,8 @@ func (m *Manager) Kick() {
 	}
 }
 
-// Run supervises until ctx ends, then stops every runner and releases leases.
+// Run supervises until ctx ends, then stops every runner and returns once
+// they have all released their leases.
 func (m *Manager) Run(ctx context.Context) {
 	m.init()
 	t := time.NewTicker(superviseEvery)
@@ -98,10 +100,11 @@ func (m *Manager) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			m.mu.Lock()
-			for _, cancel := range m.runners {
-				cancel()
+			for _, r := range m.runners {
+				r.cancel()
 			}
 			m.mu.Unlock()
+			m.running.Wait()
 			return
 		case <-t.C:
 		case <-m.kick:
@@ -130,19 +133,42 @@ func (m *Manager) supervise(ctx context.Context) {
 			continue
 		}
 		rctx, cancel := context.WithCancel(ctx)
+		r := &runner{m: m, name: s.Name, cancel: cancel, nudge: make(chan struct{}, 1)}
 		m.mu.Lock()
-		m.runners[s.Name] = cancel
+		m.runners[s.Name] = r
 		m.mu.Unlock()
+		m.running.Add(1)
 		go func(name string) {
+			defer m.running.Done()
 			defer func() {
 				cancel()
+				// Release before leaving the map: the other way round, a
+				// supervise pass in between re-acquires the lease for a new
+				// runner and this release then deletes it from under that one.
+				_ = m.Store.ReleaseLease(context.WithoutCancel(ctx), leasePrefix+name, m.Worker)
 				m.mu.Lock()
 				delete(m.runners, name)
 				m.mu.Unlock()
-				_ = m.Store.ReleaseLease(context.WithoutCancel(ctx), leasePrefix+name, m.Worker)
+				// A start that landed while this runner was ending found it
+				// still in the map; look again now that it is gone.
+				m.Kick()
 			}()
-			(&runner{m: m, name: name}).run(rctx)
+			r.run(rctx)
 		}(s.Name)
+	}
+}
+
+// nudge tells this process's runner of a session, if it has one, that the
+// desired state changed, instead of leaving it to its next lease tick.
+func (m *Manager) nudge(name string) {
+	m.mu.Lock()
+	r := m.runners[name]
+	m.mu.Unlock()
+	if r != nil {
+		select {
+		case r.nudge <- struct{}{}:
+		default:
+		}
 	}
 }
 
@@ -182,11 +208,12 @@ func (m *Manager) Start(ctx context.Context, name string) (store.Session, error)
 	if err != nil || s.Started {
 		return s, err
 	}
-	started := true
-	if s, err = m.Store.UpdateSession(ctx, name, store.SessionPatch{Started: &started}); err != nil {
+	started, at := true, waha.NowMs()
+	if s, err = m.Store.UpdateSession(ctx, name, store.SessionPatch{Started: &started, StartedAt: &at}); err != nil {
 		return s, err
 	}
 	s, err = m.SetStatus(ctx, s, StatusStarting, nil)
+	m.nudge(name)
 	m.Kick()
 	return s, err
 }
@@ -201,6 +228,7 @@ func (m *Manager) Stop(ctx context.Context, name string) (store.Session, error) 
 	if s, err = m.Store.UpdateSession(ctx, name, store.SessionPatch{Started: &stopped, QR: &noQR}); err != nil {
 		return s, err
 	}
+	m.nudge(name)
 	if s.AccountUUID != "" {
 		cctx, cancel := context.WithTimeout(ctx, coreCallTimeout)
 		_, err := m.Core.Accounts.DisconnectAccount(cctx, Ref(s))

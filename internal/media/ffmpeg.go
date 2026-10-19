@@ -214,14 +214,14 @@ const thumbSize = 320
 // Images Go can decode are scaled in-process; anything else goes through
 // ffmpeg.
 func (c *Converter) Thumbnail(ctx context.Context, in []byte) ([]byte, error) {
-	if out, err := goThumbnail(in, thumbSize); err == nil {
-		return out, nil
+	out, err := goThumbnail(in, thumbSize)
+	if err == nil || errors.Is(err, ErrImageTooLarge) {
+		return out, err
 	}
-	var out []byte
-	err := c.workdir(ctx, in, func(ctx context.Context, dir, input string) error {
+	err = c.workdir(ctx, in, func(ctx context.Context, dir, input string) error {
 		jpg := filepath.Join(dir, "thumb.jpg")
 		scale := fmt.Sprintf("scale=w='min(%d,iw)':h='min(%d,ih)':force_original_aspect_ratio=decrease", thumbSize, thumbSize)
-		if _, err := run(ctx, c.ffmpeg, append(quiet, "-i", input, "-frames:v", "1", "-vf", scale,
+		if _, err := run(ctx, c.ffmpeg, append(quiet, "-max_pixels", strconv.Itoa(maxPixels), "-i", input, "-frames:v", "1", "-vf", scale,
 			"-q:v", "5", "-f", "image2", "-c:v", "mjpeg", jpg)...); err != nil {
 			return err
 		}

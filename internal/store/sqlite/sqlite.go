@@ -134,20 +134,20 @@ func b2i(b bool) int {
 
 // --- sessions ---
 
-const sessionCols = `name, account_uuid, config, started, status, qr, me, statuses, created_at, updated_at`
+const sessionCols = `name, account_uuid, config, started, status, qr, me, statuses, event_seq, event_ts, started_at, created_at, updated_at`
 
 func scanSession(row interface{ Scan(...any) error }) (store.Session, error) {
 	var s store.Session
 	var cfg, me, statuses sql.NullString
-	err := row.Scan(&s.Name, &s.AccountUUID, &cfg, &s.Started, &s.Status, &s.QR, &me, &statuses, &s.CreatedAt, &s.UpdatedAt)
+	err := row.Scan(&s.Name, &s.AccountUUID, &cfg, &s.Started, &s.Status, &s.QR, &me, &statuses, &s.EventSeq, &s.EventTS, &s.StartedAt, &s.CreatedAt, &s.UpdatedAt)
 	s.Config, s.Me, s.Statuses = rawJSON(cfg), rawJSON(me), rawJSON(statuses)
 	return s, err
 }
 
 // CreateSession inserts a session; ErrConflict when the name is taken.
 func (s *Store) CreateSession(ctx context.Context, x store.Session) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (`+sessionCols+`) VALUES (?,?,?,?,?,?,?,?,?,?)`,
-		x.Name, x.AccountUUID, nullJSON(x.Config), b2i(x.Started), x.Status, x.QR, nullJSON(x.Me), nullJSON(x.Statuses), x.CreatedAt, x.UpdatedAt)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (`+sessionCols+`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		x.Name, x.AccountUUID, nullJSON(x.Config), b2i(x.Started), x.Status, x.QR, nullJSON(x.Me), nullJSON(x.Statuses), x.EventSeq, x.EventTS, x.StartedAt, x.CreatedAt, x.UpdatedAt)
 	if isUnique(err) {
 		return store.ErrConflict
 	}
@@ -204,6 +204,9 @@ func (s *Store) UpdateSession(ctx context.Context, name string, p store.SessionP
 	if p.Statuses != nil {
 		add("statuses", nullJSON(*p.Statuses))
 	}
+	if p.StartedAt != nil {
+		add("started_at", *p.StartedAt)
+	}
 	add("updated_at", nowMs())
 	args = append(args, name)
 	res, err := s.db.ExecContext(ctx, `UPDATE sessions SET `+strings.Join(sets, ", ")+` WHERE name = ?`, args...)
@@ -239,6 +242,12 @@ func (s *Store) PurgeSession(ctx context.Context, name string) error {
 		_, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE name = ?`, name)
 		return err
 	})
+}
+
+// SetEventCheckpoint records the last core event processed for a session.
+func (s *Store) SetEventCheckpoint(ctx context.Context, session string, seq, ts int64) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET event_seq = ?, event_ts = ? WHERE name = ?`, seq, ts, session)
+	return err
 }
 
 // --- api keys ---

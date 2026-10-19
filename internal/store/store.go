@@ -26,8 +26,12 @@ type Session struct {
 	QR          string          // last QR payload while pairing; empty otherwise
 	Me          json.RawMessage // WAHA MeInfo; null until paired
 	Statuses    json.RawMessage // the last WAHA SessionStatusPoint values, oldest first
-	CreatedAt   int64
-	UpdatedAt   int64
+	// The last core event processed for the session: its monotonic_seq and
+	// its time (ms). Zero until the first one.
+	EventSeq, EventTS int64
+	StartedAt         int64 // when it was last started (ms)
+	CreatedAt         int64
+	UpdatedAt         int64
 }
 
 // SessionPatch updates the fields that are non-nil.
@@ -39,6 +43,7 @@ type SessionPatch struct {
 	QR          *string
 	Me          *json.RawMessage
 	Statuses    *json.RawMessage
+	StartedAt   *int64
 }
 
 // APIKey is a key that is not the admin key from the environment. Only the
@@ -109,6 +114,9 @@ type Base interface {
 	AcquireLease(ctx context.Context, name, holder string, now, ttlMs int64) (bool, error)
 	ReleaseLease(ctx context.Context, name, holder string) error
 	LeaseHolder(ctx context.Context, name string, now int64) (string, error)
+
+	// SetEventCheckpoint records the last core event processed for a session.
+	SetEventCheckpoint(ctx context.Context, session string, seq, ts int64) error
 
 	// AppendEvent stores an event and its webhook deliveries in one
 	// transaction, and returns the event's sequence number.

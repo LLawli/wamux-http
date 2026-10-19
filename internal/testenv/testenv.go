@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -34,6 +35,11 @@ type Env struct {
 	Core *fakecore.Core
 	App  *app.App
 	HTTP *httptest.Server
+
+	dir        string
+	opts       Options
+	generation int
+	shutdown   func()
 }
 
 // Options tunes an environment.
@@ -45,15 +51,31 @@ type Options struct {
 // Start brings an edge up and tears it down when the test ends.
 func Start(t testing.TB, opts Options) *Env {
 	t.Helper()
-	fc := fakecore.Start(t, opts.Core)
-	dir := t.TempDir()
+	e := &Env{T: t, Core: fakecore.Start(t, opts.Core), dir: t.TempDir(), opts: opts}
+	e.boot("test-worker")
+	t.Cleanup(func() { e.shutdown() })
+	return e
+}
+
+// Restart stops this edge process and starts a new one, as another worker,
+// on the same store and the same core: a deploy, or a lease handover.
+func (e *Env) Restart() {
+	e.T.Helper()
+	e.shutdown()
+	e.generation++
+	e.boot(fmt.Sprintf("test-worker-%d", e.generation+1))
+}
+
+func (e *Env) boot(worker string) {
+	t := e.T
+	t.Helper()
 	cfg := &config.Config{
 		Listen:          "127.0.0.1:0",
 		APIKey:          AdminKey,
-		CoreSocket:      fc.Socket,
-		DatabaseURL:     "sqlite://" + filepath.Join(dir, "edge.db"),
-		WorkerID:        "test-worker",
-		FilesFolder:     filepath.Join(dir, "files"),
+		CoreSocket:      e.Core.Socket,
+		DatabaseURL:     "sqlite://" + filepath.Join(e.dir, "edge.db"),
+		WorkerID:        worker,
+		FilesFolder:     filepath.Join(e.dir, "files"),
 		DownloadMedia:   true,
 		EventRetention:  time.Hour,
 		WebhookTimeout:  5 * time.Second,
@@ -61,15 +83,15 @@ func Start(t testing.TB, opts Options) *Env {
 		LogLevel:        "error",
 		MaxRequestBytes: 64 << 20,
 	}
-	if opts.Config != nil {
-		opts.Config(cfg)
+	if e.opts.Config != nil {
+		e.opts.Config(cfg)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	st, err := sqlite.Open(ctx, filepath.Join(dir, "edge.db"))
+	st, err := sqlite.Open(ctx, filepath.Join(e.dir, "edge.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	cc, err := core.Dial(fc.Socket)
+	cc, err := core.Dial(e.Core.Socket)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,15 +102,15 @@ func Start(t testing.TB, opts Options) *Env {
 	a.Tail.Every = 20 * time.Millisecond
 	srv := httptest.NewServer(a.Server.Router())
 	cfg.BaseURL = srv.URL
-	a.Start(ctx)
-	t.Cleanup(func() {
+	done := a.Start(ctx)
+	e.App, e.HTTP, e.URL = a, srv, srv.URL
+	e.shutdown = func() {
 		srv.Close()
 		cancel()
-		time.Sleep(50 * time.Millisecond) // let the loops see the cancel
+		<-done // every loop has stopped and released its leases
 		_ = cc.Close()
 		_ = st.Close()
-	})
-	return &Env{T: t, URL: srv.URL, Core: fc, App: a, HTTP: srv}
+	}
 }
 
 // Response is a finished request.

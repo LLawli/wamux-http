@@ -10,10 +10,27 @@ import (
 	_ "image/png"
 )
 
+// maxPixels bounds the images the edge decodes (in-process or through
+// ffmpeg). A file's header can declare any size: a 74-byte PNG claiming
+// 200000x200000 makes a full decode allocate hundreds of GB, and Go's
+// out-of-memory is fatal to the whole process, not a recoverable panic.
+const maxPixels = 40_000_000
+
+// ErrImageTooLarge is an image whose declared size exceeds maxPixels.
+var ErrImageTooLarge = errors.New("image too large")
+
 // goThumbnail scales an image Go can decode (JPEG, PNG, GIF) so its longest
 // side is at most size, and encodes it as JPEG. Each output pixel averages a
-// 2x2 grid of source samples, which is plenty for a preview.
+// 2x2 grid of source samples, which is plenty for a preview. The header is
+// read first, so an oversized image is refused before anything is allocated.
 func goThumbnail(in []byte, size int) ([]byte, error) {
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(in))
+	if err != nil {
+		return nil, err
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 || int64(cfg.Width)*int64(cfg.Height) > maxPixels {
+		return nil, ErrImageTooLarge
+	}
 	src, _, err := image.Decode(bytes.NewReader(in))
 	if err != nil {
 		return nil, err

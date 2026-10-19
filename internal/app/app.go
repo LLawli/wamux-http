@@ -5,6 +5,7 @@ package app
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/LLawli/wamux-http/internal/config"
@@ -48,15 +49,27 @@ func Wire(cfg *config.Config, st store.Store, cc *core.Client, log *slog.Logger)
 	}
 }
 
-// Start runs the background loops until ctx ends.
-func (a *App) Start(ctx context.Context) {
-	go a.Sessions.Run(ctx)
-	go a.Tail.Run(ctx)
-	go a.Webhooks.Run(ctx)
-	go a.retention(ctx)
+// Start runs the background loops until ctx ends. The returned channel is
+// closed once every loop has stopped and the session leases are released,
+// so the store can be closed after it.
+func (a *App) Start(ctx context.Context) <-chan struct{} {
+	var wg sync.WaitGroup
+	for _, loop := range []func(context.Context){a.Sessions.Run, a.Tail.Run, a.Webhooks.Run, a.retention} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			loop(ctx)
+		}()
+	}
 	for _, name := range a.Config.StartSessions {
 		go a.startAtBoot(ctx, name)
 	}
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	return done
 }
 
 // retention drops events older than the configured retention.

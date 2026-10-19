@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -18,8 +19,14 @@ import (
 type runner struct {
 	m       *Manager
 	name    string
+	cancel  context.CancelFunc // ends the runner
+	nudge   chan struct{}      // the desired state changed in this process
 	backoff time.Duration
 	lid     string // the account's LID, learned at pairing
+
+	mu        sync.Mutex
+	follow    context.CancelFunc // ends the current connection, to reconnect
+	followFor int64              // the session's started_at that connection serves
 }
 
 // errReleased ends a runner whose session is no longer ours to run.
@@ -27,12 +34,26 @@ var errReleased = errors.New("session released")
 
 func (r *runner) run(ctx context.Context) {
 	log := r.m.Log.With("session", r.name)
-	lease := time.NewTicker(r.m.LeaseTTL / 3)
-	defer lease.Stop()
+	// The lease is renewed by its own loop, never by the one that processes
+	// events: a long history sync or a slow core call there must not let the
+	// lease lapse and hand the session to a second owner. Losing the lease,
+	// or the session being stopped or deleted, cancels everything below.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go r.keepLease(ctx, cancel)
 	for ctx.Err() == nil {
-		err := r.connectAndFollow(ctx, lease.C)
+		fctx, fcancel := context.WithCancel(ctx)
+		r.mu.Lock()
+		r.follow = fcancel
+		r.mu.Unlock()
+		err := r.connectAndFollow(fctx)
+		restarted := fctx.Err() != nil && ctx.Err() == nil
+		fcancel()
 		if errors.Is(err, errReleased) || ctx.Err() != nil {
 			return
+		}
+		if restarted {
+			continue // started again: reconnect for the new start at once
 		}
 		r.backoff = min(max(r.backoff*2, reconnectMin), reconnectMax)
 		log.Warn("session stream ended, retrying", "err", err, "in", r.backoff)
@@ -41,6 +62,37 @@ func (r *runner) run(ctx context.Context) {
 			return
 		case <-time.After(r.backoff):
 		}
+	}
+}
+
+// keepLease renews the lease every third of its TTL, and on a nudge. It
+// cancels the runner once the session is no longer this process's to run,
+// and the current connection when the session was started again since it
+// was made (a stop and a start between two ticks, as a logout does).
+func (r *runner) keepLease(ctx context.Context, cancel context.CancelFunc) {
+	t := time.NewTicker(r.m.LeaseTTL / 3)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		case <-r.nudge:
+		}
+		s, err := r.still(ctx)
+		if errors.Is(err, errReleased) {
+			cancel()
+			return
+		}
+		if err != nil {
+			r.m.Log.Warn("lease renewal", "session", r.name, "err", err)
+			continue
+		}
+		r.mu.Lock()
+		if r.follow != nil && r.followFor != 0 && s.StartedAt != r.followFor {
+			r.follow()
+		}
+		r.mu.Unlock()
 	}
 }
 
@@ -91,22 +143,29 @@ func (r *runner) ensureAccount(ctx context.Context, s store.Session) (store.Sess
 	return r.m.Store.UpdateSession(ctx, r.name, store.SessionPatch{AccountUUID: &uuid})
 }
 
-func (r *runner) connectAndFollow(ctx context.Context, lease <-chan time.Time) error {
+func (r *runner) connectAndFollow(ctx context.Context) error {
 	s, err := r.still(ctx)
 	if err != nil {
 		return err
 	}
-	if s, err = r.ensureAccount(ctx, s); err != nil {
+	r.mu.Lock()
+	r.followFor = s.StartedAt
+	r.mu.Unlock()
+	cctx, ccancel := context.WithTimeout(ctx, coreCallTimeout)
+	s, err = r.ensureAccount(cctx, s)
+	ccancel()
+	if err != nil {
 		return err
 	}
-	// Subscribe before connecting so the first QR is never missed. The core
-	// registers a subscriber only after it answers, so an event can fall in
-	// between; it reaches the replay ring before the broadcast, so asking for
-	// the ring and dropping what predates this subscription loses nothing
-	// and replays nothing stale.
+	// Subscribe before connecting so the first QR is never missed, and ask for
+	// the core's replay ring: the core registers a subscriber only after it
+	// answers, and an event emitted while no process followed the session (a
+	// deploy, a lease handover) is in the ring too, which an event reaches
+	// before its broadcast. What this session already processed is skipped by
+	// its checkpoint; with no checkpoint yet, by the time of the subscription.
 	sctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	since := time.Now().UnixMilli()
+	fresh := freshFilter(s.EventSeq, s.EventTS, time.Now().UnixMilli())
 	stream, err := r.m.Core.Events.SubscribeEvents(sctx, &pb.SubscribeRequest{
 		Selector:       &pb.SubscribeRequest_Account{Account: Ref(s)},
 		ReplayFromRing: replayRing,
@@ -123,7 +182,7 @@ func (r *runner) connectAndFollow(ctx context.Context, lease <-chan time.Time) e
 				errc <- err
 				return
 			}
-			if ev.GetTsUnixMs() < since {
+			if !fresh(ev) {
 				continue
 			}
 			select {
@@ -133,7 +192,9 @@ func (r *runner) connectAndFollow(ctx context.Context, lease <-chan time.Time) e
 			}
 		}
 	}()
-	st, err := r.m.Core.Accounts.ConnectAccount(ctx, &pb.ConnectAccountRequest{Account: Ref(s), BackfillHistory: r.m.Backfill})
+	cctx, ccancel = context.WithTimeout(ctx, coreCallTimeout)
+	st, err := r.m.Core.Accounts.ConnectAccount(cctx, &pb.ConnectAccountRequest{Account: Ref(s), BackfillHistory: r.m.Backfill})
+	ccancel()
 	if err != nil {
 		return err
 	}
@@ -146,15 +207,34 @@ func (r *runner) connectAndFollow(ctx context.Context, lease <-chan time.Time) e
 			return ctx.Err()
 		case err := <-errc:
 			return err
-		case <-lease:
-			if s, err = r.still(ctx); err != nil {
-				return err
-			}
 		case ev := <-evs:
-			if s, err = r.handle(ctx, s, ev); err != nil {
+			s, err = r.handle(ctx, s, ev)
+			// The event is done even when handling it ends the stream (a
+			// disconnect asks for a reconnect): checkpoint it first, or the
+			// reconnect replays it and ends the stream again, forever.
+			if seq := ev.GetMonotonicSeq(); seq > 0 {
+				if cerr := r.m.Store.SetEventCheckpoint(context.WithoutCancel(ctx), r.name, seq, ev.GetTsUnixMs()); cerr != nil {
+					r.m.Log.Warn("event checkpoint", "session", r.name, "err", cerr)
+				}
+			}
+			if err != nil {
 				return err
 			}
 		}
+	}
+}
+
+// freshFilter decides which events of a new subscription to process. With a
+// checkpoint, an event is new when its seq is past the checkpoint's or its
+// time is later: the seq restarts when the core restarts, and the time keeps
+// such events apart from the ones already processed. Without one, only what
+// is emitted from now on counts, so a first owner does not replay history.
+func freshFilter(seq, ts, now int64) func(*pb.EventEnvelope) bool {
+	if seq == 0 && ts == 0 {
+		return func(ev *pb.EventEnvelope) bool { return ev.GetTsUnixMs() >= now }
+	}
+	return func(ev *pb.EventEnvelope) bool {
+		return ev.GetMonotonicSeq() > seq || ev.GetTsUnixMs() > ts
 	}
 }
 
@@ -166,15 +246,20 @@ func (r *runner) handle(ctx context.Context, s store.Session, ev *pb.EventEnvelo
 		if s, err = r.still(ctx); err != nil {
 			return s, err
 		}
+		if stale(ev, s) {
+			break
+		}
 		var st *pb.AccountStatus
 		if e.Connection.GetState() == pb.ConnectionState_CONNECTED {
-			st, _ = r.m.Core.Accounts.GetAccountStatus(ctx, Ref(s))
+			cctx, cancel := context.WithTimeout(ctx, coreCallTimeout)
+			st, _ = r.m.Core.Accounts.GetAccountStatus(cctx, Ref(s))
+			cancel()
 		}
 		if s, err = r.applyState(ctx, s, e.Connection.GetState(), st); err != nil {
 			return s, err
 		}
 	case *pb.EventEnvelope_Pairing:
-		if s, err = r.applyPairing(ctx, s, e.Pairing); err != nil {
+		if s, err = r.applyPairing(ctx, e.Pairing, ev); err != nil {
 			return s, err
 		}
 	case *pb.EventEnvelope_SelfPushName:
@@ -183,7 +268,10 @@ func (r *runner) handle(ctx context.Context, s store.Session, ev *pb.EventEnvelo
 		}
 	case *pb.EventEnvelope_Raw:
 		if e.Raw.GetKind() == "gap" {
-			if st, gerr := r.m.Core.Accounts.GetAccountStatus(ctx, Ref(s)); gerr == nil {
+			cctx, cancel := context.WithTimeout(ctx, coreCallTimeout)
+			st, gerr := r.m.Core.Accounts.GetAccountStatus(cctx, Ref(s))
+			cancel()
+			if gerr == nil {
 				if s, err = r.applyState(ctx, s, st.GetState(), st); err != nil {
 					return s, err
 				}
@@ -196,6 +284,14 @@ func (r *runner) handle(ctx context.Context, s store.Session, ev *pb.EventEnvelo
 		}
 	}
 	return s, nil
+}
+
+// stale reports a connection or pairing event from before the session's
+// last start, replayed from the ring: history, not the state now. It is
+// judged against the session as just re-read, since the start may have
+// landed after the runner's copy was taken.
+func stale(ev *pb.EventEnvelope, s store.Session) bool {
+	return ev.GetTsUnixMs() < s.StartedAt
 }
 
 // applyState maps the core's connection state onto the WAHA status. A
@@ -250,11 +346,17 @@ func (r *runner) applyState(ctx context.Context, s store.Session, state pb.Conne
 	return s, nil
 }
 
-func (r *runner) applyPairing(ctx context.Context, s store.Session, u *pb.PairingUpdate) (store.Session, error) {
+func (r *runner) applyPairing(ctx context.Context, u *pb.PairingUpdate, env *pb.EventEnvelope) (store.Session, error) {
+	// A pairing event still queued when the session was stopped must not
+	// write a QR or a status over it, nor one from before its last start.
+	s, err := r.still(ctx)
+	if err != nil || stale(env, s) {
+		return s, err
+	}
 	switch ev := u.GetEvent().(type) {
 	case *pb.PairingUpdate_QrCode:
 		qr := ev.QrCode
-		s, err := r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{QR: &qr})
+		s, err = r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{QR: &qr})
 		if err != nil {
 			return s, err
 		}

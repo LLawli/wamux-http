@@ -64,6 +64,10 @@ func sessions(t *testing.T, s store.Store) {
 	if _, err := s.UpdateSession(ctx, "nope", store.SessionPatch{Started: &started}); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("patch missing: %v", err)
 	}
+	must(t, s.SetEventCheckpoint(ctx, "default", 42, 1700))
+	if got, _ := s.GetSession(ctx, "default"); got.EventSeq != 42 || got.EventTS != 1700 {
+		t.Fatalf("checkpoint: %d %d", got.EventSeq, got.EventTS)
+	}
 	must(t, s.CreateSession(ctx, store.Session{Name: "a", Status: "STOPPED"}))
 	all, err := s.ListSessions(ctx)
 	must(t, err)

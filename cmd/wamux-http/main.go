@@ -54,7 +54,7 @@ func run() error {
 
 	a := app.Wire(cfg, st, cc, log)
 	a.Server.Shutdown = stop
-	a.Start(ctx)
+	done := a.Start(ctx)
 
 	srv := &http.Server{Addr: cfg.Listen, Handler: a.Server.Router(), ReadHeaderTimeout: 10 * time.Second}
 	errc := make(chan error, 1)
@@ -62,6 +62,8 @@ func run() error {
 	log.Info("listening", "addr", cfg.Listen, "core", cfg.CoreSocket, "worker", cfg.WorkerID)
 	select {
 	case err := <-errc:
+		stop()
+		<-done
 		return err
 	case <-ctx.Done():
 	}
@@ -70,6 +72,9 @@ func run() error {
 	if err := srv.Shutdown(sctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
+	// The store closes (deferred) only after every loop has released its
+	// leases, so another worker can take the sessions at once.
+	<-done
 	return nil
 }
 
