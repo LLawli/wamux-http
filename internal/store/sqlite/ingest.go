@@ -53,10 +53,15 @@ func (s *Store) GetMessageByWAID(ctx context.Context, session, waID string) (sto
 	return m, notFound(err)
 }
 
-// ListMessages pages one chat's messages, newest first unless Ascending.
+// ListMessages pages one chat's messages (every chat's for ""), newest first
+// unless Ascending.
 func (s *Store) ListMessages(ctx context.Context, session, chatID string, f store.MessageFilter) ([]store.Message, error) {
-	q := `SELECT ` + msgCols + ` FROM messages WHERE session = ? AND chat_id = ?`
-	args := []any{session, chatID}
+	q := `SELECT ` + msgCols + ` FROM messages WHERE session = ?`
+	args := []any{session}
+	if chatID != "" {
+		q += ` AND chat_id = ?`
+		args = append(args, chatID)
+	}
 	if f.FromMe != nil {
 		q += ` AND from_me = ?`
 		args = append(args, b2i(*f.FromMe))
@@ -107,13 +112,45 @@ func limitOr(n int) int {
 func (s *Store) UpdateAck(ctx context.Context, session string, waIDs []string, ack int) error {
 	return s.tx(ctx, func(tx *sql.Tx) error {
 		for _, id := range waIDs {
-			if _, err := tx.ExecContext(ctx, `UPDATE messages SET ack = ?, body = json_set(body, '$.ack', ?)
-				WHERE session = ? AND wa_id = ? AND ack < ?`, ack, ack, session, id, ack); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE messages SET ack = ?, body = json_set(body, '$.ack', ?, '$.ackName', ?)
+				WHERE session = ? AND wa_id = ? AND ack < ?`, ack, ack, ackName(ack), session, id, ack); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
+
+// SetAck sets the ack of the given messages, lowering it if need be.
+func (s *Store) SetAck(ctx context.Context, session string, waIDs []string, ack int) error {
+	return s.tx(ctx, func(tx *sql.Tx) error {
+		for _, id := range waIDs {
+			if _, err := tx.ExecContext(ctx, `UPDATE messages SET ack = ?, body = json_set(body, '$.ack', ?, '$.ackName', ?)
+				WHERE session = ? AND wa_id = ?`, ack, ack, ackName(ack), session, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// ackName is WAHA's name for an ack, kept in step with the stored body.
+func ackName(ack int) string {
+	switch ack {
+	case -1:
+		return "ERROR"
+	case 0:
+		return "PENDING"
+	case 1:
+		return "SERVER"
+	case 2:
+		return "DEVICE"
+	case 3:
+		return "READ"
+	case 4:
+		return "PLAYED"
+	}
+	return "UNKNOWN"
 }
 
 // DeleteMessage removes one message.
@@ -207,6 +244,53 @@ func (s *Store) DeleteChat(ctx context.Context, session, id string) error {
 	})
 }
 
+// TouchChat records a message in a chat without touching its flags.
+func (s *Store) TouchChat(ctx context.Context, session, id, name string, ts int64, lastMessageID string, unread int) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO chats (session, id, name, conversation_ts, last_message_id, unread_count)
+		VALUES (?,?,?,?,?,?)
+		ON CONFLICT (session, id) DO UPDATE SET
+		name = CASE WHEN excluded.name != '' THEN excluded.name ELSE chats.name END,
+		last_message_id = CASE WHEN excluded.conversation_ts >= chats.conversation_ts AND excluded.last_message_id != '' THEN excluded.last_message_id ELSE chats.last_message_id END,
+		conversation_ts = max(chats.conversation_ts, excluded.conversation_ts),
+		unread_count = CASE ? WHEN 1 THEN chats.unread_count + 1 WHEN -1 THEN 0 ELSE chats.unread_count END`,
+		session, id, name, ts, lastMessageID, max(unread, 0), unread)
+	return err
+}
+
+// PatchChat sets the given flags, creating the chat when needed.
+func (s *Store) PatchChat(ctx context.Context, session, id string, p store.ChatPatch) error {
+	return s.tx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO chats (session, id) VALUES (?,?)`, session, id); err != nil {
+			return err
+		}
+		set := func(col string, v any) error {
+			_, err := tx.ExecContext(ctx, `UPDATE chats SET `+col+` = ? WHERE session = ? AND id = ?`, v, session, id)
+			return err
+		}
+		if p.Archived != nil {
+			if err := set("archived", b2i(*p.Archived)); err != nil {
+				return err
+			}
+		}
+		if p.Pinned != nil {
+			if err := set("pinned", b2i(*p.Pinned)); err != nil {
+				return err
+			}
+		}
+		if p.Unread != nil {
+			if err := set("unread_count", *p.Unread); err != nil {
+				return err
+			}
+		}
+		if p.Name != nil {
+			if err := set("name", *p.Name); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // --- contacts ---
 
 // UpsertContact inserts or merges a contact; empty names do not erase.
@@ -259,6 +343,18 @@ func (s *Store) UpsertLabel(ctx context.Context, l store.Label) error {
 		ON CONFLICT (session, id) DO UPDATE SET name = excluded.name, color = excluded.color, deleted = excluded.deleted`,
 		l.Session, l.ID, l.Name, l.Color, b2i(l.Deleted))
 	return err
+}
+
+// GetLabel returns one label, deleted or not.
+func (s *Store) GetLabel(ctx context.Context, session, id string) (store.Label, error) {
+	ls, err := s.queryLabels(ctx, `SELECT session, id, name, color, deleted FROM labels WHERE session = ? AND id = ?`, session, id)
+	if err != nil {
+		return store.Label{}, err
+	}
+	if len(ls) == 0 {
+		return store.Label{}, store.ErrNotFound
+	}
+	return ls[0], nil
 }
 
 func (s *Store) queryLabels(ctx context.Context, q string, args ...any) ([]store.Label, error) {
@@ -314,6 +410,41 @@ func (s *Store) LabelChats(ctx context.Context, session, labelID string) ([]stri
 			return nil, err
 		}
 		out = append(out, id)
+	}
+	return out, rows.Err()
+}
+
+// --- presences ---
+
+// PutPresence replaces a participant's presence in a chat.
+func (s *Store) PutPresence(ctx context.Context, p store.Presence) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO presences (session, chat_id, participant, state, last_seen, updated_at) VALUES (?,?,?,?,?,?)
+		ON CONFLICT (session, chat_id, participant) DO UPDATE SET state = excluded.state, last_seen = excluded.last_seen, updated_at = excluded.updated_at`,
+		p.Session, p.ChatID, p.Participant, p.State, p.LastSeen, p.UpdatedAt)
+	return err
+}
+
+// ListPresences returns the presences of one chat, or of all, by chat and
+// update order.
+func (s *Store) ListPresences(ctx context.Context, session, chatID string) ([]store.Presence, error) {
+	q := `SELECT session, chat_id, participant, state, last_seen, updated_at FROM presences WHERE session = ?`
+	args := []any{session}
+	if chatID != "" {
+		q += ` AND chat_id = ?`
+		args = append(args, chatID)
+	}
+	rows, err := s.db.QueryContext(ctx, q+` ORDER BY chat_id, updated_at, participant`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []store.Presence
+	for rows.Next() {
+		var p store.Presence
+		if err := rows.Scan(&p.Session, &p.ChatID, &p.Participant, &p.State, &p.LastSeen, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
 	}
 	return out, rows.Err()
 }

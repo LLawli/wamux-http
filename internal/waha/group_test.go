@@ -11,8 +11,6 @@ import (
 	pb "github.com/LLawli/wamux-http/internal/core/wamuxv1"
 )
 
-func jid(v string) *pb.Jid { return &pb.Jid{Value: v} }
-
 func lidGroup() *pb.GroupMetadata {
 	return &pb.GroupMetadata{
 		Id:                 jid("120363000000000001@g.us"),

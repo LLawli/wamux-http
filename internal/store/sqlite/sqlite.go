@@ -454,4 +454,4 @@ func nowMs() int64 { return time.Now().UnixMilli() }
 
 // purgeTables are the per-session tables PurgeSession empties. A migration
 // that adds one adds it here.
-var purgeTables = []string{"messages", "chats", "contacts", "labels", "chat_labels", "deliveries", "events", "poll_secrets", "status_posts"}
+var purgeTables = []string{"messages", "chats", "contacts", "labels", "chat_labels", "deliveries", "events", "poll_secrets", "status_posts", "presences"}

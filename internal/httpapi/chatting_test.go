@@ -34,7 +34,6 @@ func init() {
 }
 
 const (
-	meID  = "5511999999999@c.us"
 	peer  = "5511888888888@c.us"
 	peerJ = "5511888888888@s.whatsapp.net"
 	group = "120363000000000001@g.us"
