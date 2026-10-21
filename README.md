@@ -43,6 +43,10 @@ curl -X POST localhost:3000/api/sendText -H 'X-Api-Key: change-me' \
   -d '{"session":"default","chatId":"5511999999999@c.us","text":"hi"}'
 ```
 
+Or open the panel at `localhost:3000/dashboard`, unlock it with the admin
+key, and pair, start and stop sessions, edit their webhooks and manage API
+keys there (`WAHA_DASHBOARD_ENABLED=false` turns it off).
+
 WAHA's environment variables are read under their WAHA names
 (`WAHA_API_KEY`, `WHATSAPP_HOOK_URL`, `WAHA_BASE_URL`, `PORT`, ...). The
 server's own settings:
@@ -74,6 +78,9 @@ the image and rolls the compose project on a host over ssh; it reads
 `./scripts/ci.sh` runs every gate (format, generated code, vet, lint, tests
 with the race detector, coverage document, vulnerabilities); CI runs the same
 script. Tests run against an in-process fake of the core.
+`DASHBOARD_DEV=127.0.0.1:3199 go test ./internal/dashboard -run TestDevServer -v -timeout 0`
+runs the panel on that fake, with URLs that play the phone (scan the QR, log
+out).
 `WAMUX_BIN=/path/to/wamux scripts/live-smoke.sh` checks the server against a
 real wamux daemon with a throwaway store, up to a QR code from WhatsApp (no
 phone pairs).

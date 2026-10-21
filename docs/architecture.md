@@ -69,11 +69,13 @@ internal/
 ├── webhooks/        outbox workers: delivery, retries, HMAC, custom headers
 ├── media/           remote fetch (SSRF guard), ffmpeg conversion, /api/files
 ├── httpapi/         chi router, one file per WAHA tag; auth; error shape
+├── dashboard/       the web panel at /dashboard (Datastar, html/template)
 ├── fakecore/        in-process wamux server on a Unix socket, for tests
 └── testenv/         the whole edge on the fake core, plus the contract checks
 ```
 
 Dependency direction: `httpapi -> {sessions, store, core, waha, media}`;
+`dashboard` reaches the API only through its `http.Handler`;
 `waha` depends on the generated types only. `core` knows nothing of WAHA.
 
 ## Sessions
@@ -142,6 +144,32 @@ WAHA Plus model:
   WAHA, which can return stored keys in full.
 - The key is read from `X-Api-Key`, or from the `x-api-key` query parameter
   (WAHA accepts both; the query form is what `mediaUrl` links carry).
+
+## Panel
+
+`internal/dashboard` serves the panel at `/dashboard`, mounted next to the API
+by `app.Handler`. It is a WAHA client in process: every action calls the
+API's own handler with the browser's key, so the panel has no rules of its
+own and cannot do what the key cannot. Only the admin key opens it (the
+check is `GET /api/keys`).
+
+- **Server-rendered with Datastar** (v1.0.4, vendored in `static/` with IBM
+  Plex, no CDN). `html/template` renders each part; the browser keeps the key
+  in `sessionStorage` and sends it as `X-Api-Key` on every request. Datastar's
+  wire format is written by `sse.go` rather than its Go SDK (which brings
+  compression and JSON-schema libraries); `testdata/sse` holds the SDK's own
+  cases it must match.
+- **One stream per view.** `GET /dashboard/ui` renders the view its signals
+  name (`view`, `sel`, `tab`) and, for sessions, stays open: it follows the
+  event tail for `session.status` and polls the QR shown, patching the list,
+  the detail head and the QR. A webhooks or metadata form being typed in is
+  left alone; only its head follows the status.
+- **Forms round-trip.** Adding or removing a row posts the form and renders it
+  back, so the browser holds no form state. Destructive buttons arm on the
+  first click and act on a second within 3 s.
+- **A dynamic value never lands in a Datastar expression as text.**
+  `html/template` sees `data-on:*` as JavaScript; the template functions in
+  `funcs.go` build expressions with every dynamic part JSON-quoted.
 
 ## Ids
 

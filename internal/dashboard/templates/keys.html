@@ -1,0 +1,73 @@
+{{define "keys"}}<div class="keys">
+<section class="keys-main" aria-label="Keys">
+  <div class="keys-tools" data-signals:_ks="''">
+    <label class="field">{{template "i-search"}}<input aria-label="Filter keys" placeholder="filter" data-bind:_q></label>
+    <select class="in" aria-label="Session" data-bind:_ks>
+      <option value="">all sessions</option>
+      <option value="admin">admin</option>
+      {{range .Sessions}}<option value="{{.}}">{{.}}</option>{{end}}
+    </select>
+  </div>
+  {{template "key-table" .}}
+</section>
+{{template "key-side" .}}
+</div>{{end}}
+
+{{define "key-table"}}<div id="key-table" class="table-box">
+<table>
+  <thead><tr><th scope="col">id</th><th scope="col">scope</th><th scope="col">can</th><th scope="col">key</th><th scope="col"><span class="sr">active, revoke</span></th></tr></thead>
+  <tbody>
+  {{$created := ""}}{{with .Created}}{{$created = .ID}}{{end}}
+  {{range .Keys}}{{$k := .}}
+  <tr class="{{if eq .ID $created}}fresh{{end}}{{if not .IsActive}} inactive{{end}}"
+      data-k="{{.ID}} {{range .Sessions}}{{.}} {{end}}{{if .IsAdmin}}admin{{end}}"
+      data-s="|{{range .Sessions}}{{.}}|{{end}}{{if .IsAdmin}}admin|{{end}}"
+      data-show="(!$_q || el.dataset.k.toLowerCase().includes($_q.toLowerCase())) && (!$_ks || el.dataset.s.includes('|' + $_ks + '|'))">
+    <td class="id">{{.ID}}</td>
+    <td><div class="scopes">{{if .IsAdmin}}<span class="scope admin">admin</span>{{else}}{{range .Sessions}}<span class="scope">{{.}}</span>{{end}}{{end}}</div></td>
+    <td><div class="grants">{{range .Grants}}<span class="{{if .On}}on{{end}}" role="img" aria-label="{{.Label}}{{if not .On}}: no{{end}}" title="{{.Label}}">{{template "grant-icon" .Name}}</span>{{end}}</div></td>
+    <td class="masked">{{.Key}}</td>
+    <td><div class="row-actions">
+      <label class="switch" title="Active"><input type="checkbox" aria-label="Active" {{if .IsActive}}checked{{end}} data-on:change="{{post (path "/keys/" (esc .ID) "/toggle")}}"><span class="track"></span></label>
+      <button type="button" class="ib ghost danger" aria-label="Revoke" title="Revoke" data-class:armed="{{armed (path "revoke-" .ID)}}" data-on:click="{{arm (path "revoke-" .ID) (post (path "/keys/" (esc .ID) "/revoke"))}}">{{template "i-trash"}}</button>
+    </div></td>
+  </tr>
+  {{else}}<tr><td colspan="5" class="muted" style="text-align:center;padding:32px">{{template "i-key"}}</td></tr>{{end}}
+  </tbody>
+</table>
+</div>{{end}}
+
+{{define "key-side"}}<section id="key-side" class="keys-side" aria-label="New key">
+{{with .Created}}
+  <div class="side-title">{{template "i-check"}}<span>{{.ID}}</span></div>
+  <div class="scopes">{{if .IsAdmin}}<span class="scope admin">admin</span>{{else}}{{range .Sessions}}<span class="scope">{{.}}</span>{{end}}{{end}}</div>
+  <div class="reveal">
+    <output aria-label="New API key">{{.Key}}</output>
+    <div class="foot">
+      <span class="hint">{{template "i-eye-off"}}shown once</span>
+      <div class="end"><button type="button" class="btn primary" data-v="{{.Key}}" data-on:click="navigator.clipboard.writeText(el.dataset.v)">{{template "i-copy"}}copy</button></div>
+    </div>
+  </div>
+  <button type="button" class="btn" data-on:click="{{nav "keys" "" ""}}">done</button>
+{{else}}
+<form novalidate style="display:contents" data-on:submit="{{form "/keys"}}" data-signals:_admin="{{if .Form.Admin}}true{{else}}false{{end}}">
+  <div class="side-title">{{template "i-plus"}}<span>new key</span></div>
+  <div>
+    <span class="lbl" id="lbl-scope">scope</span>
+    <div class="seg" role="radiogroup" aria-labelledby="lbl-scope" style="display:flex">
+      <label class="tg" style="flex:1;justify-content:center"><input type="radio" name="scope" value="admin" {{if .Form.Admin}}checked{{end}} data-on:change="$_admin = true">admin</label>
+      <label class="tg" style="flex:1;justify-content:center"><input type="radio" name="scope" value="session" {{if not .Form.Admin}}checked{{end}} data-on:change="$_admin = false">session</label>
+    </div>
+  </div>
+  <fieldset data-show="!$_admin">
+    <legend>sessions</legend>
+    <div class="toggles">{{range .Form.SessionList .Sessions}}<label class="tg"><input type="checkbox" name="s" value="{{.Name}}" {{if .On}}checked{{end}}>{{.Label}}</label>{{else}}<span class="muted">·</span>{{end}}</div>
+  </fieldset>
+  <fieldset data-show="!$_admin">
+    <legend>can</legend>
+    <div class="grid2">{{range .Form.ActionList}}<label class="tg big"><input type="checkbox" name="a" value="{{.Name}}" {{if .On}}checked{{end}}>{{template "grant-icon" .Name}}{{.Label}}</label>{{end}}</div>
+  </fieldset>
+  <button type="submit" class="btn primary" style="margin-top:auto">{{template "i-key"}}create</button>
+</form>
+{{end}}
+</section>{{end}}

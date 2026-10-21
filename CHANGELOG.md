@@ -20,6 +20,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   hashes, so listings show them masked.
 - A session key can cover several sessions: `/api/keys` takes and returns
   `sessions` next to WAHA's `session`.
+- Web panel at `/dashboard`, unlocked with the admin key: pair sessions by QR
+  or phone code with live status, start, stop, restart, log out and delete
+  them, edit their webhooks and metadata and the account's name, about and
+  picture, and create, deactivate and revoke API keys.
+  `WAHA_DASHBOARD_ENABLED=false` turns it off.
 - Webhooks with WAHA's envelope, headers, HMAC-SHA512 signature and retry
   policies, delivered from a durable outbox.
 - Every WAHA operation not implemented yet answers WAHA's 501;

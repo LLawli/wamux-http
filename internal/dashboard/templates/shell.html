@@ -1,0 +1,56 @@
+{{define "shell"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wamux</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/dashboard/static/app.css">
+<script type="module" src="/dashboard/static/datastar.js"></script>
+</head>
+<body data-signals="{_key: sessionStorage.getItem('wamux.key') || '', _err: '', _arm: '', _q: '', _go: 0, view: 'sessions', sel: '', tab: ''}"
+      data-effect="$_go; @get('/dashboard/ui', {headers: {'X-Api-Key': $_key}})">
+<div data-effect="$_key ? sessionStorage.setItem('wamux.key', $_key) : sessionStorage.removeItem('wamux.key')"></div>
+<div id="app"><div class="boot"></div></div>
+<div id="toast"></div>
+</body>
+</html>
+{{end}}
+
+{{define "login"}}<div id="app" class="login">
+<form data-signals:_login="''" data-on:submit="$_err = ''; $_key = $_login.trim(); $_login = ''">
+  <div class="mark">
+    <span class="lock">{{template "i-lock-lg"}}</span>
+    <h1>wamux<span>/http</span></h1>
+  </div>
+  <div>
+    <label class="lbl" for="admin-key">admin key</label>
+    <div class="row2" data-signals:_show="false">
+      <div class="field" data-class:bad="$_err">
+        {{template "i-key"}}
+        <input id="admin-key" data-bind:_login data-attr:type="$_show ? 'text' : 'password'" type="password" autocomplete="current-password" autofocus spellcheck="false">
+        <button type="button" class="ib ghost" aria-label="Show key" title="Show key" data-on:click="$_show = !$_show">{{template "i-eye"}}</button>
+      </div>
+      <button type="submit" class="ib go" aria-label="Unlock" title="Unlock">{{template "i-arrow"}}</button>
+    </div>
+    <span class="err" role="alert" data-show="$_err" data-text="'401 · ' + $_err"></span>
+  </div>
+</form>
+</div>{{end}}
+
+{{define "toast"}}<div id="toast"><div class="toast {{.Kind}}" id="{{.ID}}" role="status">{{if eq .Kind "ok"}}{{template "i-check"}}{{else}}{{template "i-alert"}}{{end}}<span>{{.Msg}}</span></div></div>{{end}}
+
+{{define "app"}}<div id="app" class="app">
+<header class="bar">
+  <span class="brand">wamux<span>/http</span></span>
+  <nav class="nav" aria-label="Main">
+    <button type="button" {{if eq .State.View "sessions"}}aria-current="page"{{end}} data-on:click="{{nav "sessions" "" ""}}">{{template "i-chat"}}sessions</button>
+    <button type="button" {{if eq .State.View "keys"}}aria-current="page"{{end}} data-on:click="{{nav "keys" "" ""}}">{{template "i-key"}}keys</button>
+  </nav>
+  <div class="bar-end">
+    <span class="core {{if .Core.Up}}ok{{else}}bad{{end}}" title="core"><span class="dot"></span>core {{if .Core.Version}}v{{.Core.Version}}{{else}}down{{end}}</span>
+    <button type="button" class="ib ghost" aria-label="Lock" title="Lock" data-on:click="$_key = ''">{{template "i-lock"}}</button>
+  </div>
+</header>
+{{if eq .State.View "keys"}}{{template "keys" .Keys}}{{else}}<div class="split">{{template "list" .}}{{template "detail" .}}</div>{{end}}
+</div>{{end}}

@@ -82,6 +82,7 @@ func (e *Env) boot(worker string) {
 		LeaseTTL:        3 * time.Second,
 		LogLevel:        "error",
 		MaxRequestBytes: 64 << 20,
+		Dashboard:       true,
 	}
 	if e.opts.Config != nil {
 		e.opts.Config(cfg)
@@ -100,7 +101,7 @@ func (e *Env) boot(worker string) {
 	a.Server.WaitExists, a.Server.WaitStatus = 300*time.Millisecond, 2*time.Second
 	a.Webhooks.Poll = 20 * time.Millisecond
 	a.Tail.Every = 20 * time.Millisecond
-	srv := httptest.NewServer(a.Server.Router())
+	srv := httptest.NewServer(a.Handler())
 	cfg.BaseURL = srv.URL
 	done := a.Start(ctx)
 	e.App, e.HTTP, e.URL = a, srv, srv.URL

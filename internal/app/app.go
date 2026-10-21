@@ -5,11 +5,15 @@ package app
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"sync"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/LLawli/wamux-http/internal/config"
 	"github.com/LLawli/wamux-http/internal/core"
+	"github.com/LLawli/wamux-http/internal/dashboard"
 	"github.com/LLawli/wamux-http/internal/events"
 	"github.com/LLawli/wamux-http/internal/httpapi"
 	"github.com/LLawli/wamux-http/internal/ingest"
@@ -47,6 +51,19 @@ func Wire(cfg *config.Config, st store.Store, cc *core.Client, log *slog.Logger)
 			Log: log, Started: time.Now(),
 		},
 	}
+}
+
+// Handler is everything the edge serves over HTTP: the WAHA API and, unless
+// disabled, the panel at /dashboard, which works through that same API.
+func (a *App) Handler() http.Handler {
+	api := a.Server.Router()
+	if !a.Config.Dashboard {
+		return api
+	}
+	r := chi.NewRouter()
+	r.Mount(dashboard.Base, dashboard.New(api, a.Tail, a.Server.Log).Routes())
+	r.Handle("/*", api)
+	return r
 }
 
 // Start runs the background loops until ctx ends. The returned channel is

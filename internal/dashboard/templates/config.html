@@ -1,0 +1,93 @@
+{{define "webhooks"}}{{$name := esc .Session.Name}}<div id="detail-body">
+<form novalidate class="stack" data-on:submit="{{form (path "/sessions/" $name "/webhooks?op=save")}}">
+  {{template "hooks" (dict "Base" (path "/sessions/" $name "/webhooks") "Hooks" .Webhooks)}}
+  <div class="foot">
+    <button type="button" class="ib dashed" aria-label="Add webhook" title="Add webhook" data-on:click="{{form (path "/sessions/" $name "/webhooks?op=add")}}">{{template "i-plus"}}</button>
+    <div class="end"><button type="submit" class="btn primary">{{template "i-check"}}save</button></div>
+  </div>
+</form>
+</div>{{end}}
+
+{{define "hooks"}}{{$base := .Base}}{{$n := len .Hooks}}<input type="hidden" name="wn" value="{{$n}}">
+{{range $i, $w := .Hooks}}
+<details class="hook" {{if or $w.Open (eq $n 1)}}open{{end}} data-on:toggle="el.querySelector('input[name$=_open]').value = el.open ? '1' : ''">
+  <input type="hidden" name="w{{$i}}_open" value="{{if or $w.Open (eq $n 1)}}1{{end}}">
+  <summary><span class="url">{{if $w.URL}}{{$w.URL}}{{else}}<span class="muted">url</span>{{end}}</span><span class="ev">{{$w.Summary}}</span>{{template "i-chevron"}}</summary>
+  <div class="hook-body">
+    <div class="hook-url">
+      <input class="in" name="w{{$i}}_url" value="{{$w.URL}}" type="url" placeholder="https://" aria-label="Webhook URL" autocomplete="off">
+      <button type="button" class="ib ghost danger" aria-label="Remove webhook" title="Remove webhook" data-on:click="{{form (printf "%s?op=del&i=%d" $base $i)}}">{{template "i-trash"}}</button>
+    </div>
+    <fieldset>
+      <legend>events</legend>
+      <div class="toggles">{{range $w.EventList}}<label class="tg"><input type="checkbox" name="w{{$i}}_ev" value="{{.Name}}" {{if .On}}checked{{end}}>{{.Label}}</label>{{end}}</div>
+    </fieldset>
+    <div class="knobs">
+      <div><span class="lbl" id="w{{$i}}-att">attempts</span>{{template "stepper" (dict "Name" (printf "w%d_attempts" $i) "Value" $w.Attempts "Default" attemptsDefault "Label" (printf "w%d-att" $i))}}</div>
+      <div><span class="lbl" id="w{{$i}}-del">delay, s</span>{{template "stepper" (dict "Name" (printf "w%d_delay" $i) "Value" $w.Delay "Default" delayDefault "Label" (printf "w%d-del" $i))}}</div>
+      <div><span class="lbl" id="w{{$i}}-pol">policy</span>
+        <div class="seg" role="radiogroup" aria-labelledby="w{{$i}}-pol">{{range $w.Policies}}<label class="tg"><input type="radio" name="w{{$i}}_policy" value="{{.Name}}" {{if .On}}checked{{end}}>{{.Label}}</label>{{end}}</div>
+      </div>
+    </div>
+    <div>
+      <label class="lbl" for="w{{$i}}-hmac">hmac key</label>
+      <div class="secret">
+        <input class="in" id="w{{$i}}-hmac" name="w{{$i}}_hmac" type="password" value="{{$w.HMAC}}" autocomplete="off" spellcheck="false">
+        <button type="button" class="ib" aria-label="Generate key" title="Generate key" data-on:click="el.parentElement.querySelector('input').value = Array.from(crypto.getRandomValues(new Uint8Array(24)), b => b.toString(16).padStart(2, '0')).join('')">{{template "i-dice"}}</button>
+        <button type="button" class="ib" aria-label="Show key" title="Show key" data-on:click="(i => i.type = i.type === 'password' ? 'text' : 'password')(el.parentElement.querySelector('input'))">{{template "i-eye"}}</button>
+      </div>
+    </div>
+    <fieldset>
+      <legend>headers</legend>
+      <div class="pairs">{{range $j, $h := $w.Headers}}
+        <input class="in" name="w{{$i}}_hn" value="{{$h.K}}" aria-label="Header name" autocomplete="off">
+        <input class="in" name="w{{$i}}_hv" value="{{$h.V}}" aria-label="Header value" autocomplete="off">
+        <button type="button" class="ib ghost" aria-label="Remove header" title="Remove header" data-on:click="{{form (printf "%s?op=delh&i=%d&j=%d" $base $i $j)}}">{{template "i-x"}}</button>{{end}}
+      </div>
+      <button type="button" class="ib dashed" style="margin-top:8px" aria-label="Add header" title="Add header" data-on:click="{{form (printf "%s?op=addh&i=%d" $base $i)}}">{{template "i-plus"}}</button>
+    </fieldset>
+  </div>
+</details>
+{{end}}{{end}}
+
+{{define "stepper"}}<div class="stepper" role="group" aria-labelledby="{{.Label}}">
+  <button type="button" aria-label="Less" data-on:click="(i => i.value = Math.max(0, (+i.value || +i.placeholder) - 1))(el.parentElement.querySelector('input'))">−</button>
+  <input type="number" min="0" step="1" name="{{.Name}}" value="{{.Value}}" placeholder="{{.Default}}" aria-labelledby="{{.Label}}">
+  <button type="button" aria-label="More" data-on:click="(i => i.value = (+i.value || +i.placeholder) + 1)(el.parentElement.querySelector('input'))">+</button>
+</div>{{end}}
+
+{{define "metadata"}}{{$name := esc .Session.Name}}<div id="detail-body">
+<form novalidate class="stack" data-on:submit="{{form (path "/sessions/" $name "/metadata?op=save")}}">
+  {{template "pairs" (dict "Base" (path "/sessions/" $name "/metadata") "Pairs" .Metadata)}}
+  <div class="foot"><div class="end"><button type="submit" class="btn primary">{{template "i-check"}}save</button></div></div>
+</form>
+</div>{{end}}
+
+{{define "pairs"}}{{$base := .Base}}<fieldset>
+  <legend>metadata</legend>
+  <div class="pairs">{{range $i, $p := .Pairs}}
+    <input class="in" name="mk" value="{{$p.K}}" aria-label="Key" autocomplete="off">
+    <input class="in" name="mv" value="{{$p.V}}" aria-label="Value" autocomplete="off">
+    <button type="button" class="ib ghost" aria-label="Remove entry" title="Remove entry" data-on:click="{{form (printf "%s?op=delm&i=%d" $base $i)}}">{{template "i-x"}}</button>{{end}}
+  </div>
+  <button type="button" class="ib dashed" style="margin-top:8px" aria-label="Add entry" title="Add entry" data-on:click="{{form (printf "%s?op=addm" $base)}}">{{template "i-plus"}}</button>
+</fieldset>{{end}}
+
+{{define "detail-new"}}<section id="detail" class="detail" aria-label="New session">{{template "new-form" .}}</section>{{end}}
+
+{{define "new-form"}}<form novalidate class="stack newform" data-on:submit="{{form "/sessions?op=create"}}" style="gap:28px">
+  <div class="name"><label class="lbl" for="new-name">name</label><input class="in" id="new-name" name="name" value="{{.Name}}" placeholder="session_…" pattern="[a-zA-Z0-9_\-]{0,54}" autocomplete="off" autofocus></div>
+  {{template "pairs" (dict "Base" "/sessions" "Pairs" .Metadata)}}
+  <fieldset>
+    <legend>webhooks</legend>
+    <div class="stack">{{template "hooks" (dict "Base" "/sessions" "Hooks" .Webhooks)}}</div>
+    <button type="button" class="ib dashed" style="margin-top:8px" aria-label="Add webhook" title="Add webhook" data-on:click="{{form "/sessions?op=add"}}">{{template "i-link"}}</button>
+  </fieldset>
+  <div class="foot">
+    <label class="switch"><input type="checkbox" name="start" value="1" {{if .Start}}checked{{end}}><span class="track"></span>{{template "i-play"}}start</label>
+    <div class="end">
+      <button type="button" class="btn" data-on:click="{{nav "sessions" "" ""}}">cancel</button>
+      <button type="submit" class="btn primary">{{template "i-plus"}}create</button>
+    </div>
+  </div>
+</form>{{end}}

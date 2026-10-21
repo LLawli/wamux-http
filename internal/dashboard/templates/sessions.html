@@ -1,0 +1,87 @@
+{{define "list"}}<section id="list" class="list" aria-label="Sessions">
+  <div class="list-tools">
+    <label class="field">{{template "i-search"}}<input aria-label="Filter sessions" placeholder="filter" data-bind:_q></label>
+    <button type="button" class="ib go" aria-label="New session" title="New session" data-on:click="{{nav "sessions" "+new" ""}}">{{template "i-plus"}}</button>
+  </div>
+  {{if eq .State.Sel "+new"}}<div class="row sel new"><span class="dot"></span><span class="name muted">new</span></div>{{end}}
+  {{range .Sessions}}
+  <button type="button" class="row {{.Tone}}{{if .Selected}} sel{{end}}" data-k="{{.Search}}" data-show="!$_q || el.dataset.k.includes($_q.toLowerCase())" data-on:click="{{nav "sessions" .Name ""}}">
+    <span class="dot"></span>
+    <span><span class="name">{{.Name}}</span><span class="sub">{{if .Paired}}{{if .Me.PushName}}{{.Me.PushName}} · {{end}}{{.Me.Phone}}{{else}}not paired{{end}}</span></span>
+    <span class="st">{{.Status}}</span>
+  </button>
+  {{else}}{{if ne .State.Sel "+new"}}<div class="empty">{{template "i-chat"}}</div>{{end}}{{end}}
+</section>{{end}}
+
+{{define "detail"}}<section id="detail" class="detail" aria-label="Session">
+{{with .Detail}}{{if .New}}{{template "new-form" .}}{{else}}{{template "detail-head" $}}{{template "detail-body" .}}{{end}}{{end}}
+</section>{{end}}
+
+{{define "detail-head"}}{{with .Detail}}{{$s := .Session}}<div id="detail-head" class="detail-head">
+  <div class="title {{$s.Tone}}">
+    <h1>{{$s.Name}}</h1>
+    <span class="chip">{{$s.Status}}</span>
+    <div class="actions" role="toolbar" aria-label="Session actions">
+      {{if $s.Running}}<button type="button" class="ib" aria-label="Stop" title="Stop" data-on:click="{{post (path "/sessions/" (esc $s.Name) "/stop")}}">{{template "i-stop"}}</button>
+      {{else}}<button type="button" class="ib go" aria-label="Start" title="Start" data-on:click="{{post (path "/sessions/" (esc $s.Name) "/start")}}">{{template "i-play"}}</button>{{end}}
+      <button type="button" class="ib" aria-label="Restart" title="Restart" data-on:click="{{post (path "/sessions/" (esc $s.Name) "/restart")}}">{{template "i-restart"}}</button>
+      {{if $s.Paired}}<button type="button" class="ib" aria-label="Log out" title="Log out" data-class:armed="{{armed (path "logout-" $s.Name)}}" data-on:click="{{arm (path "logout-" $s.Name) (post (path "/sessions/" (esc $s.Name) "/logout"))}}">{{template "i-logout"}}</button>{{end}}
+      <button type="button" class="ib danger" aria-label="Delete" title="Delete" data-class:armed="{{armed (path "delete-" $s.Name)}}" data-on:click="{{arm (path "delete-" $s.Name) (post (path "/sessions/" (esc $s.Name) "/delete"))}}">{{template "i-trash"}}</button>
+    </div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Session sections">
+    {{$tab := .Tab}}{{range $s.Tabs}}<button type="button" role="tab" aria-selected="{{if eq . $tab}}true{{else}}false{{end}}" data-on:click="{{nav "sessions" $s.Name .}}">{{.}}</button>{{end}}
+  </div>
+</div>{{end}}{{end}}
+
+{{define "detail-body"}}{{if eq .Tab "pair"}}{{template "pair" .}}{{else if eq .Tab "account"}}{{template "account" .}}{{else if eq .Tab "webhooks"}}{{template "webhooks" .}}{{else}}{{template "metadata" .}}{{end}}{{end}}
+
+{{define "pair"}}{{$s := .Session}}<div id="detail-body" class="pair">
+{{if eq $s.Status "SCAN_QR_CODE"}}
+  <div class="qr-box">{{template "qr" .QR}}</div>
+  <span class="or" aria-hidden="true">or</span>
+  <form novalidate class="code-form" data-on:submit="{{form (path "/sessions/" (esc $s.Name) "/code")}}">
+    <label class="lbl" for="pair-phone" style="margin:0">phone</label>
+    <div class="row2">
+      <input class="in" id="pair-phone" name="phone" type="tel" inputmode="tel" placeholder="+55 61 9 0000-0000" autocomplete="off">
+      <button type="submit" class="ib go" aria-label="Get code" title="Get code">{{template "i-arrow"}}</button>
+    </div>
+    {{template "pair-code" .}}
+  </form>
+{{else if eq $s.Status "STARTING"}}
+  <div class="state">{{template "i-loader"}}</div>
+{{else}}
+  <div class="state"><button type="button" class="ib go" aria-label="Start" title="Start" data-on:click="{{post (path "/sessions/" (esc $s.Name) "/start")}}">{{template "i-play"}}</button></div>
+{{end}}
+</div>{{end}}
+
+{{define "qr"}}<div id="qr">{{if .}}<img src="{{.}}" alt="QR code" width="248" height="248"><div class="qr-life"><i></i></div>{{else}}<div class="qr-wait">{{template "i-loader"}}</div>{{end}}</div>{{end}}
+
+{{define "pair-code"}}<div id="pair-code">{{if .Code}}
+  <div class="code">
+    <output aria-label="Pairing code">{{range .CodeParts}}<span>{{.}}</span>{{end}}</output>
+    <button type="button" class="ib go" aria-label="Copy code" title="Copy code" data-on:click="navigator.clipboard.writeText(el.closest('.code').querySelector('output').textContent.replace(/\s/g, ''))">{{template "i-copy"}}</button>
+  </div>
+  <div class="hint">{{template "i-clock"}}waiting for phone</div>
+{{else if .CodeErr}}<div class="hint bad">{{template "i-alert"}}{{.CodeErr}}</div>{{end}}</div>{{end}}
+
+{{define "account"}}{{$s := .Session}}<div id="detail-body" class="account">
+  <form class="avatar" enctype="multipart/form-data">
+    {{if and .Profile .Profile.Picture}}<img class="pic" src="{{.Profile.Picture}}" alt="Profile picture">{{else}}<span class="pic" role="img" aria-label="Profile picture">{{initials (or (and .Profile .Profile.Name) $s.Me.PushName $s.Name)}}</span>{{end}}
+    {{if eq $s.Status "WORKING"}}<label title="Change picture" aria-label="Change picture">{{template "i-camera"}}<input type="file" name="picture" accept="image/jpeg,image/png" data-on:change="{{form (path "/sessions/" (esc $s.Name) "/picture")}}"></label>{{end}}
+  </form>
+  <form novalidate class="form" data-on:submit="{{form (path "/sessions/" (esc $s.Name) "/account")}}">
+    <fieldset {{if ne $s.Status "WORKING"}}disabled{{end}} style="display:flex;flex-direction:column;gap:20px">
+      <div><label class="lbl" for="acc-name">name</label><input class="in" id="acc-name" name="name" value="{{if .Profile}}{{.Profile.Name}}{{else}}{{$s.Me.PushName}}{{end}}" autocomplete="off"></div>
+      <div><label class="lbl" for="acc-about">about</label><input class="in" id="acc-about" name="about" placeholder="·" autocomplete="off"></div>
+    </fieldset>
+    <dl class="ids">
+      {{if $s.Me.ID}}<dt>phone</dt><dd>{{$s.Me.ID}}</dd><dd class="copy">{{template "copy" $s.Me.ID}}</dd>{{end}}
+      {{if $s.Me.LID}}<dt>lid</dt><dd>{{$s.Me.LID}}</dd><dd class="copy">{{template "copy" $s.Me.LID}}</dd>{{end}}
+      {{if $s.Me.PushName}}<dt>push</dt><dd>{{$s.Me.PushName}}</dd><dd class="copy">{{template "copy" $s.Me.PushName}}</dd>{{end}}
+    </dl>
+    {{if eq $s.Status "WORKING"}}<div class="foot"><button type="submit" class="btn primary">{{template "i-check"}}save</button></div>{{end}}
+  </form>
+</div>{{end}}
+
+{{define "copy"}}<button type="button" class="ib ghost" aria-label="Copy" title="Copy" data-v="{{.}}" data-on:click="navigator.clipboard.writeText(el.dataset.v)">{{template "i-copy"}}</button>{{end}}

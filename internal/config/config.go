@@ -53,6 +53,7 @@ type Config struct {
 	StartSessions   []string
 	HTTPStrictMode  bool
 	MaxRequestBytes int64
+	Dashboard       bool // WAHA_DASHBOARD_ENABLED: serve the panel at /dashboard
 }
 
 // GlobalWebhook is WHATSAPP_HOOK_*: a webhook attached to every session.
@@ -148,6 +149,7 @@ func load(getenv func(string) string) (*Config, error) {
 	}
 	c.FilesLifetime = time.Duration(lifetime) * time.Second
 	c.DownloadMedia = env("WHATSAPP_DOWNLOAD_MEDIA") == "" || truthy(env("WHATSAPP_DOWNLOAD_MEDIA"))
+	c.Dashboard = env("WAHA_DASHBOARD_ENABLED") == "" || truthy(env("WAHA_DASHBOARD_ENABLED"))
 	c.MediaMimetypes = list(env("WHATSAPP_FILES_MIMETYPES"), ",")
 
 	c.IgnoreStatus = truthy(env("WAHA_SESSION_CONFIG_IGNORE_STATUS"))

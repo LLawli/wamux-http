@@ -56,7 +56,7 @@ func run() error {
 	a.Server.Shutdown = stop
 	done := a.Start(ctx)
 
-	srv := &http.Server{Addr: cfg.Listen, Handler: a.Server.Router(), ReadHeaderTimeout: 10 * time.Second}
+	srv := &http.Server{Addr: cfg.Listen, Handler: a.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
 	log.Info("listening", "addr", cfg.Listen, "core", cfg.CoreSocket, "worker", cfg.WorkerID)

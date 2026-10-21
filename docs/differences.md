@@ -133,6 +133,16 @@ name is what the phone synced or the push name last seen.
 - Quoted media in `replyTo` is never downloaded (`media: null`).
 - The LID list holds only mappings that have both sides.
 
+## Dashboard
+
+WAHA's dashboard asks for a username and password
+(`WAHA_DASHBOARD_USERNAME`, `WAHA_DASHBOARD_PASSWORD`) and then for an API
+key. This one asks only for the admin key, kept in the browser tab's
+`sessionStorage`; the username and password variables are not read.
+`WAHA_DASHBOARD_ENABLED=false` still turns it off. It is a different panel,
+not a copy of WAHA's: it covers sessions, pairing, webhooks, metadata, the
+account's profile and API keys.
+
 ## Not available
 
 Operations the core has no mechanism for answer WAHA's 501, as GOWS itself
