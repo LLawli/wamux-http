@@ -9,7 +9,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 
 - WAHA-compatible HTTP server on top of the wamux core (contract pinned to
-  wamux v0.2.0 and WAHA 2026.8.2).
+  wamux v0.2.1 and WAHA 2026.8.2).
 - Sessions: create, list, get, update, delete, start, stop, restart, logout,
   `me`, and the deprecated body-named forms. A session is a wamux account;
   its desired state survives restarts and it reconnects after a drop, except
@@ -39,6 +39,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Client URLs are fetched behind an SSRF guard
   (`WAMUX_HTTP_MEDIA_ALLOW_PRIVATE`, `WAMUX_HTTP_MEDIA_MAX_BYTES`,
   `WAMUX_HTTP_MEDIA_FETCH_TIMEOUT`).
-- Contacts and LIDs, groups (create, list, participants, admins, invites,
-  join requests, security settings, picture), profile (name, picture) and
-  channels (list, info, message preview).
+- Contacts and LIDs, block and unblock, groups (create, list, participants,
+  admins, invites, join requests, security settings, picture), profile
+  (name, about, picture), channels (list, info, message preview, create,
+  follow, unfollow, mute, unmute) and call rejection. Block, about, the group
+  approval and add modes, the channel writes and call rejection need wamux
+  v0.2.1; on v0.2.0 they answer 501.

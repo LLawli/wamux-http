@@ -15,8 +15,7 @@ import (
 // Groups answer as GOWS does: a group is whatsmeow's GroupInfo
 // (waha.GroupInfo), participant changes are whatsmeow's per-participant list.
 //
-// No core RPC, so 501: DELETE /groups/{id}, PUT membership-approval and PUT
-// member-add-mode.
+// DELETE /groups/{id} has no core RPC and answers 501, as GOWS does.
 func (s *Server) registerGroups(r chi.Router) {
 	read := Route{Action: ActRead, From: FromPath, Working: true}
 	write := Route{Action: ActSend, From: FromPath, Working: true}
@@ -222,8 +221,8 @@ func (s *Server) registerGroups(r chi.Router) {
 		return err
 	}))
 
-	// Security settings: the GETs read the metadata, the PUTs that have an
-	// RPC toggle it and answer an empty 200, as GOWS does.
+	// Security settings: the GETs read the metadata, the PUTs write it and
+	// answer as GOWS does.
 	setting := func(path, field string, get func(m *pb.GroupMetadata) bool) {
 		s.route(r, "GET", base+"/{id}/settings/security/"+path, read, func(c *Ctx) error {
 			m, err := s.groupMetadata(c)
@@ -264,7 +263,44 @@ func (s *Server) registerGroups(r chi.Router) {
 	setting("member-add-mode", "membersCanAddNewMember", func(m *pb.GroupMetadata) bool {
 		return m.GetMemberAddMode() == pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_ALL_MEMBER_ADD
 	})
+	s.route(r, "PUT", base+"/{id}/settings/security/member-add-mode", write, func(c *Ctx) error {
+		var req struct {
+			MembersCanAddNewMember bool `json:"membersCanAddNewMember"`
+		}
+		if err := c.Bind(&req); err != nil {
+			return err
+		}
+		ref, err := groupRef(c)
+		if err != nil {
+			return err
+		}
+		mode := pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_ADMIN_ADD
+		if req.MembersCanAddNewMember {
+			mode = pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_ALL_MEMBER_ADD
+		}
+		if _, err := s.Core.Groups.SetGroupMemberAddMode(c.R.Context(), &pb.GroupMemberAddModeRequest{Account: ref.GetAccount(), Group: ref.GetGroup(), Mode: mode}); err != nil {
+			return err
+		}
+		return c.Empty(http.StatusOK)
+	})
 	setting("membership-approval", "newMembersApprovalRequired", (*pb.GroupMetadata).GetMembershipApproval)
+	// GOWS answers this one with true, not empty.
+	s.route(r, "PUT", base+"/{id}/settings/security/membership-approval", write, func(c *Ctx) error {
+		var req struct {
+			NewMembersApprovalRequired bool `json:"newMembersApprovalRequired"`
+		}
+		if err := c.Bind(&req); err != nil {
+			return err
+		}
+		ref, err := groupRef(c)
+		if err != nil {
+			return err
+		}
+		if _, err := s.Core.Groups.SetGroupMembershipApproval(c.R.Context(), &pb.GroupToggleRequest{Account: ref.GetAccount(), Group: ref.GetGroup(), Enabled: req.NewMembersApprovalRequired}); err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, true)
+	})
 
 	s.route(r, "GET", base+"/{id}/participants/join-requests", read, func(c *Ctx) error {
 		ref, err := groupRef(c)

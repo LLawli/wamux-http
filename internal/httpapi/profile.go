@@ -3,14 +3,12 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"github.com/go-chi/chi/v5"
 
 	pb "github.com/LLawli/wamux-http/internal/core/wamuxv1"
 )
 
-// PUT /profile/status (the about text) has no core RPC and answers 501.
 func (s *Server) registerProfile(r chi.Router) {
 	read := Route{Action: ActRead, From: FromPath, Working: true}
 	write := Route{Action: ActSend, From: FromPath, Working: true}
@@ -48,26 +46,30 @@ func (s *Server) registerProfile(r chi.Router) {
 	})
 
 	s.route(r, "PUT", "/api/{session}/profile/name", write, func(c *Ctx) error {
-		var body map[string]any
-		if err := c.Bind(&body); err != nil {
+		v, err := requiredStrings(c, "name")
+		if err != nil {
 			return err
-		}
-		name, isString := body["name"].(string)
-		var msgs []string
-		if strings.TrimSpace(name) == "" {
-			msgs = append(msgs, "name should not be empty")
-		}
-		if !isString {
-			msgs = append(msgs, "name must be a string")
-		}
-		if len(msgs) > 0 {
-			return ErrBadRequest(msgs)
 		}
 		acc, err := c.Account()
 		if err != nil {
 			return err
 		}
-		if _, err := s.Core.Contacts.SetPushName(c.R.Context(), &pb.SetPushNameRequest{Account: acc, PushName: name}); err != nil {
+		if _, err := s.Core.Contacts.SetPushName(c.R.Context(), &pb.SetPushNameRequest{Account: acc, PushName: v["name"]}); err != nil {
+			return err
+		}
+		return c.JSON(http.StatusOK, map[string]bool{"success": true})
+	})
+
+	s.route(r, "PUT", "/api/{session}/profile/status", write, func(c *Ctx) error {
+		v, err := requiredStrings(c, "status")
+		if err != nil {
+			return err
+		}
+		acc, err := c.Account()
+		if err != nil {
+			return err
+		}
+		if _, err := s.Core.Contacts.SetAbout(c.R.Context(), &pb.SetAboutRequest{Account: acc, About: v["status"]}); err != nil {
 			return err
 		}
 		return c.JSON(http.StatusOK, map[string]bool{"success": true})
@@ -98,4 +100,31 @@ func (s *Server) registerProfile(r chi.Router) {
 		}
 		return c.JSON(http.StatusOK, map[string]bool{"success": true})
 	})
+}
+
+// requiredStrings reads the body's fields as WAHA's DTOs check them
+// (@IsString, @IsNotEmpty, so "   " passes and 5 is only not a string): a
+// 400 listing every field that is missing, empty or not a string.
+func requiredStrings(c *Ctx, fields ...string) (map[string]string, error) {
+	var body map[string]any
+	if err := c.Bind(&body); err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	var msgs []string
+	for _, f := range fields {
+		raw, present := body[f]
+		v, isString := raw.(string)
+		if !present || raw == nil || (isString && v == "") {
+			msgs = append(msgs, f+" should not be empty")
+		}
+		if !isString {
+			msgs = append(msgs, f+" must be a string")
+		}
+		out[f] = v
+	}
+	if len(msgs) > 0 {
+		return nil, ErrBadRequest(msgs)
+	}
+	return out, nil
 }

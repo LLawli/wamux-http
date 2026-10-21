@@ -2,6 +2,8 @@ package fakecore
 
 import (
 	"context"
+	"fmt"
+	"sync"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,6 +19,11 @@ type Newsletters struct {
 	Channels []*pb.Newsletter
 	// Messages are each channel's history rows, newest first, by jid.
 	Messages map[string][]*pb.NewsletterMessage
+
+	mu     sync.Mutex
+	muted  map[string]bool
+	follow map[string]bool
+	made   int
 }
 
 func (n *Newsletters) ListSubscribedNewsletters(_ context.Context, r *pb.AccountRef) (*pb.NewsletterList, error) {
@@ -46,4 +53,72 @@ func (n *Newsletters) GetNewsletterMessages(_ context.Context, r *pb.GetNewslett
 		rows = rows[:r.GetCount()]
 	}
 	return &pb.NewsletterMessageList{Messages: rows}, nil
+}
+
+// Following reports whether the account follows jid through FollowNewsletter
+// (true) or left it through UnfollowNewsletter (false); ok is false when
+// neither ran.
+func (n *Newsletters) Following(jid string) (following, ok bool) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	following, ok = n.follow[jid]
+	return following, ok
+}
+
+// Muted reports whether jid was last muted.
+func (n *Newsletters) Muted(jid string) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.muted[jid]
+}
+
+func (n *Newsletters) setFollow(r *pb.JidRequest, on bool) (*pb.Empty, error) {
+	n.log(r)
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.follow == nil {
+		n.follow = map[string]bool{}
+	}
+	n.follow[r.GetJid().GetValue()] = on
+	return &pb.Empty{}, nil
+}
+
+func (n *Newsletters) FollowNewsletter(_ context.Context, r *pb.JidRequest) (*pb.Empty, error) {
+	return n.setFollow(r, true)
+}
+
+func (n *Newsletters) UnfollowNewsletter(_ context.Context, r *pb.JidRequest) (*pb.Empty, error) {
+	return n.setFollow(r, false)
+}
+
+func (n *Newsletters) MuteNewsletter(_ context.Context, r *pb.NewsletterMuteRequest) (*pb.Empty, error) {
+	n.log(r)
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.muted == nil {
+		n.muted = map[string]bool{}
+	}
+	n.muted[r.GetJid().GetValue()] = r.GetMuted()
+	return &pb.Empty{}, nil
+}
+
+// CreateNewsletter refuses an empty name, as the core does, and answers a
+// new channel this account owns.
+func (n *Newsletters) CreateNewsletter(_ context.Context, r *pb.CreateNewsletterRequest) (*pb.Newsletter, error) {
+	n.log(r)
+	if r.GetName() == "" {
+		return nil, status.Error(codes.InvalidArgument, "a channel needs a name")
+	}
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.made++
+	ch := &pb.Newsletter{
+		Jid:          &pb.Jid{Value: fmt.Sprintf("12036399999999%04d@newsletter", n.made)},
+		Name:         r.GetName(),
+		Description:  r.GetDescription(),
+		Role:         pb.NewsletterRole_NEWSLETTER_ROLE_OWNER,
+		Verification: pb.NewsletterVerification_NEWSLETTER_VERIFICATION_UNVERIFIED,
+	}
+	n.Channels = append(n.Channels, ch)
+	return ch, nil
 }

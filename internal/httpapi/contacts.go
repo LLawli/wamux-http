@@ -24,8 +24,7 @@ const contactsPage = 1000
 // defaultLidsLimit is WAHA's LidsListQueryParams default.
 const defaultLidsLimit = 100
 
-// Block, unblock and `PUT /api/{session}/contacts/{chatId}` have no core RPC
-// and answer 501.
+// `PUT /api/{session}/contacts/{chatId}` has no core RPC and answers 501.
 func (s *Server) registerContacts(r chi.Router) {
 	read := Route{Action: ActRead, From: FromQuery, Working: true}
 
@@ -110,6 +109,38 @@ func (s *Server) registerContacts(r chi.Router) {
 	}
 	s.route(r, "GET", "/api/contacts/check-exists", read, checkNumber)
 	s.route(r, "GET", "/api/checkNumberStatus", read, checkNumber)
+
+	// Block and unblock answer an empty 201, as WEBJS does (GOWS answers 501).
+	block := func(rpc func(c *Ctx, req *pb.JidRequest) error) func(c *Ctx) error {
+		return func(c *Ctx) error {
+			var body struct {
+				ContactID string `json:"contactId"`
+			}
+			if err := c.Bind(&body); err != nil {
+				return err
+			}
+			if body.ContactID == "" {
+				return ErrBadRequest([]string{"contactId must be a string"})
+			}
+			acc, jid, err := s.dirAccountJID(c, body.ContactID)
+			if err != nil {
+				return err
+			}
+			if err := rpc(c, &pb.JidRequest{Account: acc, Jid: jid}); err != nil {
+				return err
+			}
+			return c.Empty(http.StatusCreated)
+		}
+	}
+	send := Route{Action: ActSend, From: FromBody, Working: true}
+	s.route(r, "POST", "/api/contacts/block", send, block(func(c *Ctx, req *pb.JidRequest) error {
+		_, err := s.Core.Contacts.BlockContact(c.R.Context(), req)
+		return err
+	}))
+	s.route(r, "POST", "/api/contacts/unblock", send, block(func(c *Ctx, req *pb.JidRequest) error {
+		_, err := s.Core.Contacts.UnblockContact(c.R.Context(), req)
+		return err
+	}))
 
 	lids := Route{Action: ActRead, From: FromPath, Working: true}
 	s.route(r, "GET", "/api/{session}/lids", lids, func(c *Ctx) error {

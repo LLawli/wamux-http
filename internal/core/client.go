@@ -28,6 +28,7 @@ type Client struct {
 	Groups      pb.GroupServiceClient
 	Media       pb.MediaServiceClient
 	Newsletters pb.NewsletterServiceClient
+	Calls       pb.CallServiceClient
 	Admin       pb.AdminServiceClient
 }
 
@@ -52,6 +53,7 @@ func Dial(socketPath string) (*Client, error) {
 		Groups:      pb.NewGroupServiceClient(conn),
 		Media:       pb.NewMediaServiceClient(conn),
 		Newsletters: pb.NewNewsletterServiceClient(conn),
+		Calls:       pb.NewCallServiceClient(conn),
 		Admin:       pb.NewAdminServiceClient(conn),
 	}, nil
 }

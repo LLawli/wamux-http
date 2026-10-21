@@ -198,18 +198,73 @@ func TestDirectoryPolicies(t *testing.T) {
 func TestDirectoryNotImplemented(t *testing.T) {
 	e := directoryEnv(t, fakecore.Options{})
 	for _, w := range []struct{ method, path string }{
-		{"POST", "/api/contacts/block"},
 		{"PUT", "/api/default/contacts/5511@c.us"},
 		{"DELETE", "/api/default/groups/1@g.us"},
-		{"PUT", "/api/default/groups/1@g.us/settings/security/membership-approval"},
-		{"PUT", "/api/default/groups/1@g.us/settings/security/member-add-mode"},
-		{"PUT", "/api/default/profile/status"},
-		{"POST", "/api/default/channels"},
-		{"POST", "/api/default/channels/1@newsletter/follow"},
-		{"POST", "/api/default/calls/reject"},
+		{"DELETE", "/api/default/channels/1@newsletter"},
 	} {
 		if r := e.Do(w.method, w.path, map[string]any{}); r.Status != 501 {
 			t.Fatalf("%s %s: %d %s", w.method, w.path, r.Status, r.Body)
 		}
+	}
+}
+
+// A core older than the RPC (wamux v0.2.0) answers Unimplemented, and the
+// route answers WAHA's 501 instead of failing.
+func TestOlderCoreAnswers501(t *testing.T) {
+	e := directoryEnv(t, fakecore.Options{})
+	for _, w := range []struct {
+		method, path string
+		body         any
+	}{
+		{"POST", "/api/contacts/block", map[string]string{"session": "default", "contactId": "5511111111111@c.us"}},
+		{"PUT", "/api/default/profile/status", map[string]string{"status": "Busy"}},
+		{"PUT", "/api/default/groups/1@g.us/settings/security/member-add-mode", map[string]bool{"membersCanAddNewMember": true}},
+		{"PUT", "/api/default/groups/1@g.us/settings/security/membership-approval", map[string]bool{"newMembersApprovalRequired": true}},
+		{"POST", "/api/default/channels", map[string]string{"name": "Mine"}},
+		{"POST", "/api/default/channels/1@newsletter/follow", nil},
+		{"POST", "/api/default/calls/reject", map[string]string{"from": "5511111111111@c.us", "id": "C1"}},
+	} {
+		if r := e.Do(w.method, w.path, w.body); r.Status != 501 {
+			t.Fatalf("%s %s: %d %s", w.method, w.path, r.Status, r.Body)
+		}
+	}
+}
+
+func TestBlockContact(t *testing.T) {
+	contacts := fakecore.NewContacts("Ana")
+	contacts.Lids = []*pb.LidPnMapping{{Lid: pbJid("777@lid"), Pn: pbJid("5511111111111@s.whatsapp.net")}}
+	e := directoryEnv(t, fakecore.Options{Contacts: contacts})
+	body := func(id string) map[string]string { return map[string]string{"session": "default", "contactId": id} }
+
+	if r := e.Do("POST", "/api/contacts/block", body("5511111111111@c.us")); r.Status != 201 || len(r.Body) != 0 {
+		t.Fatalf("block: %d %q", r.Status, r.Body)
+	}
+	if !contacts.Blocked("5511111111111@s.whatsapp.net") {
+		t.Fatal("the core got no block for the phone jid")
+	}
+	if r := e.Do("POST", "/api/contacts/unblock", body("5511111111111@c.us")); r.Status != 201 || contacts.Blocked("5511111111111@s.whatsapp.net") {
+		t.Fatalf("unblock: %d %s", r.Status, r.Body)
+	}
+	if r := e.Do("POST", "/api/contacts/block", body("777@lid")); r.Status != 201 || !contacts.Blocked("777@lid") {
+		t.Fatalf("block by lid: %d %s", r.Status, r.Body)
+	}
+
+	// The core refuses a jid with no known pair, and anything but a person.
+	if r := e.Do("POST", "/api/contacts/block", body("5511222222222@c.us")); r.Status != 422 {
+		t.Fatalf("unmapped: %d %s", r.Status, r.Body)
+	}
+	if r := e.Do("POST", "/api/contacts/block", body("120363000000000001@g.us")); r.Status != 400 {
+		t.Fatalf("group: %d %s", r.Status, r.Body)
+	}
+	if r := e.Do("POST", "/api/contacts/block", map[string]string{"session": "default"}); r.Status != 400 {
+		t.Fatalf("no contactId: %d %s", r.Status, r.Body)
+	}
+	// Blocking is a send action on the body's session.
+	r := e.Do("POST", "/api/keys", map[string]any{"isAdmin": false, "session": "default", "actions": map[string]bool{"read": true}})
+	if r.Status != 201 {
+		t.Fatalf("key: %d %s", r.Status, r.Body)
+	}
+	if r := e.DoKey(r.Map(t)["key"].(string), "POST", "/api/contacts/block", body("5511111111111@c.us")); r.Status != 403 {
+		t.Fatalf("read-only key: %d %s", r.Status, r.Body)
 	}
 }

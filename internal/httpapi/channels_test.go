@@ -92,3 +92,49 @@ func TestChannels(t *testing.T) {
 		t.Fatalf("bad downloadMedia: %d %s", r.Status, r.Body)
 	}
 }
+
+func TestChannelsWrite(t *testing.T) {
+	nl := seedNewsletters()
+	e := directoryEnv(t, fakecore.Options{Newsletters: nl})
+
+	r := e.Do("POST", "/api/default/channels", map[string]string{"name": "Launches", "description": "What ships"})
+	ch := r.Map(t)
+	if r.Status != 201 || ch["name"] != "Launches" || ch["description"] != "What ships" || ch["role"] != "OWNER" || !strings.HasSuffix(ch["id"].(string), "@newsletter") {
+		t.Fatalf("create: %d %s", r.Status, r.Body)
+	}
+	if r := e.Do("POST", "/api/default/channels", map[string]string{"name": "Bare"}); r.Status != 201 {
+		t.Fatalf("no description: %d %s", r.Status, r.Body)
+	}
+	reqs := fakecore.Logged[*pb.CreateNewsletterRequest](&nl.RequestLog)
+	if len(reqs) != 2 || reqs[0].GetDescription() != "What ships" || reqs[1].Description != nil {
+		t.Fatalf("core got %v", reqs)
+	}
+	// A channel needs a name: the core refuses it.
+	if r := e.Do("POST", "/api/default/channels", map[string]string{}); r.Status != 400 {
+		t.Fatalf("no name: %d %s", r.Status, r.Body)
+	}
+	// The core takes no picture: 501 before anything is created.
+	if r := e.Do("POST", "/api/default/channels", map[string]any{"name": "Pic", "picture": map[string]string{"url": "https://example.com/a.jpg"}}); r.Status != 501 {
+		t.Fatalf("picture: %d %s", r.Status, r.Body)
+	}
+	if n := len(fakecore.Logged[*pb.CreateNewsletterRequest](&nl.RequestLog)); n != 3 {
+		t.Fatalf("a create with a picture reached the core: %d requests", n)
+	}
+
+	for _, c := range []struct {
+		path  string
+		check func() bool
+	}{
+		{"follow", func() bool { f, ok := nl.Following(news); return ok && f }},
+		{"mute", func() bool { return nl.Muted(news) }},
+		{"unmute", func() bool { return !nl.Muted(news) }},
+		{"unfollow", func() bool { f, ok := nl.Following(news); return ok && !f }},
+	} {
+		if r := e.Do("POST", "/api/default/channels/"+news+"/"+c.path, nil); r.Status != 201 || string(r.Body) != "{}\n" || !c.check() {
+			t.Fatalf("%s: %d %q", c.path, r.Status, r.Body)
+		}
+	}
+	if r := e.Do("POST", "/api/default/channels/0029Va4K0PZ5a245NkngBA2M/follow", nil); r.Status != 501 {
+		t.Fatalf("invite code: %d %s", r.Status, r.Body)
+	}
+}

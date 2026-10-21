@@ -296,3 +296,41 @@ func TestGroupsNeedWorkingSession(t *testing.T) {
 		t.Fatalf("unknown session: %d %s", r.Status, r.Body)
 	}
 }
+
+func TestGroupsSecurityWrites(t *testing.T) {
+	groups := seedGroups()
+	e := directoryEnv(t, fakecore.Options{Groups: groups})
+	path := "/api/default/groups/" + family + "/settings/security/"
+
+	// Family lets everyone add; GOWS answers the PUT with an empty 200.
+	if r := e.Do("PUT", path+"member-add-mode", map[string]bool{"membersCanAddNewMember": false}); r.Status != 200 || len(r.Body) != 0 {
+		t.Fatalf("admins add: %d %q", r.Status, r.Body)
+	}
+	if r := e.Do("GET", path+"member-add-mode", nil); string(r.Body) != `{"membersCanAddNewMember":false}`+"\n" {
+		t.Fatalf("read back: %s", r.Body)
+	}
+	if got := groups.Group(family).GetMemberAddMode(); got != pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_ADMIN_ADD {
+		t.Fatalf("core mode %v", got)
+	}
+	if r := e.Do("PUT", path+"member-add-mode", map[string]bool{"membersCanAddNewMember": true}); r.Status != 200 || groups.Group(family).GetMemberAddMode() != pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_ALL_MEMBER_ADD {
+		t.Fatalf("all add: %d %s", r.Status, r.Body)
+	}
+	// No pipe on these routes in WAHA: a missing field is false.
+	if r := e.Do("PUT", path+"member-add-mode", map[string]any{}); r.Status != 200 || groups.Group(family).GetMemberAddMode() != pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_ADMIN_ADD {
+		t.Fatalf("missing field: %d %s", r.Status, r.Body)
+	}
+
+	// Membership approval answers true, as GOWS does.
+	if r := e.Do("PUT", path+"membership-approval", map[string]bool{"newMembersApprovalRequired": false}); r.Status != 200 || string(r.Body) != "true\n" {
+		t.Fatalf("approval off: %d %q", r.Status, r.Body)
+	}
+	if r := e.Do("GET", path+"membership-approval", nil); string(r.Body) != `{"newMembersApprovalRequired":false}`+"\n" {
+		t.Fatalf("read back: %s", r.Body)
+	}
+	if r := e.Do("PUT", path+"membership-approval", map[string]bool{"newMembersApprovalRequired": true}); r.Status != 200 || !groups.Group(family).GetMembershipApproval() {
+		t.Fatalf("approval on: %d %s", r.Status, r.Body)
+	}
+	if r := e.Do("PUT", "/api/default/groups/120363999999999999@g.us/settings/security/membership-approval", map[string]bool{"newMembersApprovalRequired": true}); r.Status != 404 {
+		t.Fatalf("unknown group: %d %s", r.Status, r.Body)
+	}
+}

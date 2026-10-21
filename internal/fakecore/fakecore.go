@@ -38,6 +38,7 @@ type Options struct {
 	Groups      pb.GroupServiceServer
 	Media       pb.MediaServiceServer
 	Newsletters pb.NewsletterServiceServer
+	Calls       pb.CallServiceServer
 }
 
 // Account is the fake's view of one account.
@@ -81,6 +82,7 @@ func Start(t testing.TB, opts Options) *Core {
 	pb.RegisterGroupServiceServer(c.srv, orDefault[pb.GroupServiceServer](opts.Groups, pb.UnimplementedGroupServiceServer{}))
 	pb.RegisterMediaServiceServer(c.srv, orDefault[pb.MediaServiceServer](opts.Media, pb.UnimplementedMediaServiceServer{}))
 	pb.RegisterNewsletterServiceServer(c.srv, orDefault[pb.NewsletterServiceServer](opts.Newsletters, pb.UnimplementedNewsletterServiceServer{}))
+	pb.RegisterCallServiceServer(c.srv, orDefault[pb.CallServiceServer](opts.Calls, pb.UnimplementedCallServiceServer{}))
 	go func() { _ = c.srv.Serve(lis) }()
 	t.Cleanup(c.srv.Stop)
 	return c

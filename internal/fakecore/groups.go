@@ -199,6 +199,21 @@ func (g *Groups) SetGroupLocked(_ context.Context, r *pb.GroupToggleRequest) (*p
 	return g.edit(r, r, func(m *pb.GroupMetadata) { m.IsLocked = r.GetEnabled() })
 }
 
+func (g *Groups) SetGroupMembershipApproval(_ context.Context, r *pb.GroupToggleRequest) (*pb.Empty, error) {
+	return g.edit(r, r, func(m *pb.GroupMetadata) { m.MembershipApproval = r.GetEnabled() })
+}
+
+// SetGroupMemberAddMode refuses a mode that names no setting, as the core
+// does, before touching the group.
+func (g *Groups) SetGroupMemberAddMode(_ context.Context, r *pb.GroupMemberAddModeRequest) (*pb.Empty, error) {
+	switch r.GetMode() {
+	case pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_UNSPECIFIED, pb.GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_UNKNOWN:
+		g.log(r)
+		return nil, status.Errorf(codes.InvalidArgument, "mode %s names no setting", r.GetMode())
+	}
+	return g.edit(r, r, func(m *pb.GroupMetadata) { m.MemberAddMode = r.GetMode() })
+}
+
 func (g *Groups) SetGroupPhoto(_ context.Context, r *pb.SetGroupPhotoRequest) (*pb.Empty, error) {
 	return g.edit(r, r, func(m *pb.GroupMetadata) {
 		if len(r.GetImage()) == 0 {

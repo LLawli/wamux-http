@@ -2,6 +2,7 @@ package fakecore
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"google.golang.org/grpc/codes"
@@ -32,11 +33,13 @@ type Contacts struct {
 	mu       sync.Mutex
 	pushName string
 	picture  []byte
+	about    string
+	blocked  map[string]bool
 }
 
 // NewContacts builds the fake with the account's push name.
 func NewContacts(pushName string) *Contacts {
-	return &Contacts{pushName: pushName, Registered: map[string]string{}, Pictures: map[string]string{}, Abouts: map[string]string{}}
+	return &Contacts{pushName: pushName, Registered: map[string]string{}, Pictures: map[string]string{}, Abouts: map[string]string{}, blocked: map[string]bool{}}
 }
 
 // PushName is the account's current push name.
@@ -133,4 +136,66 @@ func (c *Contacts) ResolveLidPn(_ context.Context, r *pb.ResolveLidPnRequest) (*
 func (c *Contacts) ListLidMappings(_ context.Context, r *pb.AccountRef) (*pb.ListLidMappingsResponse, error) {
 	c.log(r)
 	return &pb.ListLidMappingsResponse{Mappings: c.Lids}, nil
+}
+
+// About is the account's own about text as last set.
+func (c *Contacts) About() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.about
+}
+
+// Blocked reports whether jid is on the account's blocklist.
+func (c *Contacts) Blocked(jid string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.blocked[jid]
+}
+
+func (c *Contacts) SetAbout(_ context.Context, r *pb.SetAboutRequest) (*pb.Empty, error) {
+	c.log(r)
+	c.mu.Lock()
+	c.about = r.GetAbout()
+	c.mu.Unlock()
+	return &pb.Empty{}, nil
+}
+
+// mapped reports whether jid has a persisted LID<->PN mapping.
+func (c *Contacts) mapped(jid string) bool {
+	for _, m := range c.Lids {
+		if m.GetLid().GetValue() == jid || m.GetPn().GetValue() == jid {
+			return true
+		}
+	}
+	return false
+}
+
+// toggleBlock is the core's rule: a phone jid or a LID only, and a block
+// (or an unblock by phone jid) needs the pair's mapping.
+func (c *Contacts) toggleBlock(r *pb.JidRequest, block bool) (*pb.Empty, error) {
+	c.log(r)
+	jid := r.GetJid().GetValue()
+	lid := strings.HasSuffix(jid, "@lid")
+	if !lid && !strings.HasSuffix(jid, "@s.whatsapp.net") {
+		return nil, status.Errorf(codes.InvalidArgument, "%s is neither a phone jid nor a LID", jid)
+	}
+	if (block || !lid) && !c.mapped(jid) {
+		return nil, status.Errorf(codes.FailedPrecondition, "no LID<->PN mapping known for %s", jid)
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if block {
+		c.blocked[jid] = true
+	} else {
+		delete(c.blocked, jid)
+	}
+	return &pb.Empty{}, nil
+}
+
+func (c *Contacts) BlockContact(_ context.Context, r *pb.JidRequest) (*pb.Empty, error) {
+	return c.toggleBlock(r, true)
+}
+
+func (c *Contacts) UnblockContact(_ context.Context, r *pb.JidRequest) (*pb.Empty, error) {
+	return c.toggleBlock(r, false)
 }

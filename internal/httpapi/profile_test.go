@@ -63,3 +63,40 @@ func TestProfilePicture(t *testing.T) {
 		t.Fatalf("profile: %d %s", r.Status, r.Body)
 	}
 }
+
+func TestProfileStatus(t *testing.T) {
+	contacts := fakecore.NewContacts("Ana")
+	e := directoryEnv(t, fakecore.Options{Contacts: contacts})
+	if r := e.Do("PUT", "/api/default/profile/status", map[string]string{"status": "At the gym"}); r.Status != 200 || string(r.Body) != `{"success":true}`+"\n" {
+		t.Fatalf("set status: %d %s", r.Status, r.Body)
+	}
+	if contacts.About() != "At the gym" {
+		t.Fatalf("core about %q", contacts.About())
+	}
+	// class-validator's @IsNotEmpty lets blanks through.
+	if r := e.Do("PUT", "/api/default/profile/status", map[string]string{"status": "  "}); r.Status != 200 || contacts.About() != "  " {
+		t.Fatalf("blank status: %d %s", r.Status, r.Body)
+	}
+	for _, c := range []struct {
+		body any
+		want []string
+	}{
+		{map[string]any{}, []string{"status should not be empty", "status must be a string"}},
+		{map[string]any{"status": ""}, []string{"status should not be empty"}},
+		{map[string]any{"status": 5}, []string{"status must be a string"}},
+	} {
+		r := e.Do("PUT", "/api/default/profile/status", c.body)
+		if r.Status != 400 {
+			t.Fatalf("%v: %d %s", c.body, r.Status, r.Body)
+		}
+		msgs := r.Map(t)["message"].([]any)
+		if len(msgs) != len(c.want) {
+			t.Fatalf("%v: %v", c.body, msgs)
+		}
+		for i := range msgs {
+			if msgs[i] != c.want[i] {
+				t.Fatalf("%v: %v", c.body, msgs)
+			}
+		}
+	}
+}

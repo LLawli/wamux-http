@@ -62,6 +62,9 @@ so they work here:
 
 - `PUT /api/star`, `POST /api/send/buttons/reply`, `POST /api/sendLinkPreview`.
 - `GET /api/contacts/about`.
+- Block and unblock a contact (answering an empty 201, as WEBJS does). The
+  core needs the contact's LID<->phone pair to block: without it the answer
+  is 422 and nothing is sent.
 - Archive, unarchive and delete chat (answering `{"success": true}`).
 - The events GOWS never emits: `chat.archive`, and the legacy
   `group.join` / `group.leave`.
@@ -106,9 +109,11 @@ name is what the phone synced or the push name last seen.
   and its delete reuses that list.
 - Group answers use `@c.us` ids where GOWS shows whatsmeow's
   `@s.whatsapp.net`.
-- A channel is looked up by its `@newsletter` id only (an invite code
-  answers 501); `invite` is empty, and the preview's `viewCount` is 0 with
-  no media downloaded.
+- A channel is looked up, followed and muted by its `@newsletter` id only
+  (an invite code answers 501); `invite` is empty, and the preview's
+  `viewCount` is 0 with no media downloaded.
+- Creating a channel with a `picture` answers 501 and creates nothing: the
+  core's create takes no picture.
 - Quoted media in `replyTo` is never downloaded (`media: null`).
 - The LID list holds only mappings that have both sides.
 
@@ -116,6 +121,8 @@ name is what the phone synced or the push name last seen.
 
 Operations the core has no mechanism for answer WAHA's 501, as GOWS itself
 does for several of them (delete group, for one). The list is
-[coverage.md](coverage.md); the ones waiting on a core RPC are block and
-unblock, profile status, the group approval and add modes, channel writes
-and call rejection.
+[coverage.md](coverage.md).
+
+Block and unblock, profile status, the group approval and add modes, the
+channel writes and call rejection use RPCs added in wamux v0.2.1. Against a
+v0.2.0 core they answer 501 too.
