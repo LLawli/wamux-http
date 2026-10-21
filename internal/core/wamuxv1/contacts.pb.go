@@ -598,6 +598,157 @@ func (x *AboutResponse) GetAbout() string {
 	return ""
 }
 
+// The account's OWN about text, relayed as given: "" is sent as is (#197).
+type SetAboutRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	About         string                 `protobuf:"bytes,2,opt,name=about,proto3" json:"about,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAboutRequest) Reset() {
+	*x = SetAboutRequest{}
+	mi := &file_contacts_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAboutRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAboutRequest) ProtoMessage() {}
+
+func (x *SetAboutRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_contacts_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAboutRequest.ProtoReflect.Descriptor instead.
+func (*SetAboutRequest) Descriptor() ([]byte, []int) {
+	return file_contacts_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SetAboutRequest) GetAccount() *AccountRef {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *SetAboutRequest) GetAbout() string {
+	if x != nil {
+		return x.About
+	}
+	return ""
+}
+
+// One blocked contact, as the server lists it (#197).
+type BlocklistEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Jid   *Jid                   `protobuf:"bytes,1,opt,name=jid,proto3" json:"jid,omitempty"`
+	// The server's `t`, unix seconds. Unset when the server sent none.
+	Timestamp     *int64 `protobuf:"varint,2,opt,name=timestamp,proto3,oneof" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlocklistEntry) Reset() {
+	*x = BlocklistEntry{}
+	mi := &file_contacts_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlocklistEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlocklistEntry) ProtoMessage() {}
+
+func (x *BlocklistEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_contacts_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlocklistEntry.ProtoReflect.Descriptor instead.
+func (*BlocklistEntry) Descriptor() ([]byte, []int) {
+	return file_contacts_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *BlocklistEntry) GetJid() *Jid {
+	if x != nil {
+		return x.Jid
+	}
+	return nil
+}
+
+func (x *BlocklistEntry) GetTimestamp() int64 {
+	if x != nil && x.Timestamp != nil {
+		return *x.Timestamp
+	}
+	return 0
+}
+
+type GetBlocklistResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Entries       []*BlocklistEntry      `protobuf:"bytes,1,rep,name=entries,proto3" json:"entries,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBlocklistResponse) Reset() {
+	*x = GetBlocklistResponse{}
+	mi := &file_contacts_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBlocklistResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBlocklistResponse) ProtoMessage() {}
+
+func (x *GetBlocklistResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_contacts_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBlocklistResponse.ProtoReflect.Descriptor instead.
+func (*GetBlocklistResponse) Descriptor() ([]byte, []int) {
+	return file_contacts_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *GetBlocklistResponse) GetEntries() []*BlocklistEntry {
+	if x != nil {
+		return x.Entries
+	}
+	return nil
+}
+
 type BusinessProfileResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unset when the jid has no business profile (the library answers `None`).
@@ -608,7 +759,7 @@ type BusinessProfileResponse struct {
 
 func (x *BusinessProfileResponse) Reset() {
 	*x = BusinessProfileResponse{}
-	mi := &file_contacts_proto_msgTypes[9]
+	mi := &file_contacts_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -620,7 +771,7 @@ func (x *BusinessProfileResponse) String() string {
 func (*BusinessProfileResponse) ProtoMessage() {}
 
 func (x *BusinessProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[9]
+	mi := &file_contacts_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -633,7 +784,7 @@ func (x *BusinessProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessProfileResponse.ProtoReflect.Descriptor instead.
 func (*BusinessProfileResponse) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{9}
+	return file_contacts_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *BusinessProfileResponse) GetProfile() *BusinessProfile {
@@ -660,7 +811,7 @@ type BusinessProfile struct {
 
 func (x *BusinessProfile) Reset() {
 	*x = BusinessProfile{}
-	mi := &file_contacts_proto_msgTypes[10]
+	mi := &file_contacts_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -672,7 +823,7 @@ func (x *BusinessProfile) String() string {
 func (*BusinessProfile) ProtoMessage() {}
 
 func (x *BusinessProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[10]
+	mi := &file_contacts_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -685,7 +836,7 @@ func (x *BusinessProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessProfile.ProtoReflect.Descriptor instead.
 func (*BusinessProfile) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{10}
+	return file_contacts_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *BusinessProfile) GetWid() *Jid {
@@ -747,7 +898,7 @@ type BusinessCategory struct {
 
 func (x *BusinessCategory) Reset() {
 	*x = BusinessCategory{}
-	mi := &file_contacts_proto_msgTypes[11]
+	mi := &file_contacts_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -759,7 +910,7 @@ func (x *BusinessCategory) String() string {
 func (*BusinessCategory) ProtoMessage() {}
 
 func (x *BusinessCategory) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[11]
+	mi := &file_contacts_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -772,7 +923,7 @@ func (x *BusinessCategory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessCategory.ProtoReflect.Descriptor instead.
 func (*BusinessCategory) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{11}
+	return file_contacts_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *BusinessCategory) GetId() string {
@@ -800,7 +951,7 @@ type BusinessHours struct {
 
 func (x *BusinessHours) Reset() {
 	*x = BusinessHours{}
-	mi := &file_contacts_proto_msgTypes[12]
+	mi := &file_contacts_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -812,7 +963,7 @@ func (x *BusinessHours) String() string {
 func (*BusinessHours) ProtoMessage() {}
 
 func (x *BusinessHours) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[12]
+	mi := &file_contacts_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -825,7 +976,7 @@ func (x *BusinessHours) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessHours.ProtoReflect.Descriptor instead.
 func (*BusinessHours) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{12}
+	return file_contacts_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *BusinessHours) GetTimezone() string {
@@ -858,7 +1009,7 @@ type BusinessHoursConfig struct {
 
 func (x *BusinessHoursConfig) Reset() {
 	*x = BusinessHoursConfig{}
-	mi := &file_contacts_proto_msgTypes[13]
+	mi := &file_contacts_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -870,7 +1021,7 @@ func (x *BusinessHoursConfig) String() string {
 func (*BusinessHoursConfig) ProtoMessage() {}
 
 func (x *BusinessHoursConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[13]
+	mi := &file_contacts_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -883,7 +1034,7 @@ func (x *BusinessHoursConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessHoursConfig.ProtoReflect.Descriptor instead.
 func (*BusinessHoursConfig) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{13}
+	return file_contacts_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *BusinessHoursConfig) GetDayOfWeek() BusinessDayOfWeek {
@@ -938,7 +1089,7 @@ type SubscribePresenceRequest struct {
 
 func (x *SubscribePresenceRequest) Reset() {
 	*x = SubscribePresenceRequest{}
-	mi := &file_contacts_proto_msgTypes[14]
+	mi := &file_contacts_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -950,7 +1101,7 @@ func (x *SubscribePresenceRequest) String() string {
 func (*SubscribePresenceRequest) ProtoMessage() {}
 
 func (x *SubscribePresenceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[14]
+	mi := &file_contacts_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +1114,7 @@ func (x *SubscribePresenceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribePresenceRequest.ProtoReflect.Descriptor instead.
 func (*SubscribePresenceRequest) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{14}
+	return file_contacts_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SubscribePresenceRequest) GetAccount() *AccountRef {
@@ -1000,7 +1151,7 @@ type LidPnMapping struct {
 
 func (x *LidPnMapping) Reset() {
 	*x = LidPnMapping{}
-	mi := &file_contacts_proto_msgTypes[15]
+	mi := &file_contacts_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1012,7 +1163,7 @@ func (x *LidPnMapping) String() string {
 func (*LidPnMapping) ProtoMessage() {}
 
 func (x *LidPnMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[15]
+	mi := &file_contacts_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1025,7 +1176,7 @@ func (x *LidPnMapping) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LidPnMapping.ProtoReflect.Descriptor instead.
 func (*LidPnMapping) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{15}
+	return file_contacts_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *LidPnMapping) GetLid() *Jid {
@@ -1066,7 +1217,7 @@ type ResolveLidPnRequest struct {
 
 func (x *ResolveLidPnRequest) Reset() {
 	*x = ResolveLidPnRequest{}
-	mi := &file_contacts_proto_msgTypes[16]
+	mi := &file_contacts_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1078,7 +1229,7 @@ func (x *ResolveLidPnRequest) String() string {
 func (*ResolveLidPnRequest) ProtoMessage() {}
 
 func (x *ResolveLidPnRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[16]
+	mi := &file_contacts_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1091,7 +1242,7 @@ func (x *ResolveLidPnRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveLidPnRequest.ProtoReflect.Descriptor instead.
 func (*ResolveLidPnRequest) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{16}
+	return file_contacts_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ResolveLidPnRequest) GetAccount() *AccountRef {
@@ -1121,7 +1272,7 @@ type LidPnResult struct {
 
 func (x *LidPnResult) Reset() {
 	*x = LidPnResult{}
-	mi := &file_contacts_proto_msgTypes[17]
+	mi := &file_contacts_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1133,7 +1284,7 @@ func (x *LidPnResult) String() string {
 func (*LidPnResult) ProtoMessage() {}
 
 func (x *LidPnResult) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[17]
+	mi := &file_contacts_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1146,7 +1297,7 @@ func (x *LidPnResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LidPnResult.ProtoReflect.Descriptor instead.
 func (*LidPnResult) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{17}
+	return file_contacts_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *LidPnResult) GetQuery() *Jid {
@@ -1179,7 +1330,7 @@ type ResolveLidPnResponse struct {
 
 func (x *ResolveLidPnResponse) Reset() {
 	*x = ResolveLidPnResponse{}
-	mi := &file_contacts_proto_msgTypes[18]
+	mi := &file_contacts_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1191,7 +1342,7 @@ func (x *ResolveLidPnResponse) String() string {
 func (*ResolveLidPnResponse) ProtoMessage() {}
 
 func (x *ResolveLidPnResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[18]
+	mi := &file_contacts_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1204,7 +1355,7 @@ func (x *ResolveLidPnResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveLidPnResponse.ProtoReflect.Descriptor instead.
 func (*ResolveLidPnResponse) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{18}
+	return file_contacts_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ResolveLidPnResponse) GetResults() []*LidPnResult {
@@ -1223,7 +1374,7 @@ type ListLidMappingsResponse struct {
 
 func (x *ListLidMappingsResponse) Reset() {
 	*x = ListLidMappingsResponse{}
-	mi := &file_contacts_proto_msgTypes[19]
+	mi := &file_contacts_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1235,7 +1386,7 @@ func (x *ListLidMappingsResponse) String() string {
 func (*ListLidMappingsResponse) ProtoMessage() {}
 
 func (x *ListLidMappingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_contacts_proto_msgTypes[19]
+	mi := &file_contacts_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1248,7 +1399,7 @@ func (x *ListLidMappingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListLidMappingsResponse.ProtoReflect.Descriptor instead.
 func (*ListLidMappingsResponse) Descriptor() ([]byte, []int) {
-	return file_contacts_proto_rawDescGZIP(), []int{19}
+	return file_contacts_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListLidMappingsResponse) GetMappings() []*LidPnMapping {
@@ -1288,7 +1439,17 @@ const file_contacts_proto_rawDesc = "" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x1b\n" +
 	"\tpush_name\x18\x02 \x01(\tR\bpushName\"%\n" +
 	"\rAboutResponse\x12\x14\n" +
-	"\x05about\x18\x01 \x01(\tR\x05about\"Y\n" +
+	"\x05about\x18\x01 \x01(\tR\x05about\"W\n" +
+	"\x0fSetAboutRequest\x12.\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x14\n" +
+	"\x05about\x18\x02 \x01(\tR\x05about\"b\n" +
+	"\x0eBlocklistEntry\x12\x1f\n" +
+	"\x03jid\x18\x01 \x01(\v2\r.wamux.v1.JidR\x03jid\x12!\n" +
+	"\ttimestamp\x18\x02 \x01(\x03H\x00R\ttimestamp\x88\x01\x01B\f\n" +
+	"\n" +
+	"_timestamp\"J\n" +
+	"\x14GetBlocklistResponse\x122\n" +
+	"\aentries\x18\x01 \x03(\v2\x18.wamux.v1.BlocklistEntryR\aentries\"Y\n" +
 	"\x17BusinessProfileResponse\x123\n" +
 	"\aprofile\x18\x02 \x01(\v2\x19.wamux.v1.BusinessProfileR\aprofileJ\x04\b\x01\x10\x02R\x03raw\"\xba\x02\n" +
 	"\x0fBusinessProfile\x12\x1f\n" +
@@ -1357,7 +1518,7 @@ const file_contacts_proto_rawDesc = "" +
 	"\x1aBUSINESS_HOUR_MODE_UNKNOWN\x10\x01\x12\x1f\n" +
 	"\x1bBUSINESS_HOUR_MODE_OPEN_24H\x10\x02\x12%\n" +
 	"!BUSINESS_HOUR_MODE_SPECIFIC_HOURS\x10\x03\x12'\n" +
-	"#BUSINESS_HOUR_MODE_APPOINTMENT_ONLY\x10\x042\xac\x06\n" +
+	"#BUSINESS_HOUR_MODE_APPOINTMENT_ONLY\x10\x042\x9a\b\n" +
 	"\x0eContactService\x12V\n" +
 	"\x0fCheckOnWhatsApp\x12 .wamux.v1.CheckOnWhatsAppRequest\x1a!.wamux.v1.CheckOnWhatsAppResponse\x12K\n" +
 	"\x11GetProfilePicture\x12\x14.wamux.v1.JidRequest\x1a .wamux.v1.ProfilePictureResponse\x12H\n" +
@@ -1365,7 +1526,11 @@ const file_contacts_proto_rawDesc = "" +
 	"\x14RemoveProfilePicture\x12\x14.wamux.v1.AccountRef\x1a\x0f.wamux.v1.Empty\x12?\n" +
 	"\vGetPushName\x12\x14.wamux.v1.AccountRef\x1a\x1a.wamux.v1.PushNameResponse\x12<\n" +
 	"\vSetPushName\x12\x1c.wamux.v1.SetPushNameRequest\x1a\x0f.wamux.v1.Empty\x129\n" +
-	"\bGetAbout\x12\x14.wamux.v1.JidRequest\x1a\x17.wamux.v1.AboutResponse\x12M\n" +
+	"\bGetAbout\x12\x14.wamux.v1.JidRequest\x1a\x17.wamux.v1.AboutResponse\x126\n" +
+	"\bSetAbout\x12\x19.wamux.v1.SetAboutRequest\x1a\x0f.wamux.v1.Empty\x125\n" +
+	"\fBlockContact\x12\x14.wamux.v1.JidRequest\x1a\x0f.wamux.v1.Empty\x127\n" +
+	"\x0eUnblockContact\x12\x14.wamux.v1.JidRequest\x1a\x0f.wamux.v1.Empty\x12D\n" +
+	"\fGetBlocklist\x12\x14.wamux.v1.AccountRef\x1a\x1e.wamux.v1.GetBlocklistResponse\x12M\n" +
 	"\x12GetBusinessProfile\x12\x14.wamux.v1.JidRequest\x1a!.wamux.v1.BusinessProfileResponse\x12H\n" +
 	"\x11SubscribePresence\x12\".wamux.v1.SubscribePresenceRequest\x1a\x0f.wamux.v1.Empty\x12M\n" +
 	"\fResolveLidPn\x12\x1d.wamux.v1.ResolveLidPnRequest\x1a\x1e.wamux.v1.ResolveLidPnResponse\x12J\n" +
@@ -1385,7 +1550,7 @@ func file_contacts_proto_rawDescGZIP() []byte {
 }
 
 var file_contacts_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_contacts_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_contacts_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_contacts_proto_goTypes = []any{
 	(BusinessDayOfWeek)(0),           // 0: wamux.v1.BusinessDayOfWeek
 	(BusinessHourMode)(0),            // 1: wamux.v1.BusinessHourMode
@@ -1398,75 +1563,89 @@ var file_contacts_proto_goTypes = []any{
 	(*PushNameResponse)(nil),         // 8: wamux.v1.PushNameResponse
 	(*SetPushNameRequest)(nil),       // 9: wamux.v1.SetPushNameRequest
 	(*AboutResponse)(nil),            // 10: wamux.v1.AboutResponse
-	(*BusinessProfileResponse)(nil),  // 11: wamux.v1.BusinessProfileResponse
-	(*BusinessProfile)(nil),          // 12: wamux.v1.BusinessProfile
-	(*BusinessCategory)(nil),         // 13: wamux.v1.BusinessCategory
-	(*BusinessHours)(nil),            // 14: wamux.v1.BusinessHours
-	(*BusinessHoursConfig)(nil),      // 15: wamux.v1.BusinessHoursConfig
-	(*SubscribePresenceRequest)(nil), // 16: wamux.v1.SubscribePresenceRequest
-	(*LidPnMapping)(nil),             // 17: wamux.v1.LidPnMapping
-	(*ResolveLidPnRequest)(nil),      // 18: wamux.v1.ResolveLidPnRequest
-	(*LidPnResult)(nil),              // 19: wamux.v1.LidPnResult
-	(*ResolveLidPnResponse)(nil),     // 20: wamux.v1.ResolveLidPnResponse
-	(*ListLidMappingsResponse)(nil),  // 21: wamux.v1.ListLidMappingsResponse
-	(*AccountRef)(nil),               // 22: wamux.v1.AccountRef
-	(*Jid)(nil),                      // 23: wamux.v1.Jid
-	(*Empty)(nil),                    // 24: wamux.v1.Empty
+	(*SetAboutRequest)(nil),          // 11: wamux.v1.SetAboutRequest
+	(*BlocklistEntry)(nil),           // 12: wamux.v1.BlocklistEntry
+	(*GetBlocklistResponse)(nil),     // 13: wamux.v1.GetBlocklistResponse
+	(*BusinessProfileResponse)(nil),  // 14: wamux.v1.BusinessProfileResponse
+	(*BusinessProfile)(nil),          // 15: wamux.v1.BusinessProfile
+	(*BusinessCategory)(nil),         // 16: wamux.v1.BusinessCategory
+	(*BusinessHours)(nil),            // 17: wamux.v1.BusinessHours
+	(*BusinessHoursConfig)(nil),      // 18: wamux.v1.BusinessHoursConfig
+	(*SubscribePresenceRequest)(nil), // 19: wamux.v1.SubscribePresenceRequest
+	(*LidPnMapping)(nil),             // 20: wamux.v1.LidPnMapping
+	(*ResolveLidPnRequest)(nil),      // 21: wamux.v1.ResolveLidPnRequest
+	(*LidPnResult)(nil),              // 22: wamux.v1.LidPnResult
+	(*ResolveLidPnResponse)(nil),     // 23: wamux.v1.ResolveLidPnResponse
+	(*ListLidMappingsResponse)(nil),  // 24: wamux.v1.ListLidMappingsResponse
+	(*AccountRef)(nil),               // 25: wamux.v1.AccountRef
+	(*Jid)(nil),                      // 26: wamux.v1.Jid
+	(*Empty)(nil),                    // 27: wamux.v1.Empty
 }
 var file_contacts_proto_depIdxs = []int32{
-	22, // 0: wamux.v1.CheckOnWhatsAppRequest.account:type_name -> wamux.v1.AccountRef
-	23, // 1: wamux.v1.CheckOnWhatsAppRequest.jids:type_name -> wamux.v1.Jid
-	23, // 2: wamux.v1.CheckResult.query:type_name -> wamux.v1.Jid
-	23, // 3: wamux.v1.CheckResult.jid:type_name -> wamux.v1.Jid
+	25, // 0: wamux.v1.CheckOnWhatsAppRequest.account:type_name -> wamux.v1.AccountRef
+	26, // 1: wamux.v1.CheckOnWhatsAppRequest.jids:type_name -> wamux.v1.Jid
+	26, // 2: wamux.v1.CheckResult.query:type_name -> wamux.v1.Jid
+	26, // 3: wamux.v1.CheckResult.jid:type_name -> wamux.v1.Jid
 	3,  // 4: wamux.v1.CheckOnWhatsAppResponse.results:type_name -> wamux.v1.CheckResult
-	22, // 5: wamux.v1.JidRequest.account:type_name -> wamux.v1.AccountRef
-	23, // 6: wamux.v1.JidRequest.jid:type_name -> wamux.v1.Jid
-	22, // 7: wamux.v1.SetProfilePictureRequest.account:type_name -> wamux.v1.AccountRef
-	22, // 8: wamux.v1.SetPushNameRequest.account:type_name -> wamux.v1.AccountRef
-	12, // 9: wamux.v1.BusinessProfileResponse.profile:type_name -> wamux.v1.BusinessProfile
-	23, // 10: wamux.v1.BusinessProfile.wid:type_name -> wamux.v1.Jid
-	13, // 11: wamux.v1.BusinessProfile.categories:type_name -> wamux.v1.BusinessCategory
-	14, // 12: wamux.v1.BusinessProfile.business_hours:type_name -> wamux.v1.BusinessHours
-	15, // 13: wamux.v1.BusinessHours.business_config:type_name -> wamux.v1.BusinessHoursConfig
-	0,  // 14: wamux.v1.BusinessHoursConfig.day_of_week:type_name -> wamux.v1.BusinessDayOfWeek
-	1,  // 15: wamux.v1.BusinessHoursConfig.mode:type_name -> wamux.v1.BusinessHourMode
-	22, // 16: wamux.v1.SubscribePresenceRequest.account:type_name -> wamux.v1.AccountRef
-	23, // 17: wamux.v1.SubscribePresenceRequest.jid:type_name -> wamux.v1.Jid
-	23, // 18: wamux.v1.LidPnMapping.lid:type_name -> wamux.v1.Jid
-	23, // 19: wamux.v1.LidPnMapping.pn:type_name -> wamux.v1.Jid
-	22, // 20: wamux.v1.ResolveLidPnRequest.account:type_name -> wamux.v1.AccountRef
-	23, // 21: wamux.v1.ResolveLidPnRequest.jids:type_name -> wamux.v1.Jid
-	23, // 22: wamux.v1.LidPnResult.query:type_name -> wamux.v1.Jid
-	17, // 23: wamux.v1.LidPnResult.mapping:type_name -> wamux.v1.LidPnMapping
-	19, // 24: wamux.v1.ResolveLidPnResponse.results:type_name -> wamux.v1.LidPnResult
-	17, // 25: wamux.v1.ListLidMappingsResponse.mappings:type_name -> wamux.v1.LidPnMapping
-	2,  // 26: wamux.v1.ContactService.CheckOnWhatsApp:input_type -> wamux.v1.CheckOnWhatsAppRequest
-	5,  // 27: wamux.v1.ContactService.GetProfilePicture:input_type -> wamux.v1.JidRequest
-	7,  // 28: wamux.v1.ContactService.SetProfilePicture:input_type -> wamux.v1.SetProfilePictureRequest
-	22, // 29: wamux.v1.ContactService.RemoveProfilePicture:input_type -> wamux.v1.AccountRef
-	22, // 30: wamux.v1.ContactService.GetPushName:input_type -> wamux.v1.AccountRef
-	9,  // 31: wamux.v1.ContactService.SetPushName:input_type -> wamux.v1.SetPushNameRequest
-	5,  // 32: wamux.v1.ContactService.GetAbout:input_type -> wamux.v1.JidRequest
-	5,  // 33: wamux.v1.ContactService.GetBusinessProfile:input_type -> wamux.v1.JidRequest
-	16, // 34: wamux.v1.ContactService.SubscribePresence:input_type -> wamux.v1.SubscribePresenceRequest
-	18, // 35: wamux.v1.ContactService.ResolveLidPn:input_type -> wamux.v1.ResolveLidPnRequest
-	22, // 36: wamux.v1.ContactService.ListLidMappings:input_type -> wamux.v1.AccountRef
-	4,  // 37: wamux.v1.ContactService.CheckOnWhatsApp:output_type -> wamux.v1.CheckOnWhatsAppResponse
-	6,  // 38: wamux.v1.ContactService.GetProfilePicture:output_type -> wamux.v1.ProfilePictureResponse
-	24, // 39: wamux.v1.ContactService.SetProfilePicture:output_type -> wamux.v1.Empty
-	24, // 40: wamux.v1.ContactService.RemoveProfilePicture:output_type -> wamux.v1.Empty
-	8,  // 41: wamux.v1.ContactService.GetPushName:output_type -> wamux.v1.PushNameResponse
-	24, // 42: wamux.v1.ContactService.SetPushName:output_type -> wamux.v1.Empty
-	10, // 43: wamux.v1.ContactService.GetAbout:output_type -> wamux.v1.AboutResponse
-	11, // 44: wamux.v1.ContactService.GetBusinessProfile:output_type -> wamux.v1.BusinessProfileResponse
-	24, // 45: wamux.v1.ContactService.SubscribePresence:output_type -> wamux.v1.Empty
-	20, // 46: wamux.v1.ContactService.ResolveLidPn:output_type -> wamux.v1.ResolveLidPnResponse
-	21, // 47: wamux.v1.ContactService.ListLidMappings:output_type -> wamux.v1.ListLidMappingsResponse
-	37, // [37:48] is the sub-list for method output_type
-	26, // [26:37] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	25, // 5: wamux.v1.JidRequest.account:type_name -> wamux.v1.AccountRef
+	26, // 6: wamux.v1.JidRequest.jid:type_name -> wamux.v1.Jid
+	25, // 7: wamux.v1.SetProfilePictureRequest.account:type_name -> wamux.v1.AccountRef
+	25, // 8: wamux.v1.SetPushNameRequest.account:type_name -> wamux.v1.AccountRef
+	25, // 9: wamux.v1.SetAboutRequest.account:type_name -> wamux.v1.AccountRef
+	26, // 10: wamux.v1.BlocklistEntry.jid:type_name -> wamux.v1.Jid
+	12, // 11: wamux.v1.GetBlocklistResponse.entries:type_name -> wamux.v1.BlocklistEntry
+	15, // 12: wamux.v1.BusinessProfileResponse.profile:type_name -> wamux.v1.BusinessProfile
+	26, // 13: wamux.v1.BusinessProfile.wid:type_name -> wamux.v1.Jid
+	16, // 14: wamux.v1.BusinessProfile.categories:type_name -> wamux.v1.BusinessCategory
+	17, // 15: wamux.v1.BusinessProfile.business_hours:type_name -> wamux.v1.BusinessHours
+	18, // 16: wamux.v1.BusinessHours.business_config:type_name -> wamux.v1.BusinessHoursConfig
+	0,  // 17: wamux.v1.BusinessHoursConfig.day_of_week:type_name -> wamux.v1.BusinessDayOfWeek
+	1,  // 18: wamux.v1.BusinessHoursConfig.mode:type_name -> wamux.v1.BusinessHourMode
+	25, // 19: wamux.v1.SubscribePresenceRequest.account:type_name -> wamux.v1.AccountRef
+	26, // 20: wamux.v1.SubscribePresenceRequest.jid:type_name -> wamux.v1.Jid
+	26, // 21: wamux.v1.LidPnMapping.lid:type_name -> wamux.v1.Jid
+	26, // 22: wamux.v1.LidPnMapping.pn:type_name -> wamux.v1.Jid
+	25, // 23: wamux.v1.ResolveLidPnRequest.account:type_name -> wamux.v1.AccountRef
+	26, // 24: wamux.v1.ResolveLidPnRequest.jids:type_name -> wamux.v1.Jid
+	26, // 25: wamux.v1.LidPnResult.query:type_name -> wamux.v1.Jid
+	20, // 26: wamux.v1.LidPnResult.mapping:type_name -> wamux.v1.LidPnMapping
+	22, // 27: wamux.v1.ResolveLidPnResponse.results:type_name -> wamux.v1.LidPnResult
+	20, // 28: wamux.v1.ListLidMappingsResponse.mappings:type_name -> wamux.v1.LidPnMapping
+	2,  // 29: wamux.v1.ContactService.CheckOnWhatsApp:input_type -> wamux.v1.CheckOnWhatsAppRequest
+	5,  // 30: wamux.v1.ContactService.GetProfilePicture:input_type -> wamux.v1.JidRequest
+	7,  // 31: wamux.v1.ContactService.SetProfilePicture:input_type -> wamux.v1.SetProfilePictureRequest
+	25, // 32: wamux.v1.ContactService.RemoveProfilePicture:input_type -> wamux.v1.AccountRef
+	25, // 33: wamux.v1.ContactService.GetPushName:input_type -> wamux.v1.AccountRef
+	9,  // 34: wamux.v1.ContactService.SetPushName:input_type -> wamux.v1.SetPushNameRequest
+	5,  // 35: wamux.v1.ContactService.GetAbout:input_type -> wamux.v1.JidRequest
+	11, // 36: wamux.v1.ContactService.SetAbout:input_type -> wamux.v1.SetAboutRequest
+	5,  // 37: wamux.v1.ContactService.BlockContact:input_type -> wamux.v1.JidRequest
+	5,  // 38: wamux.v1.ContactService.UnblockContact:input_type -> wamux.v1.JidRequest
+	25, // 39: wamux.v1.ContactService.GetBlocklist:input_type -> wamux.v1.AccountRef
+	5,  // 40: wamux.v1.ContactService.GetBusinessProfile:input_type -> wamux.v1.JidRequest
+	19, // 41: wamux.v1.ContactService.SubscribePresence:input_type -> wamux.v1.SubscribePresenceRequest
+	21, // 42: wamux.v1.ContactService.ResolveLidPn:input_type -> wamux.v1.ResolveLidPnRequest
+	25, // 43: wamux.v1.ContactService.ListLidMappings:input_type -> wamux.v1.AccountRef
+	4,  // 44: wamux.v1.ContactService.CheckOnWhatsApp:output_type -> wamux.v1.CheckOnWhatsAppResponse
+	6,  // 45: wamux.v1.ContactService.GetProfilePicture:output_type -> wamux.v1.ProfilePictureResponse
+	27, // 46: wamux.v1.ContactService.SetProfilePicture:output_type -> wamux.v1.Empty
+	27, // 47: wamux.v1.ContactService.RemoveProfilePicture:output_type -> wamux.v1.Empty
+	8,  // 48: wamux.v1.ContactService.GetPushName:output_type -> wamux.v1.PushNameResponse
+	27, // 49: wamux.v1.ContactService.SetPushName:output_type -> wamux.v1.Empty
+	10, // 50: wamux.v1.ContactService.GetAbout:output_type -> wamux.v1.AboutResponse
+	27, // 51: wamux.v1.ContactService.SetAbout:output_type -> wamux.v1.Empty
+	27, // 52: wamux.v1.ContactService.BlockContact:output_type -> wamux.v1.Empty
+	27, // 53: wamux.v1.ContactService.UnblockContact:output_type -> wamux.v1.Empty
+	13, // 54: wamux.v1.ContactService.GetBlocklist:output_type -> wamux.v1.GetBlocklistResponse
+	14, // 55: wamux.v1.ContactService.GetBusinessProfile:output_type -> wamux.v1.BusinessProfileResponse
+	27, // 56: wamux.v1.ContactService.SubscribePresence:output_type -> wamux.v1.Empty
+	23, // 57: wamux.v1.ContactService.ResolveLidPn:output_type -> wamux.v1.ResolveLidPnResponse
+	24, // 58: wamux.v1.ContactService.ListLidMappings:output_type -> wamux.v1.ListLidMappingsResponse
+	44, // [44:59] is the sub-list for method output_type
+	29, // [29:44] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_contacts_proto_init() }
@@ -1476,15 +1655,16 @@ func file_contacts_proto_init() {
 	}
 	file_common_proto_init()
 	file_contacts_proto_msgTypes[10].OneofWrappers = []any{}
-	file_contacts_proto_msgTypes[12].OneofWrappers = []any{}
 	file_contacts_proto_msgTypes[13].OneofWrappers = []any{}
+	file_contacts_proto_msgTypes[15].OneofWrappers = []any{}
+	file_contacts_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_contacts_proto_rawDesc), len(file_contacts_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   20,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

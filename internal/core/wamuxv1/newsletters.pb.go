@@ -1310,6 +1310,131 @@ func (x *SubscribeNewsletterLiveUpdatesResponse) GetDurationSeconds() uint64 {
 	return 0
 }
 
+// Mute or unmute a followed channel (#199): the "Mute" a follower toggles in
+// the app, the channel's own updates (MUTE_ADMIN_ACTIVITY).
+type NewsletterMuteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Jid           *Jid                   `protobuf:"bytes,2,opt,name=jid,proto3" json:"jid,omitempty"`
+	Muted         bool                   `protobuf:"varint,3,opt,name=muted,proto3" json:"muted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewsletterMuteRequest) Reset() {
+	*x = NewsletterMuteRequest{}
+	mi := &file_newsletters_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsletterMuteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsletterMuteRequest) ProtoMessage() {}
+
+func (x *NewsletterMuteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_newsletters_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsletterMuteRequest.ProtoReflect.Descriptor instead.
+func (*NewsletterMuteRequest) Descriptor() ([]byte, []int) {
+	return file_newsletters_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *NewsletterMuteRequest) GetAccount() *AccountRef {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *NewsletterMuteRequest) GetJid() *Jid {
+	if x != nil {
+		return x.Jid
+	}
+	return nil
+}
+
+func (x *NewsletterMuteRequest) GetMuted() bool {
+	if x != nil {
+		return x.Muted
+	}
+	return false
+}
+
+// Create a channel this account owns (#199). An empty `name` is refused before
+// the server: a channel without one never exists. `description` goes out as
+// given when set, absent when not.
+type CreateNewsletterRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   *string                `protobuf:"bytes,3,opt,name=description,proto3,oneof" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateNewsletterRequest) Reset() {
+	*x = CreateNewsletterRequest{}
+	mi := &file_newsletters_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateNewsletterRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateNewsletterRequest) ProtoMessage() {}
+
+func (x *CreateNewsletterRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_newsletters_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateNewsletterRequest.ProtoReflect.Descriptor instead.
+func (*CreateNewsletterRequest) Descriptor() ([]byte, []int) {
+	return file_newsletters_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CreateNewsletterRequest) GetAccount() *AccountRef {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *CreateNewsletterRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateNewsletterRequest) GetDescription() string {
+	if x != nil && x.Description != nil {
+		return *x.Description
+	}
+	return ""
+}
+
 var File_newsletters_proto protoreflect.FileDescriptor
 
 const file_newsletters_proto_rawDesc = "" +
@@ -1378,7 +1503,16 @@ const file_newsletters_proto_rawDesc = "" +
 	"\x16NewsletterMyAddOnsList\x128\n" +
 	"\bmessages\x18\x01 \x03(\v2\x1c.wamux.v1.NewsletterMyAddOnsR\bmessages\"S\n" +
 	"&SubscribeNewsletterLiveUpdatesResponse\x12)\n" +
-	"\x10duration_seconds\x18\x01 \x01(\x04R\x0fdurationSeconds*\xb4\x01\n" +
+	"\x10duration_seconds\x18\x01 \x01(\x04R\x0fdurationSeconds\"~\n" +
+	"\x15NewsletterMuteRequest\x12.\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x1f\n" +
+	"\x03jid\x18\x02 \x01(\v2\r.wamux.v1.JidR\x03jid\x12\x14\n" +
+	"\x05muted\x18\x03 \x01(\bR\x05muted\"\x94\x01\n" +
+	"\x17CreateNewsletterRequest\x12.\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
+	"\vdescription\x18\x03 \x01(\tH\x00R\vdescription\x88\x01\x01B\x0e\n" +
+	"\f_description*\xb4\x01\n" +
 	"\x16NewsletterVerification\x12'\n" +
 	"#NEWSLETTER_VERIFICATION_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fNEWSLETTER_VERIFICATION_UNKNOWN\x10\x01\x12$\n" +
@@ -1418,14 +1552,18 @@ const file_newsletters_proto_rawDesc = "" +
 	"\x1aEDIT_ATTRIBUTE_PIN_IN_CHAT\x10\x03\x12\x1d\n" +
 	"\x19EDIT_ATTRIBUTE_ADMIN_EDIT\x10\x04\x12 \n" +
 	"\x1cEDIT_ATTRIBUTE_SENDER_REVOKE\x10\x05\x12\x1f\n" +
-	"\x1bEDIT_ATTRIBUTE_ADMIN_REVOKE\x10\x062\xc1\x04\n" +
+	"\x1bEDIT_ATTRIBUTE_ADMIN_REVOKE\x10\x062\xca\x06\n" +
 	"\x11NewsletterService\x12K\n" +
 	"\x19ListSubscribedNewsletters\x12\x14.wamux.v1.AccountRef\x1a\x18.wamux.v1.NewsletterList\x12C\n" +
 	"\x15GetNewsletterMetadata\x12\x14.wamux.v1.JidRequest\x1a\x14.wamux.v1.Newsletter\x12`\n" +
 	"\x15GetNewsletterMessages\x12&.wamux.v1.GetNewsletterMessagesRequest\x1a\x1f.wamux.v1.NewsletterMessageList\x12k\n" +
 	"\x16SendNewsletterPollVote\x12'.wamux.v1.SendNewsletterPollVoteRequest\x1a(.wamux.v1.SendNewsletterPollVoteResponse\x12a\n" +
 	"\x15GetMyNewsletterAddOns\x12&.wamux.v1.GetMyNewsletterAddOnsRequest\x1a .wamux.v1.NewsletterMyAddOnsList\x12h\n" +
-	"\x1eSubscribeNewsletterLiveUpdates\x12\x14.wamux.v1.JidRequest\x1a0.wamux.v1.SubscribeNewsletterLiveUpdatesResponseB\x9d\x01\n" +
+	"\x1eSubscribeNewsletterLiveUpdates\x12\x14.wamux.v1.JidRequest\x1a0.wamux.v1.SubscribeNewsletterLiveUpdatesResponse\x129\n" +
+	"\x10FollowNewsletter\x12\x14.wamux.v1.JidRequest\x1a\x0f.wamux.v1.Empty\x12;\n" +
+	"\x12UnfollowNewsletter\x12\x14.wamux.v1.JidRequest\x1a\x0f.wamux.v1.Empty\x12B\n" +
+	"\x0eMuteNewsletter\x12\x1f.wamux.v1.NewsletterMuteRequest\x1a\x0f.wamux.v1.Empty\x12K\n" +
+	"\x10CreateNewsletter\x12!.wamux.v1.CreateNewsletterRequest\x1a\x14.wamux.v1.NewsletterB\x9d\x01\n" +
 	"\fcom.wamux.v1B\x10NewslettersProtoP\x01Z:github.com/LLawli/wamux-http/internal/core/wamuxv1;wamuxv1\xa2\x02\x03WXX\xaa\x02\bWamux.V1\xca\x02\bWamux\\V1\xe2\x02\x14Wamux\\V1\\GPBMetadata\xea\x02\tWamux::V1b\x06proto3"
 
 var (
@@ -1441,7 +1579,7 @@ func file_newsletters_proto_rawDescGZIP() []byte {
 }
 
 var file_newsletters_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_newsletters_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_newsletters_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_newsletters_proto_goTypes = []any{
 	(NewsletterVerification)(0),                    // 0: wamux.v1.NewsletterVerification
 	(NewsletterState)(0),                           // 1: wamux.v1.NewsletterState
@@ -1462,52 +1600,66 @@ var file_newsletters_proto_goTypes = []any{
 	(*NewsletterMyAddOns)(nil),                     // 16: wamux.v1.NewsletterMyAddOns
 	(*NewsletterMyAddOnsList)(nil),                 // 17: wamux.v1.NewsletterMyAddOnsList
 	(*SubscribeNewsletterLiveUpdatesResponse)(nil), // 18: wamux.v1.SubscribeNewsletterLiveUpdatesResponse
-	(*Jid)(nil),                                    // 19: wamux.v1.Jid
-	(*InboundMessage)(nil),                         // 20: wamux.v1.InboundMessage
-	(*NewsletterReactionCount)(nil),                // 21: wamux.v1.NewsletterReactionCount
-	(*NewsletterPollVote)(nil),                     // 22: wamux.v1.NewsletterPollVote
-	(*AccountRef)(nil),                             // 23: wamux.v1.AccountRef
-	(*JidRequest)(nil),                             // 24: wamux.v1.JidRequest
+	(*NewsletterMuteRequest)(nil),                  // 19: wamux.v1.NewsletterMuteRequest
+	(*CreateNewsletterRequest)(nil),                // 20: wamux.v1.CreateNewsletterRequest
+	(*Jid)(nil),                                    // 21: wamux.v1.Jid
+	(*InboundMessage)(nil),                         // 22: wamux.v1.InboundMessage
+	(*NewsletterReactionCount)(nil),                // 23: wamux.v1.NewsletterReactionCount
+	(*NewsletterPollVote)(nil),                     // 24: wamux.v1.NewsletterPollVote
+	(*AccountRef)(nil),                             // 25: wamux.v1.AccountRef
+	(*JidRequest)(nil),                             // 26: wamux.v1.JidRequest
+	(*Empty)(nil),                                  // 27: wamux.v1.Empty
 }
 var file_newsletters_proto_depIdxs = []int32{
-	19, // 0: wamux.v1.Newsletter.jid:type_name -> wamux.v1.Jid
+	21, // 0: wamux.v1.Newsletter.jid:type_name -> wamux.v1.Jid
 	0,  // 1: wamux.v1.Newsletter.verification:type_name -> wamux.v1.NewsletterVerification
 	1,  // 2: wamux.v1.Newsletter.state:type_name -> wamux.v1.NewsletterState
 	2,  // 3: wamux.v1.Newsletter.role:type_name -> wamux.v1.NewsletterRole
 	6,  // 4: wamux.v1.NewsletterList.newsletters:type_name -> wamux.v1.Newsletter
-	20, // 5: wamux.v1.NewsletterMessage.message:type_name -> wamux.v1.InboundMessage
+	22, // 5: wamux.v1.NewsletterMessage.message:type_name -> wamux.v1.InboundMessage
 	3,  // 6: wamux.v1.NewsletterMessage.type:type_name -> wamux.v1.NewsletterMessageType
-	21, // 7: wamux.v1.NewsletterMessage.reactions:type_name -> wamux.v1.NewsletterReactionCount
-	22, // 8: wamux.v1.NewsletterMessage.votes:type_name -> wamux.v1.NewsletterPollVote
+	23, // 7: wamux.v1.NewsletterMessage.reactions:type_name -> wamux.v1.NewsletterReactionCount
+	24, // 8: wamux.v1.NewsletterMessage.votes:type_name -> wamux.v1.NewsletterPollVote
 	4,  // 9: wamux.v1.NewsletterMessage.poll_type:type_name -> wamux.v1.NewsletterPollType
 	5,  // 10: wamux.v1.NewsletterMessage.edit:type_name -> wamux.v1.EditAttribute
-	23, // 11: wamux.v1.GetNewsletterMessagesRequest.account:type_name -> wamux.v1.AccountRef
-	19, // 12: wamux.v1.GetNewsletterMessagesRequest.jid:type_name -> wamux.v1.Jid
+	25, // 11: wamux.v1.GetNewsletterMessagesRequest.account:type_name -> wamux.v1.AccountRef
+	21, // 12: wamux.v1.GetNewsletterMessagesRequest.jid:type_name -> wamux.v1.Jid
 	8,  // 13: wamux.v1.NewsletterMessageList.messages:type_name -> wamux.v1.NewsletterMessage
-	23, // 14: wamux.v1.SendNewsletterPollVoteRequest.account:type_name -> wamux.v1.AccountRef
-	19, // 15: wamux.v1.SendNewsletterPollVoteRequest.jid:type_name -> wamux.v1.Jid
-	23, // 16: wamux.v1.GetMyNewsletterAddOnsRequest.account:type_name -> wamux.v1.AccountRef
-	19, // 17: wamux.v1.GetMyNewsletterAddOnsRequest.jid:type_name -> wamux.v1.Jid
+	25, // 14: wamux.v1.SendNewsletterPollVoteRequest.account:type_name -> wamux.v1.AccountRef
+	21, // 15: wamux.v1.SendNewsletterPollVoteRequest.jid:type_name -> wamux.v1.Jid
+	25, // 16: wamux.v1.GetMyNewsletterAddOnsRequest.account:type_name -> wamux.v1.AccountRef
+	21, // 17: wamux.v1.GetMyNewsletterAddOnsRequest.jid:type_name -> wamux.v1.Jid
 	14, // 18: wamux.v1.NewsletterMyAddOns.reaction:type_name -> wamux.v1.NewsletterMyReaction
 	15, // 19: wamux.v1.NewsletterMyAddOns.poll_vote:type_name -> wamux.v1.NewsletterMyPollVote
 	16, // 20: wamux.v1.NewsletterMyAddOnsList.messages:type_name -> wamux.v1.NewsletterMyAddOns
-	23, // 21: wamux.v1.NewsletterService.ListSubscribedNewsletters:input_type -> wamux.v1.AccountRef
-	24, // 22: wamux.v1.NewsletterService.GetNewsletterMetadata:input_type -> wamux.v1.JidRequest
-	9,  // 23: wamux.v1.NewsletterService.GetNewsletterMessages:input_type -> wamux.v1.GetNewsletterMessagesRequest
-	11, // 24: wamux.v1.NewsletterService.SendNewsletterPollVote:input_type -> wamux.v1.SendNewsletterPollVoteRequest
-	13, // 25: wamux.v1.NewsletterService.GetMyNewsletterAddOns:input_type -> wamux.v1.GetMyNewsletterAddOnsRequest
-	24, // 26: wamux.v1.NewsletterService.SubscribeNewsletterLiveUpdates:input_type -> wamux.v1.JidRequest
-	7,  // 27: wamux.v1.NewsletterService.ListSubscribedNewsletters:output_type -> wamux.v1.NewsletterList
-	6,  // 28: wamux.v1.NewsletterService.GetNewsletterMetadata:output_type -> wamux.v1.Newsletter
-	10, // 29: wamux.v1.NewsletterService.GetNewsletterMessages:output_type -> wamux.v1.NewsletterMessageList
-	12, // 30: wamux.v1.NewsletterService.SendNewsletterPollVote:output_type -> wamux.v1.SendNewsletterPollVoteResponse
-	17, // 31: wamux.v1.NewsletterService.GetMyNewsletterAddOns:output_type -> wamux.v1.NewsletterMyAddOnsList
-	18, // 32: wamux.v1.NewsletterService.SubscribeNewsletterLiveUpdates:output_type -> wamux.v1.SubscribeNewsletterLiveUpdatesResponse
-	27, // [27:33] is the sub-list for method output_type
-	21, // [21:27] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	25, // 21: wamux.v1.NewsletterMuteRequest.account:type_name -> wamux.v1.AccountRef
+	21, // 22: wamux.v1.NewsletterMuteRequest.jid:type_name -> wamux.v1.Jid
+	25, // 23: wamux.v1.CreateNewsletterRequest.account:type_name -> wamux.v1.AccountRef
+	25, // 24: wamux.v1.NewsletterService.ListSubscribedNewsletters:input_type -> wamux.v1.AccountRef
+	26, // 25: wamux.v1.NewsletterService.GetNewsletterMetadata:input_type -> wamux.v1.JidRequest
+	9,  // 26: wamux.v1.NewsletterService.GetNewsletterMessages:input_type -> wamux.v1.GetNewsletterMessagesRequest
+	11, // 27: wamux.v1.NewsletterService.SendNewsletterPollVote:input_type -> wamux.v1.SendNewsletterPollVoteRequest
+	13, // 28: wamux.v1.NewsletterService.GetMyNewsletterAddOns:input_type -> wamux.v1.GetMyNewsletterAddOnsRequest
+	26, // 29: wamux.v1.NewsletterService.SubscribeNewsletterLiveUpdates:input_type -> wamux.v1.JidRequest
+	26, // 30: wamux.v1.NewsletterService.FollowNewsletter:input_type -> wamux.v1.JidRequest
+	26, // 31: wamux.v1.NewsletterService.UnfollowNewsletter:input_type -> wamux.v1.JidRequest
+	19, // 32: wamux.v1.NewsletterService.MuteNewsletter:input_type -> wamux.v1.NewsletterMuteRequest
+	20, // 33: wamux.v1.NewsletterService.CreateNewsletter:input_type -> wamux.v1.CreateNewsletterRequest
+	7,  // 34: wamux.v1.NewsletterService.ListSubscribedNewsletters:output_type -> wamux.v1.NewsletterList
+	6,  // 35: wamux.v1.NewsletterService.GetNewsletterMetadata:output_type -> wamux.v1.Newsletter
+	10, // 36: wamux.v1.NewsletterService.GetNewsletterMessages:output_type -> wamux.v1.NewsletterMessageList
+	12, // 37: wamux.v1.NewsletterService.SendNewsletterPollVote:output_type -> wamux.v1.SendNewsletterPollVoteResponse
+	17, // 38: wamux.v1.NewsletterService.GetMyNewsletterAddOns:output_type -> wamux.v1.NewsletterMyAddOnsList
+	18, // 39: wamux.v1.NewsletterService.SubscribeNewsletterLiveUpdates:output_type -> wamux.v1.SubscribeNewsletterLiveUpdatesResponse
+	27, // 40: wamux.v1.NewsletterService.FollowNewsletter:output_type -> wamux.v1.Empty
+	27, // 41: wamux.v1.NewsletterService.UnfollowNewsletter:output_type -> wamux.v1.Empty
+	27, // 42: wamux.v1.NewsletterService.MuteNewsletter:output_type -> wamux.v1.Empty
+	6,  // 43: wamux.v1.NewsletterService.CreateNewsletter:output_type -> wamux.v1.Newsletter
+	34, // [34:44] is the sub-list for method output_type
+	24, // [24:34] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_newsletters_proto_init() }
@@ -1519,13 +1671,14 @@ func file_newsletters_proto_init() {
 	file_contacts_proto_init()
 	file_events_proto_init()
 	file_newsletter_tallies_proto_init()
+	file_newsletters_proto_msgTypes[14].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_newsletters_proto_rawDesc), len(file_newsletters_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

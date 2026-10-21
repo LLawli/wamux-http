@@ -215,7 +215,7 @@ type CallLogResult int32
 
 const (
 	CallLogResult_CALL_LOG_RESULT_UNSPECIFIED        CallLogResult = 0
-	CallLogResult_CALL_LOG_RESULT_UNKNOWN            CallLogResult = 1 // never emitted (closed in the library)
+	CallLogResult_CALL_LOG_RESULT_UNKNOWN            CallLogResult = 1 // a variant this build does not name
 	CallLogResult_CALL_LOG_RESULT_CONNECTED          CallLogResult = 2
 	CallLogResult_CALL_LOG_RESULT_REJECTED           CallLogResult = 3
 	CallLogResult_CALL_LOG_RESULT_CANCELLED          CallLogResult = 4
@@ -295,7 +295,7 @@ type CallLogSilenceReason int32
 
 const (
 	CallLogSilenceReason_CALL_LOG_SILENCE_REASON_UNSPECIFIED CallLogSilenceReason = 0
-	CallLogSilenceReason_CALL_LOG_SILENCE_REASON_UNKNOWN     CallLogSilenceReason = 1 // never emitted (closed in the library)
+	CallLogSilenceReason_CALL_LOG_SILENCE_REASON_UNKNOWN     CallLogSilenceReason = 1 // a variant this build does not name
 	CallLogSilenceReason_CALL_LOG_SILENCE_REASON_NONE        CallLogSilenceReason = 2
 	CallLogSilenceReason_CALL_LOG_SILENCE_REASON_SCHEDULED   CallLogSilenceReason = 3
 	CallLogSilenceReason_CALL_LOG_SILENCE_REASON_PRIVACY     CallLogSilenceReason = 4
@@ -354,7 +354,7 @@ type CallLogType int32
 
 const (
 	CallLogType_CALL_LOG_TYPE_UNSPECIFIED    CallLogType = 0
-	CallLogType_CALL_LOG_TYPE_UNKNOWN        CallLogType = 1 // never emitted (closed in the library)
+	CallLogType_CALL_LOG_TYPE_UNKNOWN        CallLogType = 1 // a variant this build does not name
 	CallLogType_CALL_LOG_TYPE_REGULAR        CallLogType = 2
 	CallLogType_CALL_LOG_TYPE_SCHEDULED_CALL CallLogType = 3
 	CallLogType_CALL_LOG_TYPE_VOICE_CHAT     CallLogType = 4
@@ -2071,6 +2071,78 @@ func (x *CallMissed) GetReason() MissedCallReason {
 	return MissedCallReason_MISSED_CALL_REASON_UNSPECIFIED
 }
 
+// Reject a call ringing this account (#200). The three identifiers are the
+// ones a `CallEvent` offer carries: `peer` is its `from` (the `<call to>` the
+// reject goes back to) and `call_creator` its `call_creator`. They stay
+// separate because companion-device signaling can make them differ.
+type RejectCallRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	CallId        string                 `protobuf:"bytes,2,opt,name=call_id,json=callId,proto3" json:"call_id,omitempty"`
+	Peer          *Jid                   `protobuf:"bytes,3,opt,name=peer,proto3" json:"peer,omitempty"`
+	CallCreator   *Jid                   `protobuf:"bytes,4,opt,name=call_creator,json=callCreator,proto3" json:"call_creator,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RejectCallRequest) Reset() {
+	*x = RejectCallRequest{}
+	mi := &file_call_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RejectCallRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RejectCallRequest) ProtoMessage() {}
+
+func (x *RejectCallRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_call_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RejectCallRequest.ProtoReflect.Descriptor instead.
+func (*RejectCallRequest) Descriptor() ([]byte, []int) {
+	return file_call_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *RejectCallRequest) GetAccount() *AccountRef {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *RejectCallRequest) GetCallId() string {
+	if x != nil {
+		return x.CallId
+	}
+	return ""
+}
+
+func (x *RejectCallRequest) GetPeer() *Jid {
+	if x != nil {
+		return x.Peer
+	}
+	return nil
+}
+
+func (x *RejectCallRequest) GetCallCreator() *Jid {
+	if x != nil {
+		return x.CallCreator
+	}
+	return nil
+}
+
 var File_call_proto protoreflect.FileDescriptor
 
 const file_call_proto_rawDesc = "" +
@@ -2242,7 +2314,12 @@ const file_call_proto_rawDesc = "" +
 	"\x06result\x18\x02 \x01(\x0e2\x17.wamux.v1.CallLogResultR\x06result\"@\n" +
 	"\n" +
 	"CallMissed\x122\n" +
-	"\x06reason\x18\x01 \x01(\x0e2\x1a.wamux.v1.MissedCallReasonR\x06reason*\xf4\x04\n" +
+	"\x06reason\x18\x01 \x01(\x0e2\x1a.wamux.v1.MissedCallReasonR\x06reason\"\xb1\x01\n" +
+	"\x11RejectCallRequest\x12.\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x17\n" +
+	"\acall_id\x18\x02 \x01(\tR\x06callId\x12!\n" +
+	"\x04peer\x18\x03 \x01(\v2\r.wamux.v1.JidR\x04peer\x120\n" +
+	"\fcall_creator\x18\x04 \x01(\v2\r.wamux.v1.JidR\vcallCreator*\xf4\x04\n" +
 	"\x12CallVideoStateKind\x12%\n" +
 	"!CALL_VIDEO_STATE_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dCALL_VIDEO_STATE_KIND_UNKNOWN\x10\x01\x12\"\n" +
@@ -2302,7 +2379,10 @@ const file_call_proto_rawDesc = "" +
 	"\x1eMISSED_CALL_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aMISSED_CALL_REASON_UNKNOWN\x10\x01\x12\x1e\n" +
 	"\x1aMISSED_CALL_REASON_OFFLINE\x10\x02\x12\x1d\n" +
-	"\x19MISSED_CALL_REASON_REMOTE\x10\x03B\x96\x01\n" +
+	"\x19MISSED_CALL_REASON_REMOTE\x10\x032I\n" +
+	"\vCallService\x12:\n" +
+	"\n" +
+	"RejectCall\x12\x1b.wamux.v1.RejectCallRequest\x1a\x0f.wamux.v1.EmptyB\x96\x01\n" +
 	"\fcom.wamux.v1B\tCallProtoP\x01Z:github.com/LLawli/wamux-http/internal/core/wamuxv1;wamuxv1\xa2\x02\x03WXX\xaa\x02\bWamux.V1\xca\x02\bWamux\\V1\xe2\x02\x14Wamux\\V1\\GPBMetadata\xea\x02\tWamux::V1b\x06proto3"
 
 var (
@@ -2318,7 +2398,7 @@ func file_call_proto_rawDescGZIP() []byte {
 }
 
 var file_call_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_call_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_call_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_call_proto_goTypes = []any{
 	(CallVideoStateKind)(0),        // 0: wamux.v1.CallVideoStateKind
 	(ScreenShareState)(0),          // 1: wamux.v1.ScreenShareState
@@ -2348,44 +2428,52 @@ var file_call_proto_goTypes = []any{
 	(*CallLogUpdate)(nil),          // 25: wamux.v1.CallLogUpdate
 	(*CallLogParticipant)(nil),     // 26: wamux.v1.CallLogParticipant
 	(*CallMissed)(nil),             // 27: wamux.v1.CallMissed
-	(*Jid)(nil),                    // 28: wamux.v1.Jid
+	(*RejectCallRequest)(nil),      // 28: wamux.v1.RejectCallRequest
+	(*Jid)(nil),                    // 29: wamux.v1.Jid
+	(*AccountRef)(nil),             // 30: wamux.v1.AccountRef
+	(*Empty)(nil),                  // 31: wamux.v1.Empty
 }
 var file_call_proto_depIdxs = []int32{
-	28, // 0: wamux.v1.CallOffer.caller_pn:type_name -> wamux.v1.Jid
+	29, // 0: wamux.v1.CallOffer.caller_pn:type_name -> wamux.v1.Jid
 	7,  // 1: wamux.v1.CallOffer.audio:type_name -> wamux.v1.CallAudioCodec
-	28, // 2: wamux.v1.CallOffer.group_jid:type_name -> wamux.v1.Jid
+	29, // 2: wamux.v1.CallOffer.group_jid:type_name -> wamux.v1.Jid
 	7,  // 3: wamux.v1.CallAcceptance.audio:type_name -> wamux.v1.CallAudioCodec
 	0,  // 4: wamux.v1.CallVideoState.state:type_name -> wamux.v1.CallVideoStateKind
 	1,  // 5: wamux.v1.CallScreenShare.state:type_name -> wamux.v1.ScreenShareState
-	28, // 6: wamux.v1.GroupCallDevice.jid:type_name -> wamux.v1.Jid
-	28, // 7: wamux.v1.GroupCallParticipant.jid:type_name -> wamux.v1.Jid
-	28, // 8: wamux.v1.GroupCallParticipant.pn:type_name -> wamux.v1.Jid
+	29, // 6: wamux.v1.GroupCallDevice.jid:type_name -> wamux.v1.Jid
+	29, // 7: wamux.v1.GroupCallParticipant.jid:type_name -> wamux.v1.Jid
+	29, // 8: wamux.v1.GroupCallParticipant.pn:type_name -> wamux.v1.Jid
 	17, // 9: wamux.v1.GroupCallParticipant.devices:type_name -> wamux.v1.GroupCallDevice
 	19, // 10: wamux.v1.GroupCallRelay.endpoints:type_name -> wamux.v1.GroupCallRelayEndpoint
-	28, // 11: wamux.v1.GroupCallUpdate.call_creator:type_name -> wamux.v1.Jid
-	28, // 12: wamux.v1.GroupCallUpdate.group_jid:type_name -> wamux.v1.Jid
+	29, // 11: wamux.v1.GroupCallUpdate.call_creator:type_name -> wamux.v1.Jid
+	29, // 12: wamux.v1.GroupCallUpdate.group_jid:type_name -> wamux.v1.Jid
 	18, // 13: wamux.v1.GroupCallUpdate.participants:type_name -> wamux.v1.GroupCallParticipant
 	20, // 14: wamux.v1.GroupCallUpdate.relay:type_name -> wamux.v1.GroupCallRelay
-	28, // 15: wamux.v1.GroupCallEncRekey.call_creator:type_name -> wamux.v1.Jid
-	28, // 16: wamux.v1.CallWaitingRoom.call_creator:type_name -> wamux.v1.Jid
+	29, // 15: wamux.v1.GroupCallEncRekey.call_creator:type_name -> wamux.v1.Jid
+	29, // 16: wamux.v1.CallWaitingRoom.call_creator:type_name -> wamux.v1.Jid
 	2,  // 17: wamux.v1.CallWaitingRoom.media:type_name -> wamux.v1.CallLinkMedia
 	24, // 18: wamux.v1.CallWaitingRoom.users:type_name -> wamux.v1.WaitingRoomUser
-	28, // 19: wamux.v1.WaitingRoomUser.jid:type_name -> wamux.v1.Jid
-	28, // 20: wamux.v1.WaitingRoomUser.pn:type_name -> wamux.v1.Jid
-	28, // 21: wamux.v1.CallLogUpdate.call_creator:type_name -> wamux.v1.Jid
+	29, // 19: wamux.v1.WaitingRoomUser.jid:type_name -> wamux.v1.Jid
+	29, // 20: wamux.v1.WaitingRoomUser.pn:type_name -> wamux.v1.Jid
+	29, // 21: wamux.v1.CallLogUpdate.call_creator:type_name -> wamux.v1.Jid
 	3,  // 22: wamux.v1.CallLogUpdate.result:type_name -> wamux.v1.CallLogResult
 	4,  // 23: wamux.v1.CallLogUpdate.silence_reason:type_name -> wamux.v1.CallLogSilenceReason
-	28, // 24: wamux.v1.CallLogUpdate.group:type_name -> wamux.v1.Jid
+	29, // 24: wamux.v1.CallLogUpdate.group:type_name -> wamux.v1.Jid
 	26, // 25: wamux.v1.CallLogUpdate.participants:type_name -> wamux.v1.CallLogParticipant
 	5,  // 26: wamux.v1.CallLogUpdate.call_type:type_name -> wamux.v1.CallLogType
-	28, // 27: wamux.v1.CallLogParticipant.user:type_name -> wamux.v1.Jid
+	29, // 27: wamux.v1.CallLogParticipant.user:type_name -> wamux.v1.Jid
 	3,  // 28: wamux.v1.CallLogParticipant.result:type_name -> wamux.v1.CallLogResult
 	6,  // 29: wamux.v1.CallMissed.reason:type_name -> wamux.v1.MissedCallReason
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	30, // 30: wamux.v1.RejectCallRequest.account:type_name -> wamux.v1.AccountRef
+	29, // 31: wamux.v1.RejectCallRequest.peer:type_name -> wamux.v1.Jid
+	29, // 32: wamux.v1.RejectCallRequest.call_creator:type_name -> wamux.v1.Jid
+	28, // 33: wamux.v1.CallService.RejectCall:input_type -> wamux.v1.RejectCallRequest
+	31, // 34: wamux.v1.CallService.RejectCall:output_type -> wamux.v1.Empty
+	34, // [34:35] is the sub-list for method output_type
+	33, // [33:34] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_call_proto_init() }
@@ -2412,9 +2500,9 @@ func file_call_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_call_proto_rawDesc), len(file_call_proto_rawDesc)),
 			NumEnums:      7,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_call_proto_goTypes,
 		DependencyIndexes: file_call_proto_depIdxs,

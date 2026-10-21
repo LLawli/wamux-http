@@ -26,6 +26,10 @@ const (
 	ContactService_GetPushName_FullMethodName          = "/wamux.v1.ContactService/GetPushName"
 	ContactService_SetPushName_FullMethodName          = "/wamux.v1.ContactService/SetPushName"
 	ContactService_GetAbout_FullMethodName             = "/wamux.v1.ContactService/GetAbout"
+	ContactService_SetAbout_FullMethodName             = "/wamux.v1.ContactService/SetAbout"
+	ContactService_BlockContact_FullMethodName         = "/wamux.v1.ContactService/BlockContact"
+	ContactService_UnblockContact_FullMethodName       = "/wamux.v1.ContactService/UnblockContact"
+	ContactService_GetBlocklist_FullMethodName         = "/wamux.v1.ContactService/GetBlocklist"
 	ContactService_GetBusinessProfile_FullMethodName   = "/wamux.v1.ContactService/GetBusinessProfile"
 	ContactService_SubscribePresence_FullMethodName    = "/wamux.v1.ContactService/SubscribePresence"
 	ContactService_ResolveLidPn_FullMethodName         = "/wamux.v1.ContactService/ResolveLidPn"
@@ -47,6 +51,18 @@ type ContactServiceClient interface {
 	GetPushName(ctx context.Context, in *AccountRef, opts ...grpc.CallOption) (*PushNameResponse, error)
 	SetPushName(ctx context.Context, in *SetPushNameRequest, opts ...grpc.CallOption) (*Empty, error)
 	GetAbout(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*AboutResponse, error)
+	// The account's OWN about text, the setter next to GetAbout (#197).
+	SetAbout(ctx context.Context, in *SetAboutRequest, opts ...grpc.CallOption) (*Empty, error)
+	// Block or unblock a user. The jid must be a phone jid
+	// ("<user>@s.whatsapp.net") or a LID ("<user>@lid"), relayed as given: any
+	// other kind is InvalidArgument. A block sends both sides of the pair, so it
+	// needs the LID<->PN mapping the client already learned; without it the
+	// answer is FailedPrecondition and nothing is sent. An unblock by LID needs
+	// no mapping (#197).
+	BlockContact(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error)
+	UnblockContact(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error)
+	// The account's blocklist, entry by entry as the server returns it (#197).
+	GetBlocklist(ctx context.Context, in *AccountRef, opts ...grpc.CallOption) (*GetBlocklistResponse, error)
 	GetBusinessProfile(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*BusinessProfileResponse, error)
 	SubscribePresence(ctx context.Context, in *SubscribePresenceRequest, opts ...grpc.CallOption) (*Empty, error)
 	// Targeted LID<->PN lookup, batched. Reads the live client (in-memory cache
@@ -138,6 +154,46 @@ func (c *contactServiceClient) GetAbout(ctx context.Context, in *JidRequest, opt
 	return out, nil
 }
 
+func (c *contactServiceClient) SetAbout(ctx context.Context, in *SetAboutRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, ContactService_SetAbout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactServiceClient) BlockContact(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, ContactService_BlockContact_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactServiceClient) UnblockContact(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, ContactService_UnblockContact_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contactServiceClient) GetBlocklist(ctx context.Context, in *AccountRef, opts ...grpc.CallOption) (*GetBlocklistResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBlocklistResponse)
+	err := c.cc.Invoke(ctx, ContactService_GetBlocklist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *contactServiceClient) GetBusinessProfile(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*BusinessProfileResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BusinessProfileResponse)
@@ -193,6 +249,18 @@ type ContactServiceServer interface {
 	GetPushName(context.Context, *AccountRef) (*PushNameResponse, error)
 	SetPushName(context.Context, *SetPushNameRequest) (*Empty, error)
 	GetAbout(context.Context, *JidRequest) (*AboutResponse, error)
+	// The account's OWN about text, the setter next to GetAbout (#197).
+	SetAbout(context.Context, *SetAboutRequest) (*Empty, error)
+	// Block or unblock a user. The jid must be a phone jid
+	// ("<user>@s.whatsapp.net") or a LID ("<user>@lid"), relayed as given: any
+	// other kind is InvalidArgument. A block sends both sides of the pair, so it
+	// needs the LID<->PN mapping the client already learned; without it the
+	// answer is FailedPrecondition and nothing is sent. An unblock by LID needs
+	// no mapping (#197).
+	BlockContact(context.Context, *JidRequest) (*Empty, error)
+	UnblockContact(context.Context, *JidRequest) (*Empty, error)
+	// The account's blocklist, entry by entry as the server returns it (#197).
+	GetBlocklist(context.Context, *AccountRef) (*GetBlocklistResponse, error)
 	GetBusinessProfile(context.Context, *JidRequest) (*BusinessProfileResponse, error)
 	SubscribePresence(context.Context, *SubscribePresenceRequest) (*Empty, error)
 	// Targeted LID<->PN lookup, batched. Reads the live client (in-memory cache
@@ -234,6 +302,18 @@ func (UnimplementedContactServiceServer) SetPushName(context.Context, *SetPushNa
 }
 func (UnimplementedContactServiceServer) GetAbout(context.Context, *JidRequest) (*AboutResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAbout not implemented")
+}
+func (UnimplementedContactServiceServer) SetAbout(context.Context, *SetAboutRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetAbout not implemented")
+}
+func (UnimplementedContactServiceServer) BlockContact(context.Context, *JidRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method BlockContact not implemented")
+}
+func (UnimplementedContactServiceServer) UnblockContact(context.Context, *JidRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnblockContact not implemented")
+}
+func (UnimplementedContactServiceServer) GetBlocklist(context.Context, *AccountRef) (*GetBlocklistResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBlocklist not implemented")
 }
 func (UnimplementedContactServiceServer) GetBusinessProfile(context.Context, *JidRequest) (*BusinessProfileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBusinessProfile not implemented")
@@ -394,6 +474,78 @@ func _ContactService_GetAbout_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContactService_SetAbout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAboutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactServiceServer).SetAbout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactService_SetAbout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactServiceServer).SetAbout(ctx, req.(*SetAboutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactService_BlockContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JidRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactServiceServer).BlockContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactService_BlockContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactServiceServer).BlockContact(ctx, req.(*JidRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactService_UnblockContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JidRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactServiceServer).UnblockContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactService_UnblockContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactServiceServer).UnblockContact(ctx, req.(*JidRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContactService_GetBlocklist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AccountRef)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContactServiceServer).GetBlocklist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContactService_GetBlocklist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContactServiceServer).GetBlocklist(ctx, req.(*AccountRef))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ContactService_GetBusinessProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JidRequest)
 	if err := dec(in); err != nil {
@@ -500,6 +652,22 @@ var ContactService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAbout",
 			Handler:    _ContactService_GetAbout_Handler,
+		},
+		{
+			MethodName: "SetAbout",
+			Handler:    _ContactService_SetAbout_Handler,
+		},
+		{
+			MethodName: "BlockContact",
+			Handler:    _ContactService_BlockContact_Handler,
+		},
+		{
+			MethodName: "UnblockContact",
+			Handler:    _ContactService_UnblockContact_Handler,
+		},
+		{
+			MethodName: "GetBlocklist",
+			Handler:    _ContactService_GetBlocklist_Handler,
 		},
 		{
 			MethodName: "GetBusinessProfile",

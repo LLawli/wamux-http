@@ -19,27 +19,31 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GroupService_CreateGroup_FullMethodName               = "/wamux.v1.GroupService/CreateGroup"
-	GroupService_AddParticipants_FullMethodName           = "/wamux.v1.GroupService/AddParticipants"
-	GroupService_RemoveParticipants_FullMethodName        = "/wamux.v1.GroupService/RemoveParticipants"
-	GroupService_PromoteAdmins_FullMethodName             = "/wamux.v1.GroupService/PromoteAdmins"
-	GroupService_DemoteAdmins_FullMethodName              = "/wamux.v1.GroupService/DemoteAdmins"
-	GroupService_SetGroupSubject_FullMethodName           = "/wamux.v1.GroupService/SetGroupSubject"
-	GroupService_SetGroupDescription_FullMethodName       = "/wamux.v1.GroupService/SetGroupDescription"
-	GroupService_GetGroupMetadata_FullMethodName          = "/wamux.v1.GroupService/GetGroupMetadata"
-	GroupService_GetInviteLink_FullMethodName             = "/wamux.v1.GroupService/GetInviteLink"
-	GroupService_RevokeInviteLink_FullMethodName          = "/wamux.v1.GroupService/RevokeInviteLink"
-	GroupService_JoinWithInvite_FullMethodName            = "/wamux.v1.GroupService/JoinWithInvite"
-	GroupService_ListParticipating_FullMethodName         = "/wamux.v1.GroupService/ListParticipating"
-	GroupService_LeaveGroup_FullMethodName                = "/wamux.v1.GroupService/LeaveGroup"
-	GroupService_SetGroupAnnounce_FullMethodName          = "/wamux.v1.GroupService/SetGroupAnnounce"
-	GroupService_SetGroupLocked_FullMethodName            = "/wamux.v1.GroupService/SetGroupLocked"
-	GroupService_SetGroupEphemeral_FullMethodName         = "/wamux.v1.GroupService/SetGroupEphemeral"
-	GroupService_PreviewInvite_FullMethodName             = "/wamux.v1.GroupService/PreviewInvite"
-	GroupService_SetGroupPhoto_FullMethodName             = "/wamux.v1.GroupService/SetGroupPhoto"
-	GroupService_GetMembershipRequests_FullMethodName     = "/wamux.v1.GroupService/GetMembershipRequests"
-	GroupService_ApproveMembershipRequests_FullMethodName = "/wamux.v1.GroupService/ApproveMembershipRequests"
-	GroupService_RejectMembershipRequests_FullMethodName  = "/wamux.v1.GroupService/RejectMembershipRequests"
+	GroupService_CreateGroup_FullMethodName                    = "/wamux.v1.GroupService/CreateGroup"
+	GroupService_AddParticipants_FullMethodName                = "/wamux.v1.GroupService/AddParticipants"
+	GroupService_RemoveParticipants_FullMethodName             = "/wamux.v1.GroupService/RemoveParticipants"
+	GroupService_PromoteAdmins_FullMethodName                  = "/wamux.v1.GroupService/PromoteAdmins"
+	GroupService_DemoteAdmins_FullMethodName                   = "/wamux.v1.GroupService/DemoteAdmins"
+	GroupService_SetGroupSubject_FullMethodName                = "/wamux.v1.GroupService/SetGroupSubject"
+	GroupService_SetGroupDescription_FullMethodName            = "/wamux.v1.GroupService/SetGroupDescription"
+	GroupService_GetGroupMetadata_FullMethodName               = "/wamux.v1.GroupService/GetGroupMetadata"
+	GroupService_GetInviteLink_FullMethodName                  = "/wamux.v1.GroupService/GetInviteLink"
+	GroupService_RevokeInviteLink_FullMethodName               = "/wamux.v1.GroupService/RevokeInviteLink"
+	GroupService_JoinWithInvite_FullMethodName                 = "/wamux.v1.GroupService/JoinWithInvite"
+	GroupService_ListParticipating_FullMethodName              = "/wamux.v1.GroupService/ListParticipating"
+	GroupService_LeaveGroup_FullMethodName                     = "/wamux.v1.GroupService/LeaveGroup"
+	GroupService_SetGroupAnnounce_FullMethodName               = "/wamux.v1.GroupService/SetGroupAnnounce"
+	GroupService_SetGroupLocked_FullMethodName                 = "/wamux.v1.GroupService/SetGroupLocked"
+	GroupService_SetGroupEphemeral_FullMethodName              = "/wamux.v1.GroupService/SetGroupEphemeral"
+	GroupService_PreviewInvite_FullMethodName                  = "/wamux.v1.GroupService/PreviewInvite"
+	GroupService_SetGroupPhoto_FullMethodName                  = "/wamux.v1.GroupService/SetGroupPhoto"
+	GroupService_GetMembershipRequests_FullMethodName          = "/wamux.v1.GroupService/GetMembershipRequests"
+	GroupService_ApproveMembershipRequests_FullMethodName      = "/wamux.v1.GroupService/ApproveMembershipRequests"
+	GroupService_RejectMembershipRequests_FullMethodName       = "/wamux.v1.GroupService/RejectMembershipRequests"
+	GroupService_SetGroupMembershipApproval_FullMethodName     = "/wamux.v1.GroupService/SetGroupMembershipApproval"
+	GroupService_SetGroupMemberAddMode_FullMethodName          = "/wamux.v1.GroupService/SetGroupMemberAddMode"
+	GroupService_SetGroupMemberLinkMode_FullMethodName         = "/wamux.v1.GroupService/SetGroupMemberLinkMode"
+	GroupService_SetGroupMemberShareHistoryMode_FullMethodName = "/wamux.v1.GroupService/SetGroupMemberShareHistoryMode"
 )
 
 // GroupServiceClient is the client API for GroupService service.
@@ -67,6 +71,11 @@ type GroupServiceClient interface {
 	GetMembershipRequests(ctx context.Context, in *GroupRef, opts ...grpc.CallOption) (*MembershipRequestsResponse, error)
 	ApproveMembershipRequests(ctx context.Context, in *ParticipantsRequest, opts ...grpc.CallOption) (*ParticipantsResponse, error)
 	RejectMembershipRequests(ctx context.Context, in *ParticipantsRequest, opts ...grpc.CallOption) (*ParticipantsResponse, error)
+	// `enabled` true: a new member waits for an admin's approval.
+	SetGroupMembershipApproval(ctx context.Context, in *GroupToggleRequest, opts ...grpc.CallOption) (*Empty, error)
+	SetGroupMemberAddMode(ctx context.Context, in *GroupMemberAddModeRequest, opts ...grpc.CallOption) (*Empty, error)
+	SetGroupMemberLinkMode(ctx context.Context, in *GroupMemberLinkModeRequest, opts ...grpc.CallOption) (*Empty, error)
+	SetGroupMemberShareHistoryMode(ctx context.Context, in *GroupMemberShareHistoryModeRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type groupServiceClient struct {
@@ -287,6 +296,46 @@ func (c *groupServiceClient) RejectMembershipRequests(ctx context.Context, in *P
 	return out, nil
 }
 
+func (c *groupServiceClient) SetGroupMembershipApproval(ctx context.Context, in *GroupToggleRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, GroupService_SetGroupMembershipApproval_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) SetGroupMemberAddMode(ctx context.Context, in *GroupMemberAddModeRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, GroupService_SetGroupMemberAddMode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) SetGroupMemberLinkMode(ctx context.Context, in *GroupMemberLinkModeRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, GroupService_SetGroupMemberLinkMode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *groupServiceClient) SetGroupMemberShareHistoryMode(ctx context.Context, in *GroupMemberShareHistoryModeRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, GroupService_SetGroupMemberShareHistoryMode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GroupServiceServer is the server API for GroupService service.
 // All implementations must embed UnimplementedGroupServiceServer
 // for forward compatibility.
@@ -312,6 +361,11 @@ type GroupServiceServer interface {
 	GetMembershipRequests(context.Context, *GroupRef) (*MembershipRequestsResponse, error)
 	ApproveMembershipRequests(context.Context, *ParticipantsRequest) (*ParticipantsResponse, error)
 	RejectMembershipRequests(context.Context, *ParticipantsRequest) (*ParticipantsResponse, error)
+	// `enabled` true: a new member waits for an admin's approval.
+	SetGroupMembershipApproval(context.Context, *GroupToggleRequest) (*Empty, error)
+	SetGroupMemberAddMode(context.Context, *GroupMemberAddModeRequest) (*Empty, error)
+	SetGroupMemberLinkMode(context.Context, *GroupMemberLinkModeRequest) (*Empty, error)
+	SetGroupMemberShareHistoryMode(context.Context, *GroupMemberShareHistoryModeRequest) (*Empty, error)
 	mustEmbedUnimplementedGroupServiceServer()
 }
 
@@ -384,6 +438,18 @@ func (UnimplementedGroupServiceServer) ApproveMembershipRequests(context.Context
 }
 func (UnimplementedGroupServiceServer) RejectMembershipRequests(context.Context, *ParticipantsRequest) (*ParticipantsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RejectMembershipRequests not implemented")
+}
+func (UnimplementedGroupServiceServer) SetGroupMembershipApproval(context.Context, *GroupToggleRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetGroupMembershipApproval not implemented")
+}
+func (UnimplementedGroupServiceServer) SetGroupMemberAddMode(context.Context, *GroupMemberAddModeRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetGroupMemberAddMode not implemented")
+}
+func (UnimplementedGroupServiceServer) SetGroupMemberLinkMode(context.Context, *GroupMemberLinkModeRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetGroupMemberLinkMode not implemented")
+}
+func (UnimplementedGroupServiceServer) SetGroupMemberShareHistoryMode(context.Context, *GroupMemberShareHistoryModeRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetGroupMemberShareHistoryMode not implemented")
 }
 func (UnimplementedGroupServiceServer) mustEmbedUnimplementedGroupServiceServer() {}
 func (UnimplementedGroupServiceServer) testEmbeddedByValue()                      {}
@@ -784,6 +850,78 @@ func _GroupService_RejectMembershipRequests_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GroupService_SetGroupMembershipApproval_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GroupToggleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).SetGroupMembershipApproval(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_SetGroupMembershipApproval_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).SetGroupMembershipApproval(ctx, req.(*GroupToggleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_SetGroupMemberAddMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GroupMemberAddModeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).SetGroupMemberAddMode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_SetGroupMemberAddMode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).SetGroupMemberAddMode(ctx, req.(*GroupMemberAddModeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_SetGroupMemberLinkMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GroupMemberLinkModeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).SetGroupMemberLinkMode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_SetGroupMemberLinkMode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).SetGroupMemberLinkMode(ctx, req.(*GroupMemberLinkModeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _GroupService_SetGroupMemberShareHistoryMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GroupMemberShareHistoryModeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GroupServiceServer).SetGroupMemberShareHistoryMode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GroupService_SetGroupMemberShareHistoryMode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GroupServiceServer).SetGroupMemberShareHistoryMode(ctx, req.(*GroupMemberShareHistoryModeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GroupService_ServiceDesc is the grpc.ServiceDesc for GroupService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -874,6 +1012,22 @@ var GroupService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RejectMembershipRequests",
 			Handler:    _GroupService_RejectMembershipRequests_Handler,
+		},
+		{
+			MethodName: "SetGroupMembershipApproval",
+			Handler:    _GroupService_SetGroupMembershipApproval_Handler,
+		},
+		{
+			MethodName: "SetGroupMemberAddMode",
+			Handler:    _GroupService_SetGroupMemberAddMode_Handler,
+		},
+		{
+			MethodName: "SetGroupMemberLinkMode",
+			Handler:    _GroupService_SetGroupMemberLinkMode_Handler,
+		},
+		{
+			MethodName: "SetGroupMemberShareHistoryMode",
+			Handler:    _GroupService_SetGroupMemberShareHistoryMode_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

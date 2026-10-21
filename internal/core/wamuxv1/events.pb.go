@@ -24,14 +24,14 @@ const (
 // One sticker inside a received pack, as the pack message lists it. `file_name`
 // is its entry in the ZIP, so an edge can match metadata to bytes after
 // unzipping.
-// The waproto enum is closed: the decoder drops a number it does not know, so
-// such a pack reads UNSPECIFIED and the number survives only in `raw_message`.
-// That is why there is no `origin_raw`.
+// The decoder drops a number it does not know, so such a pack reads UNSPECIFIED
+// and the number survives only in `raw_message`. UNKNOWN is a variant this
+// build does not name yet. That is why there is no `origin_raw`.
 type StickerPackOrigin int32
 
 const (
 	StickerPackOrigin_STICKER_PACK_ORIGIN_UNSPECIFIED  StickerPackOrigin = 0
-	StickerPackOrigin_STICKER_PACK_ORIGIN_UNKNOWN      StickerPackOrigin = 1 // not emitted today: see above
+	StickerPackOrigin_STICKER_PACK_ORIGIN_UNKNOWN      StickerPackOrigin = 1 // a variant this build does not name
 	StickerPackOrigin_STICKER_PACK_ORIGIN_FIRST_PARTY  StickerPackOrigin = 2
 	StickerPackOrigin_STICKER_PACK_ORIGIN_THIRD_PARTY  StickerPackOrigin = 3
 	StickerPackOrigin_STICKER_PACK_ORIGIN_USER_CREATED StickerPackOrigin = 4
@@ -379,12 +379,13 @@ func (BanReason) EnumDescriptor() ([]byte, []int) {
 }
 
 // The library models "recording" as composing with audio media; the contract
-// keeps the three states the edge draws. A closed set: no raw.
+// keeps the three states the edge draws. No raw: the library never hands the
+// activity over as a number.
 type ChatState int32
 
 const (
 	ChatState_CHAT_STATE_UNSPECIFIED ChatState = 0
-	ChatState_CHAT_STATE_UNKNOWN     ChatState = 1 // not emitted today: the set is closed
+	ChatState_CHAT_STATE_UNKNOWN     ChatState = 1 // an activity this build does not name
 	ChatState_CHAT_STATE_COMPOSING   ChatState = 2 // was "composing"
 	ChatState_CHAT_STATE_RECORDING   ChatState = 3 // was "recording"
 	ChatState_CHAT_STATE_PAUSED      ChatState = 4 // was "paused"

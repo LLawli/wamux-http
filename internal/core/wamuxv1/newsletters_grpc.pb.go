@@ -25,6 +25,10 @@ const (
 	NewsletterService_SendNewsletterPollVote_FullMethodName         = "/wamux.v1.NewsletterService/SendNewsletterPollVote"
 	NewsletterService_GetMyNewsletterAddOns_FullMethodName          = "/wamux.v1.NewsletterService/GetMyNewsletterAddOns"
 	NewsletterService_SubscribeNewsletterLiveUpdates_FullMethodName = "/wamux.v1.NewsletterService/SubscribeNewsletterLiveUpdates"
+	NewsletterService_FollowNewsletter_FullMethodName               = "/wamux.v1.NewsletterService/FollowNewsletter"
+	NewsletterService_UnfollowNewsletter_FullMethodName             = "/wamux.v1.NewsletterService/UnfollowNewsletter"
+	NewsletterService_MuteNewsletter_FullMethodName                 = "/wamux.v1.NewsletterService/MuteNewsletter"
+	NewsletterService_CreateNewsletter_FullMethodName               = "/wamux.v1.NewsletterService/CreateNewsletter"
 )
 
 // NewsletterServiceClient is the client API for NewsletterService service.
@@ -60,6 +64,14 @@ type NewsletterServiceClient interface {
 	// events, for the answered duration. Without it none arrive. Renewing before
 	// the duration runs out is the caller's timer: the core keeps none.
 	SubscribeNewsletterLiveUpdates(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*SubscribeNewsletterLiveUpdatesResponse, error)
+	// Follow a channel (#199). Answers nothing: measured live, the server's
+	// answer to the join carries the channel id and not its name, badge or this
+	// account's role, so a Newsletter built from it would state UNVERIFIED for a
+	// verified channel. GetNewsletterMetadata reads the channel as it is.
+	FollowNewsletter(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error)
+	UnfollowNewsletter(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error)
+	MuteNewsletter(ctx context.Context, in *NewsletterMuteRequest, opts ...grpc.CallOption) (*Empty, error)
+	CreateNewsletter(ctx context.Context, in *CreateNewsletterRequest, opts ...grpc.CallOption) (*Newsletter, error)
 }
 
 type newsletterServiceClient struct {
@@ -130,6 +142,46 @@ func (c *newsletterServiceClient) SubscribeNewsletterLiveUpdates(ctx context.Con
 	return out, nil
 }
 
+func (c *newsletterServiceClient) FollowNewsletter(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, NewsletterService_FollowNewsletter_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *newsletterServiceClient) UnfollowNewsletter(ctx context.Context, in *JidRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, NewsletterService_UnfollowNewsletter_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *newsletterServiceClient) MuteNewsletter(ctx context.Context, in *NewsletterMuteRequest, opts ...grpc.CallOption) (*Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, NewsletterService_MuteNewsletter_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *newsletterServiceClient) CreateNewsletter(ctx context.Context, in *CreateNewsletterRequest, opts ...grpc.CallOption) (*Newsletter, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Newsletter)
+	err := c.cc.Invoke(ctx, NewsletterService_CreateNewsletter_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NewsletterServiceServer is the server API for NewsletterService service.
 // All implementations must embed UnimplementedNewsletterServiceServer
 // for forward compatibility.
@@ -163,6 +215,14 @@ type NewsletterServiceServer interface {
 	// events, for the answered duration. Without it none arrive. Renewing before
 	// the duration runs out is the caller's timer: the core keeps none.
 	SubscribeNewsletterLiveUpdates(context.Context, *JidRequest) (*SubscribeNewsletterLiveUpdatesResponse, error)
+	// Follow a channel (#199). Answers nothing: measured live, the server's
+	// answer to the join carries the channel id and not its name, badge or this
+	// account's role, so a Newsletter built from it would state UNVERIFIED for a
+	// verified channel. GetNewsletterMetadata reads the channel as it is.
+	FollowNewsletter(context.Context, *JidRequest) (*Empty, error)
+	UnfollowNewsletter(context.Context, *JidRequest) (*Empty, error)
+	MuteNewsletter(context.Context, *NewsletterMuteRequest) (*Empty, error)
+	CreateNewsletter(context.Context, *CreateNewsletterRequest) (*Newsletter, error)
 	mustEmbedUnimplementedNewsletterServiceServer()
 }
 
@@ -190,6 +250,18 @@ func (UnimplementedNewsletterServiceServer) GetMyNewsletterAddOns(context.Contex
 }
 func (UnimplementedNewsletterServiceServer) SubscribeNewsletterLiveUpdates(context.Context, *JidRequest) (*SubscribeNewsletterLiveUpdatesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubscribeNewsletterLiveUpdates not implemented")
+}
+func (UnimplementedNewsletterServiceServer) FollowNewsletter(context.Context, *JidRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method FollowNewsletter not implemented")
+}
+func (UnimplementedNewsletterServiceServer) UnfollowNewsletter(context.Context, *JidRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnfollowNewsletter not implemented")
+}
+func (UnimplementedNewsletterServiceServer) MuteNewsletter(context.Context, *NewsletterMuteRequest) (*Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method MuteNewsletter not implemented")
+}
+func (UnimplementedNewsletterServiceServer) CreateNewsletter(context.Context, *CreateNewsletterRequest) (*Newsletter, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateNewsletter not implemented")
 }
 func (UnimplementedNewsletterServiceServer) mustEmbedUnimplementedNewsletterServiceServer() {}
 func (UnimplementedNewsletterServiceServer) testEmbeddedByValue()                           {}
@@ -320,6 +392,78 @@ func _NewsletterService_SubscribeNewsletterLiveUpdates_Handler(srv interface{}, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NewsletterService_FollowNewsletter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JidRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsletterServiceServer).FollowNewsletter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsletterService_FollowNewsletter_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsletterServiceServer).FollowNewsletter(ctx, req.(*JidRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NewsletterService_UnfollowNewsletter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JidRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsletterServiceServer).UnfollowNewsletter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsletterService_UnfollowNewsletter_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsletterServiceServer).UnfollowNewsletter(ctx, req.(*JidRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NewsletterService_MuteNewsletter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NewsletterMuteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsletterServiceServer).MuteNewsletter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsletterService_MuteNewsletter_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsletterServiceServer).MuteNewsletter(ctx, req.(*NewsletterMuteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NewsletterService_CreateNewsletter_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNewsletterRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NewsletterServiceServer).CreateNewsletter(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NewsletterService_CreateNewsletter_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NewsletterServiceServer).CreateNewsletter(ctx, req.(*CreateNewsletterRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NewsletterService_ServiceDesc is the grpc.ServiceDesc for NewsletterService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -350,6 +494,22 @@ var NewsletterService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SubscribeNewsletterLiveUpdates",
 			Handler:    _NewsletterService_SubscribeNewsletterLiveUpdates_Handler,
+		},
+		{
+			MethodName: "FollowNewsletter",
+			Handler:    _NewsletterService_FollowNewsletter_Handler,
+		},
+		{
+			MethodName: "UnfollowNewsletter",
+			Handler:    _NewsletterService_UnfollowNewsletter_Handler,
+		},
+		{
+			MethodName: "MuteNewsletter",
+			Handler:    _NewsletterService_MuteNewsletter_Handler,
+		},
+		{
+			MethodName: "CreateNewsletter",
+			Handler:    _NewsletterService_CreateNewsletter_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

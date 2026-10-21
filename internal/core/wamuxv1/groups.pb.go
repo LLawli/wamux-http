@@ -744,6 +744,192 @@ func (x *GroupEphemeralRequest) GetExpirationSeconds() uint32 {
 	return 0
 }
 
+// Who may add members (#198). The same enum GetGroupMetadata reports, so the
+// edge writes what it reads; UNSPECIFIED and UNKNOWN name no setting and are
+// refused with InvalidArgument before anything reaches the server.
+type GroupMemberAddModeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Group         *Jid                   `protobuf:"bytes,2,opt,name=group,proto3" json:"group,omitempty"`
+	Mode          GroupMemberAddMode     `protobuf:"varint,3,opt,name=mode,proto3,enum=wamux.v1.GroupMemberAddMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GroupMemberAddModeRequest) Reset() {
+	*x = GroupMemberAddModeRequest{}
+	mi := &file_groups_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GroupMemberAddModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GroupMemberAddModeRequest) ProtoMessage() {}
+
+func (x *GroupMemberAddModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_groups_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GroupMemberAddModeRequest.ProtoReflect.Descriptor instead.
+func (*GroupMemberAddModeRequest) Descriptor() ([]byte, []int) {
+	return file_groups_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GroupMemberAddModeRequest) GetAccount() *AccountRef {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *GroupMemberAddModeRequest) GetGroup() *Jid {
+	if x != nil {
+		return x.Group
+	}
+	return nil
+}
+
+func (x *GroupMemberAddModeRequest) GetMode() GroupMemberAddMode {
+	if x != nil {
+		return x.Mode
+	}
+	return GroupMemberAddMode_GROUP_MEMBER_ADD_MODE_UNSPECIFIED
+}
+
+// Who may share the invite link (#198). Refused like GroupMemberAddModeRequest.
+type GroupMemberLinkModeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Group         *Jid                   `protobuf:"bytes,2,opt,name=group,proto3" json:"group,omitempty"`
+	Mode          GroupMemberLinkMode    `protobuf:"varint,3,opt,name=mode,proto3,enum=wamux.v1.GroupMemberLinkMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GroupMemberLinkModeRequest) Reset() {
+	*x = GroupMemberLinkModeRequest{}
+	mi := &file_groups_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GroupMemberLinkModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GroupMemberLinkModeRequest) ProtoMessage() {}
+
+func (x *GroupMemberLinkModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_groups_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GroupMemberLinkModeRequest.ProtoReflect.Descriptor instead.
+func (*GroupMemberLinkModeRequest) Descriptor() ([]byte, []int) {
+	return file_groups_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GroupMemberLinkModeRequest) GetAccount() *AccountRef {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *GroupMemberLinkModeRequest) GetGroup() *Jid {
+	if x != nil {
+		return x.Group
+	}
+	return nil
+}
+
+func (x *GroupMemberLinkModeRequest) GetMode() GroupMemberLinkMode {
+	if x != nil {
+		return x.Mode
+	}
+	return GroupMemberLinkMode_GROUP_MEMBER_LINK_MODE_UNSPECIFIED
+}
+
+// Who may share the group's history with a new member (#198). Refused like
+// GroupMemberAddModeRequest.
+type GroupMemberShareHistoryModeRequest struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Account       *AccountRef                 `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	Group         *Jid                        `protobuf:"bytes,2,opt,name=group,proto3" json:"group,omitempty"`
+	Mode          GroupMemberShareHistoryMode `protobuf:"varint,3,opt,name=mode,proto3,enum=wamux.v1.GroupMemberShareHistoryMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GroupMemberShareHistoryModeRequest) Reset() {
+	*x = GroupMemberShareHistoryModeRequest{}
+	mi := &file_groups_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GroupMemberShareHistoryModeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GroupMemberShareHistoryModeRequest) ProtoMessage() {}
+
+func (x *GroupMemberShareHistoryModeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_groups_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GroupMemberShareHistoryModeRequest.ProtoReflect.Descriptor instead.
+func (*GroupMemberShareHistoryModeRequest) Descriptor() ([]byte, []int) {
+	return file_groups_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GroupMemberShareHistoryModeRequest) GetAccount() *AccountRef {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *GroupMemberShareHistoryModeRequest) GetGroup() *Jid {
+	if x != nil {
+		return x.Group
+	}
+	return nil
+}
+
+func (x *GroupMemberShareHistoryModeRequest) GetMode() GroupMemberShareHistoryMode {
+	if x != nil {
+		return x.Mode
+	}
+	return GroupMemberShareHistoryMode_GROUP_MEMBER_SHARE_HISTORY_MODE_UNSPECIFIED
+}
+
 // Preview an invite's group metadata without joining.
 type PreviewInviteRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -755,7 +941,7 @@ type PreviewInviteRequest struct {
 
 func (x *PreviewInviteRequest) Reset() {
 	*x = PreviewInviteRequest{}
-	mi := &file_groups_proto_msgTypes[12]
+	mi := &file_groups_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -767,7 +953,7 @@ func (x *PreviewInviteRequest) String() string {
 func (*PreviewInviteRequest) ProtoMessage() {}
 
 func (x *PreviewInviteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_groups_proto_msgTypes[12]
+	mi := &file_groups_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -780,7 +966,7 @@ func (x *PreviewInviteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewInviteRequest.ProtoReflect.Descriptor instead.
 func (*PreviewInviteRequest) Descriptor() ([]byte, []int) {
-	return file_groups_proto_rawDescGZIP(), []int{12}
+	return file_groups_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PreviewInviteRequest) GetAccount() *AccountRef {
@@ -809,7 +995,7 @@ type SetGroupPhotoRequest struct {
 
 func (x *SetGroupPhotoRequest) Reset() {
 	*x = SetGroupPhotoRequest{}
-	mi := &file_groups_proto_msgTypes[13]
+	mi := &file_groups_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -821,7 +1007,7 @@ func (x *SetGroupPhotoRequest) String() string {
 func (*SetGroupPhotoRequest) ProtoMessage() {}
 
 func (x *SetGroupPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_groups_proto_msgTypes[13]
+	mi := &file_groups_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -834,7 +1020,7 @@ func (x *SetGroupPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetGroupPhotoRequest.ProtoReflect.Descriptor instead.
 func (*SetGroupPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_groups_proto_rawDescGZIP(), []int{13}
+	return file_groups_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SetGroupPhotoRequest) GetAccount() *AccountRef {
@@ -870,7 +1056,7 @@ type MembershipRequestsResponse struct {
 
 func (x *MembershipRequestsResponse) Reset() {
 	*x = MembershipRequestsResponse{}
-	mi := &file_groups_proto_msgTypes[14]
+	mi := &file_groups_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -882,7 +1068,7 @@ func (x *MembershipRequestsResponse) String() string {
 func (*MembershipRequestsResponse) ProtoMessage() {}
 
 func (x *MembershipRequestsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_groups_proto_msgTypes[14]
+	mi := &file_groups_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -895,7 +1081,7 @@ func (x *MembershipRequestsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MembershipRequestsResponse.ProtoReflect.Descriptor instead.
 func (*MembershipRequestsResponse) Descriptor() ([]byte, []int) {
-	return file_groups_proto_rawDescGZIP(), []int{14}
+	return file_groups_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *MembershipRequestsResponse) GetRequests() []*MembershipRequest {
@@ -915,7 +1101,7 @@ type MembershipRequest struct {
 
 func (x *MembershipRequest) Reset() {
 	*x = MembershipRequest{}
-	mi := &file_groups_proto_msgTypes[15]
+	mi := &file_groups_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -927,7 +1113,7 @@ func (x *MembershipRequest) String() string {
 func (*MembershipRequest) ProtoMessage() {}
 
 func (x *MembershipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_groups_proto_msgTypes[15]
+	mi := &file_groups_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -940,7 +1126,7 @@ func (x *MembershipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MembershipRequest.ProtoReflect.Descriptor instead.
 func (*MembershipRequest) Descriptor() ([]byte, []int) {
-	return file_groups_proto_rawDescGZIP(), []int{15}
+	return file_groups_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *MembershipRequest) GetJid() *Jid {
@@ -970,7 +1156,7 @@ type AddRequestInfo struct {
 
 func (x *AddRequestInfo) Reset() {
 	*x = AddRequestInfo{}
-	mi := &file_groups_proto_msgTypes[16]
+	mi := &file_groups_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -982,7 +1168,7 @@ func (x *AddRequestInfo) String() string {
 func (*AddRequestInfo) ProtoMessage() {}
 
 func (x *AddRequestInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_groups_proto_msgTypes[16]
+	mi := &file_groups_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -995,7 +1181,7 @@ func (x *AddRequestInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddRequestInfo.ProtoReflect.Descriptor instead.
 func (*AddRequestInfo) Descriptor() ([]byte, []int) {
-	return file_groups_proto_rawDescGZIP(), []int{16}
+	return file_groups_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AddRequestInfo) GetCode() string {
@@ -1031,7 +1217,7 @@ type ParticipantChange struct {
 
 func (x *ParticipantChange) Reset() {
 	*x = ParticipantChange{}
-	mi := &file_groups_proto_msgTypes[17]
+	mi := &file_groups_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1043,7 +1229,7 @@ func (x *ParticipantChange) String() string {
 func (*ParticipantChange) ProtoMessage() {}
 
 func (x *ParticipantChange) ProtoReflect() protoreflect.Message {
-	mi := &file_groups_proto_msgTypes[17]
+	mi := &file_groups_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1056,7 +1242,7 @@ func (x *ParticipantChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParticipantChange.ProtoReflect.Descriptor instead.
 func (*ParticipantChange) Descriptor() ([]byte, []int) {
-	return file_groups_proto_rawDescGZIP(), []int{17}
+	return file_groups_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ParticipantChange) GetJid() *Jid {
@@ -1113,7 +1299,7 @@ type ParticipantsResponse struct {
 
 func (x *ParticipantsResponse) Reset() {
 	*x = ParticipantsResponse{}
-	mi := &file_groups_proto_msgTypes[18]
+	mi := &file_groups_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1125,7 +1311,7 @@ func (x *ParticipantsResponse) String() string {
 func (*ParticipantsResponse) ProtoMessage() {}
 
 func (x *ParticipantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_groups_proto_msgTypes[18]
+	mi := &file_groups_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1138,7 +1324,7 @@ func (x *ParticipantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParticipantsResponse.ProtoReflect.Descriptor instead.
 func (*ParticipantsResponse) Descriptor() ([]byte, []int) {
-	return file_groups_proto_rawDescGZIP(), []int{18}
+	return file_groups_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ParticipantsResponse) GetResults() []*ParticipantChange {
@@ -1193,7 +1379,19 @@ const file_groups_proto_rawDesc = "" +
 	"\x15GroupEphemeralRequest\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12#\n" +
 	"\x05group\x18\x04 \x01(\v2\r.wamux.v1.JidR\x05group\x12-\n" +
-	"\x12expiration_seconds\x18\x03 \x01(\rR\x11expirationSecondsJ\x04\b\x02\x10\x03R\tgroup_jid\"Z\n" +
+	"\x12expiration_seconds\x18\x03 \x01(\rR\x11expirationSecondsJ\x04\b\x02\x10\x03R\tgroup_jid\"\xa2\x01\n" +
+	"\x19GroupMemberAddModeRequest\x12.\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12#\n" +
+	"\x05group\x18\x02 \x01(\v2\r.wamux.v1.JidR\x05group\x120\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1c.wamux.v1.GroupMemberAddModeR\x04mode\"\xa4\x01\n" +
+	"\x1aGroupMemberLinkModeRequest\x12.\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12#\n" +
+	"\x05group\x18\x02 \x01(\v2\r.wamux.v1.JidR\x05group\x121\n" +
+	"\x04mode\x18\x03 \x01(\x0e2\x1d.wamux.v1.GroupMemberLinkModeR\x04mode\"\xb4\x01\n" +
+	"\"GroupMemberShareHistoryModeRequest\x12.\n" +
+	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12#\n" +
+	"\x05group\x18\x02 \x01(\v2\r.wamux.v1.JidR\x05group\x129\n" +
+	"\x04mode\x18\x03 \x01(\x0e2%.wamux.v1.GroupMemberShareHistoryModeR\x04mode\"Z\n" +
 	"\x14PreviewInviteRequest\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\"\x92\x01\n" +
@@ -1225,7 +1423,7 @@ const file_groups_proto_rawDesc = "" +
 	"\vJoinOutcome\x12\x1c\n" +
 	"\x18JOIN_OUTCOME_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13JOIN_OUTCOME_JOINED\x10\x01\x12!\n" +
-	"\x1dJOIN_OUTCOME_PENDING_APPROVAL\x10\x022\xa7\f\n" +
+	"\x1dJOIN_OUTCOME_PENDING_APPROVAL\x10\x022\xf5\x0e\n" +
 	"\fGroupService\x12G\n" +
 	"\vCreateGroup\x12\x1c.wamux.v1.CreateGroupRequest\x1a\x1a.wamux.v1.GroupJidResponse\x12P\n" +
 	"\x0fAddParticipants\x12\x1d.wamux.v1.ParticipantsRequest\x1a\x1e.wamux.v1.ParticipantsResponse\x12S\n" +
@@ -1248,7 +1446,11 @@ const file_groups_proto_rawDesc = "" +
 	"\rSetGroupPhoto\x12\x1e.wamux.v1.SetGroupPhotoRequest\x1a\x0f.wamux.v1.Empty\x12Q\n" +
 	"\x15GetMembershipRequests\x12\x12.wamux.v1.GroupRef\x1a$.wamux.v1.MembershipRequestsResponse\x12Z\n" +
 	"\x19ApproveMembershipRequests\x12\x1d.wamux.v1.ParticipantsRequest\x1a\x1e.wamux.v1.ParticipantsResponse\x12Y\n" +
-	"\x18RejectMembershipRequests\x12\x1d.wamux.v1.ParticipantsRequest\x1a\x1e.wamux.v1.ParticipantsResponseB\x98\x01\n" +
+	"\x18RejectMembershipRequests\x12\x1d.wamux.v1.ParticipantsRequest\x1a\x1e.wamux.v1.ParticipantsResponse\x12K\n" +
+	"\x1aSetGroupMembershipApproval\x12\x1c.wamux.v1.GroupToggleRequest\x1a\x0f.wamux.v1.Empty\x12M\n" +
+	"\x15SetGroupMemberAddMode\x12#.wamux.v1.GroupMemberAddModeRequest\x1a\x0f.wamux.v1.Empty\x12O\n" +
+	"\x16SetGroupMemberLinkMode\x12$.wamux.v1.GroupMemberLinkModeRequest\x1a\x0f.wamux.v1.Empty\x12_\n" +
+	"\x1eSetGroupMemberShareHistoryMode\x12,.wamux.v1.GroupMemberShareHistoryModeRequest\x1a\x0f.wamux.v1.EmptyB\x98\x01\n" +
 	"\fcom.wamux.v1B\vGroupsProtoP\x01Z:github.com/LLawli/wamux-http/internal/core/wamuxv1;wamuxv1\xa2\x02\x03WXX\xaa\x02\bWamux.V1\xca\x02\bWamux\\V1\xe2\x02\x14Wamux\\V1\\GPBMetadata\xea\x02\tWamux::V1b\x06proto3"
 
 var (
@@ -1264,111 +1466,134 @@ func file_groups_proto_rawDescGZIP() []byte {
 }
 
 var file_groups_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_groups_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_groups_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_groups_proto_goTypes = []any{
-	(JoinOutcome)(0),                   // 0: wamux.v1.JoinOutcome
-	(*CreateGroupRequest)(nil),         // 1: wamux.v1.CreateGroupRequest
-	(*GroupJidResponse)(nil),           // 2: wamux.v1.GroupJidResponse
-	(*ParticipantsRequest)(nil),        // 3: wamux.v1.ParticipantsRequest
-	(*GroupTextRequest)(nil),           // 4: wamux.v1.GroupTextRequest
-	(*GroupRef)(nil),                   // 5: wamux.v1.GroupRef
-	(*GroupMetadataResponse)(nil),      // 6: wamux.v1.GroupMetadataResponse
-	(*InviteLinkResponse)(nil),         // 7: wamux.v1.InviteLinkResponse
-	(*JoinWithInviteRequest)(nil),      // 8: wamux.v1.JoinWithInviteRequest
-	(*GroupSummary)(nil),               // 9: wamux.v1.GroupSummary
-	(*ListGroupsResponse)(nil),         // 10: wamux.v1.ListGroupsResponse
-	(*GroupToggleRequest)(nil),         // 11: wamux.v1.GroupToggleRequest
-	(*GroupEphemeralRequest)(nil),      // 12: wamux.v1.GroupEphemeralRequest
-	(*PreviewInviteRequest)(nil),       // 13: wamux.v1.PreviewInviteRequest
-	(*SetGroupPhotoRequest)(nil),       // 14: wamux.v1.SetGroupPhotoRequest
-	(*MembershipRequestsResponse)(nil), // 15: wamux.v1.MembershipRequestsResponse
-	(*MembershipRequest)(nil),          // 16: wamux.v1.MembershipRequest
-	(*AddRequestInfo)(nil),             // 17: wamux.v1.AddRequestInfo
-	(*ParticipantChange)(nil),          // 18: wamux.v1.ParticipantChange
-	(*ParticipantsResponse)(nil),       // 19: wamux.v1.ParticipantsResponse
-	(*AccountRef)(nil),                 // 20: wamux.v1.AccountRef
-	(*Jid)(nil),                        // 21: wamux.v1.Jid
-	(*GroupMetadata)(nil),              // 22: wamux.v1.GroupMetadata
-	(*Empty)(nil),                      // 23: wamux.v1.Empty
+	(JoinOutcome)(0),                           // 0: wamux.v1.JoinOutcome
+	(*CreateGroupRequest)(nil),                 // 1: wamux.v1.CreateGroupRequest
+	(*GroupJidResponse)(nil),                   // 2: wamux.v1.GroupJidResponse
+	(*ParticipantsRequest)(nil),                // 3: wamux.v1.ParticipantsRequest
+	(*GroupTextRequest)(nil),                   // 4: wamux.v1.GroupTextRequest
+	(*GroupRef)(nil),                           // 5: wamux.v1.GroupRef
+	(*GroupMetadataResponse)(nil),              // 6: wamux.v1.GroupMetadataResponse
+	(*InviteLinkResponse)(nil),                 // 7: wamux.v1.InviteLinkResponse
+	(*JoinWithInviteRequest)(nil),              // 8: wamux.v1.JoinWithInviteRequest
+	(*GroupSummary)(nil),                       // 9: wamux.v1.GroupSummary
+	(*ListGroupsResponse)(nil),                 // 10: wamux.v1.ListGroupsResponse
+	(*GroupToggleRequest)(nil),                 // 11: wamux.v1.GroupToggleRequest
+	(*GroupEphemeralRequest)(nil),              // 12: wamux.v1.GroupEphemeralRequest
+	(*GroupMemberAddModeRequest)(nil),          // 13: wamux.v1.GroupMemberAddModeRequest
+	(*GroupMemberLinkModeRequest)(nil),         // 14: wamux.v1.GroupMemberLinkModeRequest
+	(*GroupMemberShareHistoryModeRequest)(nil), // 15: wamux.v1.GroupMemberShareHistoryModeRequest
+	(*PreviewInviteRequest)(nil),               // 16: wamux.v1.PreviewInviteRequest
+	(*SetGroupPhotoRequest)(nil),               // 17: wamux.v1.SetGroupPhotoRequest
+	(*MembershipRequestsResponse)(nil),         // 18: wamux.v1.MembershipRequestsResponse
+	(*MembershipRequest)(nil),                  // 19: wamux.v1.MembershipRequest
+	(*AddRequestInfo)(nil),                     // 20: wamux.v1.AddRequestInfo
+	(*ParticipantChange)(nil),                  // 21: wamux.v1.ParticipantChange
+	(*ParticipantsResponse)(nil),               // 22: wamux.v1.ParticipantsResponse
+	(*AccountRef)(nil),                         // 23: wamux.v1.AccountRef
+	(*Jid)(nil),                                // 24: wamux.v1.Jid
+	(*GroupMetadata)(nil),                      // 25: wamux.v1.GroupMetadata
+	(GroupMemberAddMode)(0),                    // 26: wamux.v1.GroupMemberAddMode
+	(GroupMemberLinkMode)(0),                   // 27: wamux.v1.GroupMemberLinkMode
+	(GroupMemberShareHistoryMode)(0),           // 28: wamux.v1.GroupMemberShareHistoryMode
+	(*Empty)(nil),                              // 29: wamux.v1.Empty
 }
 var file_groups_proto_depIdxs = []int32{
-	20, // 0: wamux.v1.CreateGroupRequest.account:type_name -> wamux.v1.AccountRef
-	21, // 1: wamux.v1.CreateGroupRequest.participants:type_name -> wamux.v1.Jid
-	21, // 2: wamux.v1.GroupJidResponse.group:type_name -> wamux.v1.Jid
-	22, // 3: wamux.v1.GroupJidResponse.metadata:type_name -> wamux.v1.GroupMetadata
+	23, // 0: wamux.v1.CreateGroupRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 1: wamux.v1.CreateGroupRequest.participants:type_name -> wamux.v1.Jid
+	24, // 2: wamux.v1.GroupJidResponse.group:type_name -> wamux.v1.Jid
+	25, // 3: wamux.v1.GroupJidResponse.metadata:type_name -> wamux.v1.GroupMetadata
 	0,  // 4: wamux.v1.GroupJidResponse.join_outcome:type_name -> wamux.v1.JoinOutcome
-	20, // 5: wamux.v1.ParticipantsRequest.account:type_name -> wamux.v1.AccountRef
-	21, // 6: wamux.v1.ParticipantsRequest.group:type_name -> wamux.v1.Jid
-	21, // 7: wamux.v1.ParticipantsRequest.participants:type_name -> wamux.v1.Jid
-	20, // 8: wamux.v1.GroupTextRequest.account:type_name -> wamux.v1.AccountRef
-	21, // 9: wamux.v1.GroupTextRequest.group:type_name -> wamux.v1.Jid
-	20, // 10: wamux.v1.GroupRef.account:type_name -> wamux.v1.AccountRef
-	21, // 11: wamux.v1.GroupRef.group:type_name -> wamux.v1.Jid
-	22, // 12: wamux.v1.GroupMetadataResponse.metadata:type_name -> wamux.v1.GroupMetadata
-	20, // 13: wamux.v1.JoinWithInviteRequest.account:type_name -> wamux.v1.AccountRef
-	21, // 14: wamux.v1.GroupSummary.jid:type_name -> wamux.v1.Jid
-	22, // 15: wamux.v1.GroupSummary.metadata:type_name -> wamux.v1.GroupMetadata
+	23, // 5: wamux.v1.ParticipantsRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 6: wamux.v1.ParticipantsRequest.group:type_name -> wamux.v1.Jid
+	24, // 7: wamux.v1.ParticipantsRequest.participants:type_name -> wamux.v1.Jid
+	23, // 8: wamux.v1.GroupTextRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 9: wamux.v1.GroupTextRequest.group:type_name -> wamux.v1.Jid
+	23, // 10: wamux.v1.GroupRef.account:type_name -> wamux.v1.AccountRef
+	24, // 11: wamux.v1.GroupRef.group:type_name -> wamux.v1.Jid
+	25, // 12: wamux.v1.GroupMetadataResponse.metadata:type_name -> wamux.v1.GroupMetadata
+	23, // 13: wamux.v1.JoinWithInviteRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 14: wamux.v1.GroupSummary.jid:type_name -> wamux.v1.Jid
+	25, // 15: wamux.v1.GroupSummary.metadata:type_name -> wamux.v1.GroupMetadata
 	9,  // 16: wamux.v1.ListGroupsResponse.groups:type_name -> wamux.v1.GroupSummary
-	20, // 17: wamux.v1.GroupToggleRequest.account:type_name -> wamux.v1.AccountRef
-	21, // 18: wamux.v1.GroupToggleRequest.group:type_name -> wamux.v1.Jid
-	20, // 19: wamux.v1.GroupEphemeralRequest.account:type_name -> wamux.v1.AccountRef
-	21, // 20: wamux.v1.GroupEphemeralRequest.group:type_name -> wamux.v1.Jid
-	20, // 21: wamux.v1.PreviewInviteRequest.account:type_name -> wamux.v1.AccountRef
-	20, // 22: wamux.v1.SetGroupPhotoRequest.account:type_name -> wamux.v1.AccountRef
-	21, // 23: wamux.v1.SetGroupPhotoRequest.group:type_name -> wamux.v1.Jid
-	16, // 24: wamux.v1.MembershipRequestsResponse.requests:type_name -> wamux.v1.MembershipRequest
-	21, // 25: wamux.v1.MembershipRequest.jid:type_name -> wamux.v1.Jid
-	21, // 26: wamux.v1.ParticipantChange.jid:type_name -> wamux.v1.Jid
-	21, // 27: wamux.v1.ParticipantChange.phone_number:type_name -> wamux.v1.Jid
-	17, // 28: wamux.v1.ParticipantChange.add_request:type_name -> wamux.v1.AddRequestInfo
-	18, // 29: wamux.v1.ParticipantsResponse.results:type_name -> wamux.v1.ParticipantChange
-	1,  // 30: wamux.v1.GroupService.CreateGroup:input_type -> wamux.v1.CreateGroupRequest
-	3,  // 31: wamux.v1.GroupService.AddParticipants:input_type -> wamux.v1.ParticipantsRequest
-	3,  // 32: wamux.v1.GroupService.RemoveParticipants:input_type -> wamux.v1.ParticipantsRequest
-	3,  // 33: wamux.v1.GroupService.PromoteAdmins:input_type -> wamux.v1.ParticipantsRequest
-	3,  // 34: wamux.v1.GroupService.DemoteAdmins:input_type -> wamux.v1.ParticipantsRequest
-	4,  // 35: wamux.v1.GroupService.SetGroupSubject:input_type -> wamux.v1.GroupTextRequest
-	4,  // 36: wamux.v1.GroupService.SetGroupDescription:input_type -> wamux.v1.GroupTextRequest
-	5,  // 37: wamux.v1.GroupService.GetGroupMetadata:input_type -> wamux.v1.GroupRef
-	5,  // 38: wamux.v1.GroupService.GetInviteLink:input_type -> wamux.v1.GroupRef
-	5,  // 39: wamux.v1.GroupService.RevokeInviteLink:input_type -> wamux.v1.GroupRef
-	8,  // 40: wamux.v1.GroupService.JoinWithInvite:input_type -> wamux.v1.JoinWithInviteRequest
-	20, // 41: wamux.v1.GroupService.ListParticipating:input_type -> wamux.v1.AccountRef
-	5,  // 42: wamux.v1.GroupService.LeaveGroup:input_type -> wamux.v1.GroupRef
-	11, // 43: wamux.v1.GroupService.SetGroupAnnounce:input_type -> wamux.v1.GroupToggleRequest
-	11, // 44: wamux.v1.GroupService.SetGroupLocked:input_type -> wamux.v1.GroupToggleRequest
-	12, // 45: wamux.v1.GroupService.SetGroupEphemeral:input_type -> wamux.v1.GroupEphemeralRequest
-	13, // 46: wamux.v1.GroupService.PreviewInvite:input_type -> wamux.v1.PreviewInviteRequest
-	14, // 47: wamux.v1.GroupService.SetGroupPhoto:input_type -> wamux.v1.SetGroupPhotoRequest
-	5,  // 48: wamux.v1.GroupService.GetMembershipRequests:input_type -> wamux.v1.GroupRef
-	3,  // 49: wamux.v1.GroupService.ApproveMembershipRequests:input_type -> wamux.v1.ParticipantsRequest
-	3,  // 50: wamux.v1.GroupService.RejectMembershipRequests:input_type -> wamux.v1.ParticipantsRequest
-	2,  // 51: wamux.v1.GroupService.CreateGroup:output_type -> wamux.v1.GroupJidResponse
-	19, // 52: wamux.v1.GroupService.AddParticipants:output_type -> wamux.v1.ParticipantsResponse
-	19, // 53: wamux.v1.GroupService.RemoveParticipants:output_type -> wamux.v1.ParticipantsResponse
-	19, // 54: wamux.v1.GroupService.PromoteAdmins:output_type -> wamux.v1.ParticipantsResponse
-	19, // 55: wamux.v1.GroupService.DemoteAdmins:output_type -> wamux.v1.ParticipantsResponse
-	23, // 56: wamux.v1.GroupService.SetGroupSubject:output_type -> wamux.v1.Empty
-	23, // 57: wamux.v1.GroupService.SetGroupDescription:output_type -> wamux.v1.Empty
-	6,  // 58: wamux.v1.GroupService.GetGroupMetadata:output_type -> wamux.v1.GroupMetadataResponse
-	7,  // 59: wamux.v1.GroupService.GetInviteLink:output_type -> wamux.v1.InviteLinkResponse
-	7,  // 60: wamux.v1.GroupService.RevokeInviteLink:output_type -> wamux.v1.InviteLinkResponse
-	2,  // 61: wamux.v1.GroupService.JoinWithInvite:output_type -> wamux.v1.GroupJidResponse
-	10, // 62: wamux.v1.GroupService.ListParticipating:output_type -> wamux.v1.ListGroupsResponse
-	23, // 63: wamux.v1.GroupService.LeaveGroup:output_type -> wamux.v1.Empty
-	23, // 64: wamux.v1.GroupService.SetGroupAnnounce:output_type -> wamux.v1.Empty
-	23, // 65: wamux.v1.GroupService.SetGroupLocked:output_type -> wamux.v1.Empty
-	23, // 66: wamux.v1.GroupService.SetGroupEphemeral:output_type -> wamux.v1.Empty
-	6,  // 67: wamux.v1.GroupService.PreviewInvite:output_type -> wamux.v1.GroupMetadataResponse
-	23, // 68: wamux.v1.GroupService.SetGroupPhoto:output_type -> wamux.v1.Empty
-	15, // 69: wamux.v1.GroupService.GetMembershipRequests:output_type -> wamux.v1.MembershipRequestsResponse
-	19, // 70: wamux.v1.GroupService.ApproveMembershipRequests:output_type -> wamux.v1.ParticipantsResponse
-	19, // 71: wamux.v1.GroupService.RejectMembershipRequests:output_type -> wamux.v1.ParticipantsResponse
-	51, // [51:72] is the sub-list for method output_type
-	30, // [30:51] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	23, // 17: wamux.v1.GroupToggleRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 18: wamux.v1.GroupToggleRequest.group:type_name -> wamux.v1.Jid
+	23, // 19: wamux.v1.GroupEphemeralRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 20: wamux.v1.GroupEphemeralRequest.group:type_name -> wamux.v1.Jid
+	23, // 21: wamux.v1.GroupMemberAddModeRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 22: wamux.v1.GroupMemberAddModeRequest.group:type_name -> wamux.v1.Jid
+	26, // 23: wamux.v1.GroupMemberAddModeRequest.mode:type_name -> wamux.v1.GroupMemberAddMode
+	23, // 24: wamux.v1.GroupMemberLinkModeRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 25: wamux.v1.GroupMemberLinkModeRequest.group:type_name -> wamux.v1.Jid
+	27, // 26: wamux.v1.GroupMemberLinkModeRequest.mode:type_name -> wamux.v1.GroupMemberLinkMode
+	23, // 27: wamux.v1.GroupMemberShareHistoryModeRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 28: wamux.v1.GroupMemberShareHistoryModeRequest.group:type_name -> wamux.v1.Jid
+	28, // 29: wamux.v1.GroupMemberShareHistoryModeRequest.mode:type_name -> wamux.v1.GroupMemberShareHistoryMode
+	23, // 30: wamux.v1.PreviewInviteRequest.account:type_name -> wamux.v1.AccountRef
+	23, // 31: wamux.v1.SetGroupPhotoRequest.account:type_name -> wamux.v1.AccountRef
+	24, // 32: wamux.v1.SetGroupPhotoRequest.group:type_name -> wamux.v1.Jid
+	19, // 33: wamux.v1.MembershipRequestsResponse.requests:type_name -> wamux.v1.MembershipRequest
+	24, // 34: wamux.v1.MembershipRequest.jid:type_name -> wamux.v1.Jid
+	24, // 35: wamux.v1.ParticipantChange.jid:type_name -> wamux.v1.Jid
+	24, // 36: wamux.v1.ParticipantChange.phone_number:type_name -> wamux.v1.Jid
+	20, // 37: wamux.v1.ParticipantChange.add_request:type_name -> wamux.v1.AddRequestInfo
+	21, // 38: wamux.v1.ParticipantsResponse.results:type_name -> wamux.v1.ParticipantChange
+	1,  // 39: wamux.v1.GroupService.CreateGroup:input_type -> wamux.v1.CreateGroupRequest
+	3,  // 40: wamux.v1.GroupService.AddParticipants:input_type -> wamux.v1.ParticipantsRequest
+	3,  // 41: wamux.v1.GroupService.RemoveParticipants:input_type -> wamux.v1.ParticipantsRequest
+	3,  // 42: wamux.v1.GroupService.PromoteAdmins:input_type -> wamux.v1.ParticipantsRequest
+	3,  // 43: wamux.v1.GroupService.DemoteAdmins:input_type -> wamux.v1.ParticipantsRequest
+	4,  // 44: wamux.v1.GroupService.SetGroupSubject:input_type -> wamux.v1.GroupTextRequest
+	4,  // 45: wamux.v1.GroupService.SetGroupDescription:input_type -> wamux.v1.GroupTextRequest
+	5,  // 46: wamux.v1.GroupService.GetGroupMetadata:input_type -> wamux.v1.GroupRef
+	5,  // 47: wamux.v1.GroupService.GetInviteLink:input_type -> wamux.v1.GroupRef
+	5,  // 48: wamux.v1.GroupService.RevokeInviteLink:input_type -> wamux.v1.GroupRef
+	8,  // 49: wamux.v1.GroupService.JoinWithInvite:input_type -> wamux.v1.JoinWithInviteRequest
+	23, // 50: wamux.v1.GroupService.ListParticipating:input_type -> wamux.v1.AccountRef
+	5,  // 51: wamux.v1.GroupService.LeaveGroup:input_type -> wamux.v1.GroupRef
+	11, // 52: wamux.v1.GroupService.SetGroupAnnounce:input_type -> wamux.v1.GroupToggleRequest
+	11, // 53: wamux.v1.GroupService.SetGroupLocked:input_type -> wamux.v1.GroupToggleRequest
+	12, // 54: wamux.v1.GroupService.SetGroupEphemeral:input_type -> wamux.v1.GroupEphemeralRequest
+	16, // 55: wamux.v1.GroupService.PreviewInvite:input_type -> wamux.v1.PreviewInviteRequest
+	17, // 56: wamux.v1.GroupService.SetGroupPhoto:input_type -> wamux.v1.SetGroupPhotoRequest
+	5,  // 57: wamux.v1.GroupService.GetMembershipRequests:input_type -> wamux.v1.GroupRef
+	3,  // 58: wamux.v1.GroupService.ApproveMembershipRequests:input_type -> wamux.v1.ParticipantsRequest
+	3,  // 59: wamux.v1.GroupService.RejectMembershipRequests:input_type -> wamux.v1.ParticipantsRequest
+	11, // 60: wamux.v1.GroupService.SetGroupMembershipApproval:input_type -> wamux.v1.GroupToggleRequest
+	13, // 61: wamux.v1.GroupService.SetGroupMemberAddMode:input_type -> wamux.v1.GroupMemberAddModeRequest
+	14, // 62: wamux.v1.GroupService.SetGroupMemberLinkMode:input_type -> wamux.v1.GroupMemberLinkModeRequest
+	15, // 63: wamux.v1.GroupService.SetGroupMemberShareHistoryMode:input_type -> wamux.v1.GroupMemberShareHistoryModeRequest
+	2,  // 64: wamux.v1.GroupService.CreateGroup:output_type -> wamux.v1.GroupJidResponse
+	22, // 65: wamux.v1.GroupService.AddParticipants:output_type -> wamux.v1.ParticipantsResponse
+	22, // 66: wamux.v1.GroupService.RemoveParticipants:output_type -> wamux.v1.ParticipantsResponse
+	22, // 67: wamux.v1.GroupService.PromoteAdmins:output_type -> wamux.v1.ParticipantsResponse
+	22, // 68: wamux.v1.GroupService.DemoteAdmins:output_type -> wamux.v1.ParticipantsResponse
+	29, // 69: wamux.v1.GroupService.SetGroupSubject:output_type -> wamux.v1.Empty
+	29, // 70: wamux.v1.GroupService.SetGroupDescription:output_type -> wamux.v1.Empty
+	6,  // 71: wamux.v1.GroupService.GetGroupMetadata:output_type -> wamux.v1.GroupMetadataResponse
+	7,  // 72: wamux.v1.GroupService.GetInviteLink:output_type -> wamux.v1.InviteLinkResponse
+	7,  // 73: wamux.v1.GroupService.RevokeInviteLink:output_type -> wamux.v1.InviteLinkResponse
+	2,  // 74: wamux.v1.GroupService.JoinWithInvite:output_type -> wamux.v1.GroupJidResponse
+	10, // 75: wamux.v1.GroupService.ListParticipating:output_type -> wamux.v1.ListGroupsResponse
+	29, // 76: wamux.v1.GroupService.LeaveGroup:output_type -> wamux.v1.Empty
+	29, // 77: wamux.v1.GroupService.SetGroupAnnounce:output_type -> wamux.v1.Empty
+	29, // 78: wamux.v1.GroupService.SetGroupLocked:output_type -> wamux.v1.Empty
+	29, // 79: wamux.v1.GroupService.SetGroupEphemeral:output_type -> wamux.v1.Empty
+	6,  // 80: wamux.v1.GroupService.PreviewInvite:output_type -> wamux.v1.GroupMetadataResponse
+	29, // 81: wamux.v1.GroupService.SetGroupPhoto:output_type -> wamux.v1.Empty
+	18, // 82: wamux.v1.GroupService.GetMembershipRequests:output_type -> wamux.v1.MembershipRequestsResponse
+	22, // 83: wamux.v1.GroupService.ApproveMembershipRequests:output_type -> wamux.v1.ParticipantsResponse
+	22, // 84: wamux.v1.GroupService.RejectMembershipRequests:output_type -> wamux.v1.ParticipantsResponse
+	29, // 85: wamux.v1.GroupService.SetGroupMembershipApproval:output_type -> wamux.v1.Empty
+	29, // 86: wamux.v1.GroupService.SetGroupMemberAddMode:output_type -> wamux.v1.Empty
+	29, // 87: wamux.v1.GroupService.SetGroupMemberLinkMode:output_type -> wamux.v1.Empty
+	29, // 88: wamux.v1.GroupService.SetGroupMemberShareHistoryMode:output_type -> wamux.v1.Empty
+	64, // [64:89] is the sub-list for method output_type
+	39, // [39:64] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_groups_proto_init() }
@@ -1378,14 +1603,14 @@ func file_groups_proto_init() {
 	}
 	file_common_proto_init()
 	file_group_metadata_proto_init()
-	file_groups_proto_msgTypes[15].OneofWrappers = []any{}
+	file_groups_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_groups_proto_rawDesc), len(file_groups_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

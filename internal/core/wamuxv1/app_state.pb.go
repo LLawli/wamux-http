@@ -26,7 +26,7 @@ type LabelListType int32
 
 const (
 	LabelListType_LABEL_LIST_TYPE_UNSPECIFIED          LabelListType = 0
-	LabelListType_LABEL_LIST_TYPE_UNKNOWN              LabelListType = 1 // never emitted (closed in the library)
+	LabelListType_LABEL_LIST_TYPE_UNKNOWN              LabelListType = 1 // a list type this build does not name
 	LabelListType_LABEL_LIST_TYPE_NONE                 LabelListType = 2
 	LabelListType_LABEL_LIST_TYPE_UNREAD               LabelListType = 3
 	LabelListType_LABEL_LIST_TYPE_GROUPS               LabelListType = 4
