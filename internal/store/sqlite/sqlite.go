@@ -273,20 +273,74 @@ func (s *Store) SetEventCheckpoint(ctx context.Context, session string, seq, ts 
 
 // --- api keys ---
 
-const keyCols = `id, hash, hint, is_admin, session, is_active, actions, created_at`
+const keyCols = `id, hash, hint, is_admin, is_active, actions, created_at`
 
 func scanKey(row interface{ Scan(...any) error }) (store.APIKey, error) {
 	var k store.APIKey
 	var actions sql.NullString
-	err := row.Scan(&k.ID, &k.Hash, &k.Hint, &k.IsAdmin, &k.Session, &k.IsActive, &actions, &k.CreatedAt)
+	err := row.Scan(&k.ID, &k.Hash, &k.Hint, &k.IsAdmin, &k.IsActive, &actions, &k.CreatedAt)
 	k.Actions = rawJSON(actions)
+	return k, err
+}
+
+// keySessions reads the sessions of the keys given, sorted, keyed by key id.
+// No ids reads every key's.
+func (s *Store) keySessions(ctx context.Context, ids ...string) (map[string][]string, error) {
+	q, args := `SELECT key_id, session FROM api_key_sessions ORDER BY key_id, session`, []any{}
+	if len(ids) > 0 {
+		q = `SELECT key_id, session FROM api_key_sessions WHERE key_id IN (?` + strings.Repeat(",?", len(ids)-1) + `) ORDER BY key_id, session`
+		for _, id := range ids {
+			args = append(args, id)
+		}
+	}
+	rows, err := s.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]string{}
+	for rows.Next() {
+		var id, sess string
+		if err := rows.Scan(&id, &sess); err != nil {
+			return nil, err
+		}
+		out[id] = append(out[id], sess)
+	}
+	return out, rows.Err()
+}
+
+func setKeySessions(ctx context.Context, tx *sql.Tx, k store.APIKey) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM api_key_sessions WHERE key_id = ?`, k.ID); err != nil {
+		return err
+	}
+	for _, sess := range k.Sessions {
+		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO api_key_sessions (key_id, session) VALUES (?, ?)`, k.ID, sess); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// getKey reads one key and its sessions.
+func (s *Store) getKey(ctx context.Context, where string, arg any) (store.APIKey, error) {
+	k, err := scanKey(s.db.QueryRowContext(ctx, `SELECT `+keyCols+` FROM api_keys WHERE `+where+` = ?`, arg))
+	if err != nil {
+		return k, notFound(err)
+	}
+	sessions, err := s.keySessions(ctx, k.ID)
+	k.Sessions = sessions[k.ID]
 	return k, err
 }
 
 // CreateAPIKey inserts a key.
 func (s *Store) CreateAPIKey(ctx context.Context, k store.APIKey) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO api_keys (`+keyCols+`) VALUES (?,?,?,?,?,?,?,?)`,
-		k.ID, k.Hash, k.Hint, b2i(k.IsAdmin), k.Session, b2i(k.IsActive), nullJSON(k.Actions), k.CreatedAt)
+	err := s.tx(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO api_keys (`+keyCols+`) VALUES (?,?,?,?,?,?,?)`,
+			k.ID, k.Hash, k.Hint, b2i(k.IsAdmin), b2i(k.IsActive), nullJSON(k.Actions), k.CreatedAt); err != nil {
+			return err
+		}
+		return setKeySessions(ctx, tx, k)
+	})
 	if isUnique(err) {
 		return store.ErrConflict
 	}
@@ -295,14 +349,12 @@ func (s *Store) CreateAPIKey(ctx context.Context, k store.APIKey) error {
 
 // GetAPIKeyByHash looks a key up by the hash of its value.
 func (s *Store) GetAPIKeyByHash(ctx context.Context, hash string) (store.APIKey, error) {
-	k, err := scanKey(s.db.QueryRowContext(ctx, `SELECT `+keyCols+` FROM api_keys WHERE hash = ?`, hash))
-	return k, notFound(err)
+	return s.getKey(ctx, "hash", hash)
 }
 
 // GetAPIKey looks a key up by id.
 func (s *Store) GetAPIKey(ctx context.Context, id string) (store.APIKey, error) {
-	k, err := scanKey(s.db.QueryRowContext(ctx, `SELECT `+keyCols+` FROM api_keys WHERE id = ?`, id))
-	return k, notFound(err)
+	return s.getKey(ctx, "id", id)
 }
 
 // ListAPIKeys returns every key, oldest first.
@@ -320,20 +372,32 @@ func (s *Store) ListAPIKeys(ctx context.Context) ([]store.APIKey, error) {
 		}
 		out = append(out, k)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	sessions, err := s.keySessions(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].Sessions = sessions[out[i].ID]
+	}
+	return out, nil
 }
 
-// UpdateAPIKey rewrites a key's flags (never its hash).
+// UpdateAPIKey rewrites a key's flags and sessions (never its hash).
 func (s *Store) UpdateAPIKey(ctx context.Context, k store.APIKey) error {
-	res, err := s.db.ExecContext(ctx, `UPDATE api_keys SET is_admin = ?, session = ?, is_active = ?, actions = ? WHERE id = ?`,
-		b2i(k.IsAdmin), k.Session, b2i(k.IsActive), nullJSON(k.Actions), k.ID)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return store.ErrNotFound
-	}
-	return nil
+	return s.tx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `UPDATE api_keys SET is_admin = ?, is_active = ?, actions = ? WHERE id = ?`,
+			b2i(k.IsAdmin), b2i(k.IsActive), nullJSON(k.Actions), k.ID)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return store.ErrNotFound
+		}
+		return setKeySessions(ctx, tx, k)
+	})
 }
 
 // DeleteAPIKey removes a key.

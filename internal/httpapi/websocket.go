@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -34,10 +35,15 @@ func (s *Server) registerWebSocket(r chi.Router) {
 		if session == "" {
 			session = "*"
 		}
-		if session == "*" && !p.Admin {
-			session = p.Session // a session key only ever sees its own
-		}
-		if session != "*" && !p.Allows(ActRead, session) {
+		sees := func(name string) bool { return name == session }
+		if session == "*" {
+			// A session key only ever sees its own sessions.
+			sees = func(name string) bool { return p.Allows(ActRead, name) }
+			if !p.Admin && !slices.ContainsFunc(p.Sessions, sees) {
+				_ = conn.Close(websocket.StatusPolicyViolation, "Forbidden")
+				return
+			}
+		} else if !p.Allows(ActRead, session) {
 			_ = conn.Close(websocket.StatusPolicyViolation, "Forbidden")
 			return
 		}
@@ -52,7 +58,7 @@ func (s *Server) registerWebSocket(r chi.Router) {
 		if len(selected) == 0 {
 			selected = []string{"*"}
 		}
-		s.streamWS(req.Context(), conn, session, selected)
+		s.streamWS(req.Context(), conn, sees, selected)
 	})
 }
 
@@ -64,7 +70,7 @@ func (s *Server) authenticateWS(req *http.Request) (Principal, error) {
 	return s.authenticate(req.Context(), r)
 }
 
-func (s *Server) streamWS(ctx context.Context, conn *websocket.Conn, session string, selected []string) {
+func (s *Server) streamWS(ctx context.Context, conn *websocket.Conn, sees func(session string) bool, selected []string) {
 	defer func() { _ = conn.CloseNow() }() // a failed write must not leave the connection open
 	ctx = conn.CloseRead(ctx)              // client messages are ignored; this notices a close
 	events, cancel := s.Tail.Subscribe(256)
@@ -87,7 +93,7 @@ func (s *Server) streamWS(ctx context.Context, conn *websocket.Conn, session str
 			if !ok {
 				return
 			}
-			if session != "*" && ev.Session != session {
+			if !sees(ev.Session) {
 				continue
 			}
 			if !waha.EventMatches(selected, ev.Type) {

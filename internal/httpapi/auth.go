@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/LLawli/wamux-http/internal/store"
@@ -33,12 +34,17 @@ const (
 
 // Principal is who a request authenticated as.
 type Principal struct {
-	Admin   bool
-	Session string          // the only session a non-admin key may touch
-	Actions map[string]bool // nil means WAHA's defaults
+	Admin    bool
+	Sessions []string        // the sessions a non-admin key may touch
+	Actions  map[string]bool // nil means WAHA's defaults
 }
 
 var defaultActions = map[string]bool{"delete": false, "setting": true, "control": true, "app": true, "read": true, "send": true}
+
+// Covers reports whether the principal may touch the session at all.
+func (p Principal) Covers(session string) bool {
+	return p.Admin || slices.Contains(p.Sessions, session)
+}
 
 // Allows applies WAHA's policy for one action on one session.
 func (p Principal) Allows(a Action, session string) bool {
@@ -51,7 +57,7 @@ func (p Principal) Allows(a Action, session string) bool {
 	case ActRetrieve, ActList:
 		return true
 	}
-	if session == "" || session != p.Session {
+	if session == "" || !p.Covers(session) {
 		return false
 	}
 	actions := p.Actions
@@ -120,7 +126,7 @@ func (s *Server) authenticate(ctx context.Context, r *http.Request) (Principal, 
 	if err != nil {
 		return Principal{}, ErrUnauthorized()
 	}
-	p := Principal{Admin: k.IsAdmin, Session: k.Session}
+	p := Principal{Admin: k.IsAdmin, Sessions: k.Sessions}
 	if len(k.Actions) > 0 {
 		p.Actions = map[string]bool{}
 		_ = json.Unmarshal(k.Actions, &p.Actions)

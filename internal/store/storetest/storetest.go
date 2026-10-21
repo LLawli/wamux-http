@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 
@@ -82,26 +83,43 @@ func sessions(t *testing.T, s store.Store) {
 
 func apiKeys(t *testing.T, s store.Store) {
 	ctx := context.Background()
-	k := store.APIKey{ID: "key_1", Hash: "h1", Hint: "abcd", Session: "default", IsActive: true, Actions: json.RawMessage(`{"read":true}`), CreatedAt: 1}
+	k := store.APIKey{ID: "key_1", Hash: "h1", Hint: "abcd", Sessions: []string{"default", "vendas"}, IsActive: true, Actions: json.RawMessage(`{"read":true}`), CreatedAt: 1}
 	must(t, s.CreateAPIKey(ctx, k))
 	if err := s.CreateAPIKey(ctx, store.APIKey{ID: "key_2", Hash: "h1"}); !errors.Is(err, store.ErrConflict) {
 		t.Fatalf("duplicate hash: %v", err)
 	}
 	got, err := s.GetAPIKeyByHash(ctx, "h1")
 	must(t, err)
-	if got.ID != "key_1" || got.Session != "default" || string(got.Actions) != `{"read":true}` {
+	if got.ID != "key_1" || !slices.Equal(got.Sessions, []string{"default", "vendas"}) || string(got.Actions) != `{"read":true}` {
 		t.Fatalf("by hash: %+v", got)
 	}
-	got.IsActive = false
+	got.IsActive, got.Sessions = false, []string{"suporte"}
 	must(t, s.UpdateAPIKey(ctx, got))
 	got, err = s.GetAPIKey(ctx, "key_1")
 	must(t, err)
-	if got.IsActive || got.Hash != "h1" {
+	if got.IsActive || got.Hash != "h1" || !slices.Equal(got.Sessions, []string{"suporte"}) {
 		t.Fatalf("update: %+v", got)
 	}
+	if err := s.UpdateAPIKey(ctx, store.APIKey{ID: "nope", Sessions: []string{"x"}}); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("update a missing key: %v", err)
+	}
+	must(t, s.CreateAPIKey(ctx, store.APIKey{ID: "key_3", Hash: "h3", IsAdmin: true, IsActive: true, CreatedAt: 2}))
+	list, err := s.ListAPIKeys(ctx)
+	must(t, err)
+	if len(list) != 2 || !slices.Equal(list[0].Sessions, []string{"suporte"}) || list[1].Sessions != nil {
+		t.Fatalf("list: %+v", list)
+	}
+	// A key deleted and created again with the same id (a rotated scoped
+	// key) must not inherit the old sessions.
 	must(t, s.DeleteAPIKey(ctx, "key_1"))
 	if _, err := s.GetAPIKey(ctx, "key_1"); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("deleted key: %v", err)
+	}
+	must(t, s.CreateAPIKey(ctx, store.APIKey{ID: "key_1", Hash: "h4", Sessions: []string{"default"}, IsActive: true, CreatedAt: 3}))
+	got, err = s.GetAPIKey(ctx, "key_1")
+	must(t, err)
+	if !slices.Equal(got.Sessions, []string{"default"}) {
+		t.Fatalf("recreated key: %+v", got)
 	}
 }
 

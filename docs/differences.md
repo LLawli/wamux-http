@@ -17,6 +17,22 @@ full. Here only a SHA-256 of each key is stored:
 - The media key gets `{"read": true}` and the control key `{"control": true}`:
   there is no narrower "files only" grant.
 
+## A session key can cover several sessions
+
+WAHA ties a session key to one session, in the `session` field. Here a key
+covers a set of sessions, and `/api/keys` carries it in an extra `sessions`
+field:
+
+- A request may send `session`, `sessions` or both; the key covers their
+  union. `PUT` replaces the set, as it replaces the whole key in WAHA.
+- Answers always carry `sessions`, sorted. `session` holds the name only when
+  the key covers exactly one session, and is `null` otherwise. A WAHA client
+  reading a key that covers several sessions sees `session: null`, which in
+  WAHA marks an admin key; `isAdmin` still tells them apart.
+- Requests made with the key are unchanged: each names its session, which
+  must be in the key's set. On `/ws`, a session key asking for every session
+  gets the events of its own sessions.
+
 ## Webhooks are durable
 
 WAHA sends each webhook fire-and-forget from memory, with no request timeout

@@ -134,8 +134,8 @@ WAHA Plus model:
 
 - `WAHA_API_KEY` (or `WHATSAPP_API_KEY`) is the admin key. `sha512:<hex>` is
   accepted, as WAHA does, so the plain key need not be in the environment.
-- `/api/keys` manages more keys: admin or scoped to one session, with the
-  `actions` flags (`read`, `send`, `control`, `setting`, `app`, `delete`).
+- `/api/keys` manages more keys: admin or scoped to one or more sessions,
+  with the `actions` flags (`read`, `send`, `control`, `setting`, `app`, `delete`).
   Every route declares the action it needs.
 - Keys are stored as SHA-256 hashes. The plain key is returned once, when it
   is created; listings return it masked. This is a deliberate difference from

@@ -130,7 +130,7 @@ func (s *Server) registerSessions(r chi.Router) {
 		}
 		out := []SessionInfo{}
 		for _, sess := range list {
-			if !c.Principal.Admin && sess.Name != c.Principal.Session {
+			if !c.Principal.Covers(sess.Name) {
 				continue
 			}
 			if !all && !sess.Started {

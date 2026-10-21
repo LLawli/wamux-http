@@ -7,6 +7,7 @@ import (
 	"errors"
 	"math/big"
 	"net/http"
+	"slices"
 
 	"github.com/go-chi/chi/v5"
 
@@ -17,22 +18,28 @@ import (
 // APIKeyDTO is WAHA's ApiKeyDTO. Key is the plain key only in the answer that
 // creates it; listings show it masked, because the store keeps only a hash
 // (a deliberate difference from WAHA, which returns stored keys in full).
+// Sessions extends it: a key may cover several sessions, and WAHA's Session
+// is set only when it covers exactly one.
 type APIKeyDTO struct {
 	ID       string          `json:"id"`
 	Key      string          `json:"key"`
 	IsActive bool            `json:"isActive"`
 	IsAdmin  bool            `json:"isAdmin"`
 	Session  *string         `json:"session"`
+	Sessions []string        `json:"sessions"`
 	Actions  json.RawMessage `json:"actions"`
 }
 
 func keyDTO(k store.APIKey, plain string) APIKeyDTO {
-	d := APIKeyDTO{ID: k.ID, Key: plain, IsActive: k.IsActive, IsAdmin: k.IsAdmin, Actions: orNull(k.Actions)}
+	d := APIKeyDTO{ID: k.ID, Key: plain, IsActive: k.IsActive, IsAdmin: k.IsAdmin, Sessions: k.Sessions, Actions: orNull(k.Actions)}
 	if d.Key == "" {
 		d.Key = "key_****" + k.Hint
 	}
-	if k.Session != "" {
-		sess := k.Session
+	if d.Sessions == nil {
+		d.Sessions = []string{}
+	}
+	if len(k.Sessions) == 1 {
+		sess := k.Sessions[0]
 		d.Session = &sess
 	}
 	return d
@@ -53,9 +60,12 @@ func newKey() (string, error) {
 	return "key_" + string(b), nil
 }
 
+// keyRequest is WAHA's ApiKeyRequest plus Sessions; a key covers the union
+// of Session and Sessions.
 type keyRequest struct {
 	IsAdmin  bool            `json:"isAdmin"`
 	Session  *string         `json:"session"`
+	Sessions []string        `json:"sessions"`
 	IsActive *bool           `json:"isActive"`
 	Actions  json.RawMessage `json:"actions"`
 }
@@ -63,9 +73,19 @@ type keyRequest struct {
 // check applies WAHA's invariants on a key's shape.
 func (s *Server) checkKey(ctx context.Context, req keyRequest) (store.APIKey, error) {
 	k := store.APIKey{IsAdmin: req.IsAdmin, IsActive: req.IsActive == nil || *req.IsActive}
-	if req.Session != nil {
-		k.Session = *req.Session
+	names := req.Sessions
+	if req.Session != nil && *req.Session != "" {
+		names = append([]string{*req.Session}, names...)
 	}
+	for _, name := range names {
+		if name == "" {
+			return k, ErrBadRequest([]string{"sessions must not contain an empty name"})
+		}
+		if !slices.Contains(k.Sessions, name) {
+			k.Sessions = append(k.Sessions, name)
+		}
+	}
+	slices.Sort(k.Sessions)
 	if len(req.Actions) > 0 && string(req.Actions) != "null" {
 		var a map[string]bool
 		if err := json.Unmarshal(req.Actions, &a); err != nil {
@@ -74,16 +94,16 @@ func (s *Server) checkKey(ctx context.Context, req keyRequest) (store.APIKey, er
 		k.Actions = req.Actions
 	}
 	switch {
-	case k.IsAdmin && k.Session != "":
+	case k.IsAdmin && len(k.Sessions) > 0:
 		return k, ErrUnprocessable("Admin API key cannot be assigned to a session")
-	case !k.IsAdmin && k.Session == "":
+	case !k.IsAdmin && len(k.Sessions) == 0:
 		return k, ErrUnprocessable("Session is required for non-admin API key")
 	case k.IsAdmin && len(k.Actions) > 0:
 		return k, ErrUnprocessable("Actions can be set only for session API keys")
 	}
-	if k.Session != "" {
-		if _, err := s.Store.GetSession(ctx, k.Session); errors.Is(err, store.ErrNotFound) {
-			return k, ErrUnprocessable("Session '" + k.Session + "' does not exist")
+	for _, name := range k.Sessions {
+		if _, err := s.Store.GetSession(ctx, name); errors.Is(err, store.ErrNotFound) {
+			return k, ErrUnprocessable("Session '" + name + "' does not exist")
 		} else if err != nil {
 			return k, err
 		}
@@ -180,7 +200,7 @@ func (s *Server) registerKeys(r chi.Router) {
 			if err := s.Store.DeleteAPIKey(ctx, id); err != nil && !errors.Is(err, store.ErrNotFound) {
 				return err
 			}
-			k, plain, err := s.mint(ctx, store.APIKey{ID: id, Session: c.Session, IsActive: true, Actions: json.RawMessage(actions)})
+			k, plain, err := s.mint(ctx, store.APIKey{ID: id, Sessions: []string{c.Session}, IsActive: true, Actions: json.RawMessage(actions)})
 			if err != nil {
 				return err
 			}

@@ -18,6 +18,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - API keys in the WAHA Plus model: the admin key from `WAHA_API_KEY`
   (plain or `sha512:`), and session keys with `actions`. Keys are stored as
   hashes, so listings show them masked.
+- A session key can cover several sessions: `/api/keys` takes and returns
+  `sessions` next to WAHA's `session`.
 - Webhooks with WAHA's envelope, headers, HMAC-SHA512 signature and retry
   policies, delivered from a durable outbox.
 - Every WAHA operation not implemented yet answers WAHA's 501;

@@ -53,7 +53,7 @@ type APIKey struct {
 	Hash      string // hex sha256 of the key
 	Hint      string // last characters of the key, for listings
 	IsAdmin   bool
-	Session   string // empty for an admin key
+	Sessions  []string // sorted; empty for an admin key
 	IsActive  bool
 	Actions   json.RawMessage // WAHA SessionActionsDTO; null means all
 	CreatedAt int64
