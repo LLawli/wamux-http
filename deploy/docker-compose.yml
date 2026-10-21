@@ -3,7 +3,7 @@
 # WAHA_BASE_URL. Pin WAMUX_IMAGE to the core version proto/WAMUX_VERSION names.
 services:
   wamux:
-    image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.0}
+    image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.1}
     restart: unless-stopped
     # The image runs as wamux (uid and gid 10001) and owns /run/wamux and
     # /var/lib/wamux; the spool lives under the latter.
