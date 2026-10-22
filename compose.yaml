@@ -1,11 +1,18 @@
-# Reference deployment: the wamux core and this edge sharing the core's
-# socket through a volume. Copy next to a .env holding WAHA_API_KEY and
-# WAHA_BASE_URL. Pin WAMUX_IMAGE to the core version proto/WAMUX_VERSION names.
+# Reference deployment: the wamux core and this edge, both from GHCR, sharing
+# the core's socket through a volume. Put a .env next to it with at least
+# WAHA_API_KEY, then `docker compose up -d`; the API and the panel
+# (/dashboard) answer on port 3000.
+#
+# Image tags:
+#   ghcr.io/llawli/wamux-http:vX.Y.Z         the binary alone (scratch)
+#   ghcr.io/llawli/wamux-http:vX.Y.Z-ffmpeg  plus ffmpeg, for voice and video
+#                                            conversion, waveforms, durations
+# WAMUX_IMAGE stays on the core version proto/WAMUX_VERSION names.
 services:
   wamux:
     image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.1}
     restart: unless-stopped
-    # The image runs as wamux (uid and gid 10001) and owns /run/wamux and
+    # The core runs as uid and gid 10001 and owns /run/wamux and
     # /var/lib/wamux; the spool lives under the latter.
     environment:
       WAMUX_SOCKET_PATH: /run/wamux/wamux.sock
@@ -16,9 +23,10 @@ services:
       - wamux-data:/var/lib/wamux
 
   wamux-http:
-    image: ${WAMUX_HTTP_IMAGE:-wamux-http:latest}
+    image: ${WAMUX_HTTP_IMAGE:-ghcr.io/llawli/wamux-http:v0.1.0-ffmpeg}
     restart: unless-stopped
     depends_on: [wamux]
+    # Runs as uid 10001, like the core, so the core's 0660 socket opens.
     environment:
       WAHA_API_KEY: ${WAHA_API_KEY:?set WAHA_API_KEY}
       WAHA_BASE_URL: ${WAHA_BASE_URL:-http://localhost:3000}

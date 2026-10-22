@@ -20,6 +20,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   hashes, so listings show them masked.
 - A session key can cover several sessions: `/api/keys` takes and returns
   `sessions` next to WAHA's `session`.
+- Container images on GHCR, both `FROM scratch` with one static binary and
+  run as uid 10001: `ghcr.io/llawli/wamux-http:vX.Y.Z` (35 MB) and
+  `vX.Y.Z-ffmpeg` (430 MB, with ffmpeg and ffprobe for voice and video
+  conversion). A static Linux x86_64 tarball with every release; the tarball
+  and both images carry the same binary, with provenance attestations.
+- Reference `compose.yaml` running the core and this edge from GHCR (it
+  replaces `deploy/docker-compose.yml`).
+- `wamux-http --version`.
+- CA roots compiled in, used when the host has none (a scratch container):
+  https webhooks and media fetches verify there too.
+- WebP images get thumbnails without ffmpeg.
 - Web panel at `/dashboard`, unlocked with the admin key: pair sessions by QR
   or phone code with live status, start, stop, restart, log out and delete
   them, edit their webhooks and metadata and the account's name, about and
@@ -52,3 +63,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   follow, unfollow, mute, unmute) and call rejection. Block, about, the group
   approval and add modes, the channel writes and call rejection need wamux
   v0.2.1; on v0.2.0 they answer 501.
+
+[Unreleased]: https://github.com/LLawli/wamux-http/commits/main

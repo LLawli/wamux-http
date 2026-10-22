@@ -1,5 +1,5 @@
 /wamux-http
-/dist/
+/dist
 /files/
 *.db
 *.db-shm

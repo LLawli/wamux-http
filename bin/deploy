@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Builds the image, pushes it, and rolls the compose project on the host.
-# Reads IMAGE, DEPLOY_HOST and DEPLOY_PATH from config/deploy.env.
+# Reads IMAGE, DEPLOY_HOST and DEPLOY_PATH (and TARGET, the Dockerfile
+# target: ffmpeg by default, or default for the binary alone) from
+# config/deploy.env. The host runs compose.yaml with WAMUX_HTTP_IMAGE set.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -9,10 +11,11 @@ env_file=config/deploy.env
 # shellcheck source=/dev/null
 . "$env_file"
 : "${IMAGE:?}" "${DEPLOY_HOST:?}" "${DEPLOY_PATH:?}"
+target=${TARGET:-ffmpeg}
 
 tag=$(jj log -r @- --no-graph -T 'commit_id.short(12)' 2>/dev/null || git rev-parse --short=12 HEAD)
 ./scripts/ci.sh
-docker build -t "$IMAGE:$tag" -t "$IMAGE:latest" .
+docker build --target "$target" --build-arg VERSION="dev-$tag" -t "$IMAGE:$tag" -t "$IMAGE:latest" .
 docker push "$IMAGE:$tag"
 docker push "$IMAGE:latest"
 ssh "$DEPLOY_HOST" "cd '$DEPLOY_PATH' && WAMUX_HTTP_IMAGE='$IMAGE:$tag' docker compose pull && WAMUX_HTTP_IMAGE='$IMAGE:$tag' docker compose up -d"

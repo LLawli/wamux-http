@@ -1,0 +1,196 @@
+name: release
+
+# Build once, package many: the release job compiles the binary a single
+# time and publishes it in the tarball; the image job copies that same file
+# into both images and checks it is byte for byte the one in the tarball.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release again, e.g. v0.1.0"
+        required: true
+
+# Nothing is granted by default: each job asks for exactly what it needs.
+permissions: {}
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  release:
+    name: tarball + GitHub release
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+
+      - id: version
+        run: |
+          version="${TAG#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$TAG is not vX.Y.Z"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+            tools/actionlint/go.sum
+
+      # The tag points at a commit CI tested, but a tag can be moved or cut
+      # from an untested branch; this keeps a broken build off the release.
+      - name: gates
+        run: ./scripts/ci.sh
+
+      # Fails when the CHANGELOG has no section for this version.
+      - name: release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p notes
+          scripts/changelog-section.sh "$VERSION" > notes/notes.md
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          {
+            printf '\n## Run\n\n'
+            printf "Both images run the binary in the tarball below, as uid 10001, from \`scratch\`:\n\n"
+            printf -- "- \`%s:%s\`: the binary alone\n" "$image" "$TAG"
+            printf -- "- \`%s:%s-ffmpeg\`: plus ffmpeg and ffprobe, for voice and video conversion, waveforms and durations\n\n" "$image" "$TAG"
+            printf 'Next to the core: the reference [compose.yaml](https://github.com/%s/blob/%s/compose.yaml).\n' "$GITHUB_REPOSITORY" "$TAG"
+            printf '\n## Verify\n\n'
+            printf 'The tarball and both images carry a build provenance attestation; the images are published by a job that starts after this release, so they can appear a few minutes later.\n\n'
+            printf '```\n'
+            printf 'gh attestation verify wamux-http-%s-linux-amd64.tar.gz -R %s\n' "$VERSION" "$GITHUB_REPOSITORY"
+            printf 'gh attestation verify oci://%s:%s -R %s\n' "$image" "$TAG" "$GITHUB_REPOSITORY"
+            printf '```\n'
+          } >> notes/notes.md
+          cat notes/notes.md
+
+      # Static, stamped with the version, checked (no interpreter, no shared
+      # libraries, no cgo, --version agrees) before it is packed.
+      - name: build
+        run: scripts/release-build.sh "${{ steps.version.outputs.version }}"
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: dist/
+          if-no-files-found: error
+
+      # A re-run of an existing tag replaces the assets instead of failing.
+      - name: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes-file notes/notes.md
+            gh release upload "$TAG" dist/*.tar.gz dist/*.sha256 --clobber
+          else
+            gh release create "$TAG" dist/*.tar.gz dist/*.sha256 \
+              --title "wamux-http ${TAG#v}" \
+              --notes-file notes/notes.md \
+              --verify-tag
+          fi
+
+  image:
+    name: GHCR images
+    needs: release
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: default
+            suffix: ""
+          - target: ffmpeg
+            suffix: "-ffmpeg"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: dist
+
+      # The binary the image copies must be the one inside the published
+      # tarball, and that tarball must match its checksum.
+      - name: same bytes as the tarball
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          cd dist
+          sha256sum -c "wamux-http-$VERSION-linux-amd64.tar.gz.sha256"
+          tar -xzf "wamux-http-$VERSION-linux-amd64.tar.gz"
+          want=$(sha256sum "wamux-http-$VERSION-linux-amd64/wamux-http" | cut -d' ' -f1)
+          got=$(sha256sum wamux-http | cut -d' ' -f1)
+          [ "$want" = "$got" ] || { echo "::error::dist/wamux-http differs from the tarball's binary"; exit 1; }
+          chmod +x wamux-http
+          echo "binary sha256 $got"
+
+      - id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # BINARY=prebuilt: the Dockerfile copies dist/wamux-http and never
+      # reaches its Go build stage.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: push
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          build-args: BINARY=prebuilt
+          push: true
+          tags: |
+            ${{ steps.name.outputs.image }}:${{ env.TAG }}${{ matrix.suffix }}
+            ${{ steps.name.outputs.image }}:latest${{ matrix.suffix }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.release.outputs.version }}
+            org.opencontainers.image.licenses=MIT OR Apache-2.0
+
+      # What was pushed runs, reports the version, and carries the same
+      # binary.
+      - name: check the pushed image
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}@${{ steps.push.outputs.digest }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          docker pull "$IMAGE"
+          [ "$(docker run --rm "$IMAGE" --version)" = "wamux-http $VERSION" ]
+          c=$(docker create "$IMAGE")
+          docker cp "$c:/usr/local/bin/wamux-http" - | tar -xO | sha256sum | cut -d' ' -f1 > in-image.sha256
+          docker rm "$c"
+          [ "$(cat in-image.sha256)" = "$(sha256sum dist/wamux-http | cut -d' ' -f1)" ]
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.name.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

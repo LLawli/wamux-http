@@ -1,0 +1,5 @@
+# ubuntu-26.04 is a GitHub-hosted runner newer than the actionlint release
+# CI pins; the core's workflows run on it too.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

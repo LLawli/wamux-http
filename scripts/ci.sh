@@ -20,6 +20,14 @@ tool buf generate --template "$gen/buf.gen.yaml"
 rm "$gen/buf.gen.yaml"
 diff -r "$gen" internal/core/wamuxv1 >/dev/null || { echo "internal/core/wamuxv1 is stale: run 'go tool -modfile=tools/go.mod buf generate'"; exit 1; }
 
+step "workflows"
+# actionlint runs shellcheck on each run: block when shellcheck works here.
+if shellcheck --version >/dev/null 2>&1; then
+  go tool -modfile=tools/actionlint/go.mod actionlint
+else
+  go tool -modfile=tools/actionlint/go.mod actionlint -shellcheck=
+fi
+
 step "vet"
 go vet ./...
 

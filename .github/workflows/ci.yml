@@ -18,4 +18,5 @@ jobs:
           cache-dependency-path: |
             go.sum
             tools/go.sum
+            tools/actionlint/go.sum
       - run: ./scripts/ci.sh

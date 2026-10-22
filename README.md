@@ -12,23 +12,38 @@ instead and it keeps working.
 ## Install
 
 You need a running wamux daemon (its Unix socket) and this server with access
-to that socket.
+to that socket. The easiest way is both as containers, with the reference
+[compose.yaml](compose.yaml): put a `.env` next to it with `WAHA_API_KEY`,
+then
+
+```sh
+docker compose up -d
+```
+
+The image comes in two variants, both `FROM scratch` (one static binary, no
+operating system), running as uid 10001 like the core so its socket opens:
+
+| Image | Size | |
+|---|---|---|
+| `ghcr.io/llawli/wamux-http:v0.1.0` | 35 MB | the binary alone |
+| `ghcr.io/llawli/wamux-http:v0.1.0-ffmpeg` | 430 MB | plus ffmpeg and ffprobe |
+
+Without ffmpeg, `convert: true` on voice and video sends and the
+`/media/convert` routes answer an error, and voice notes and videos go out
+without waveform and duration (they still play). Pick the `-ffmpeg` variant
+if you send voice or video; the reference compose does.
+
+Without containers, take the static binary from the
+[releases](https://github.com/LLawli/wamux-http/releases) (Linux x86_64, no
+libc needed), or build it:
 
 ```sh
 go install github.com/LLawli/wamux-http/cmd/wamux-http@latest
 WAHA_API_KEY=change-me WAMUX_HTTP_CORE_SOCKET=$HOME/.local/state/wamux/wamux.sock wamux-http
 ```
 
-Or with Docker, mounting the core's socket directory:
-
-```sh
-docker build -t wamux-http .
-docker run -p 3000:3000 -e WAHA_API_KEY=change-me \
-  -v /run/wamux:/run/wamux -v wamux-http:/var/lib/wamux-http wamux-http
-```
-
-The container user must be able to open the socket (the core makes it `0660`
-for its group).
+Conversion then uses ffmpeg, ffprobe and opustags from the `PATH` when they
+are installed.
 
 ## Use
 
@@ -68,14 +83,17 @@ How it is built: [docs/architecture.md](docs/architecture.md).
 
 ## Deploy
 
-`deploy/docker-compose.yml` runs the core and this server side by side,
-sharing the core's socket through a volume. `bin/deploy` builds and pushes
-the image and rolls the compose project on a host over ssh; it reads
-`config/deploy.env` (copy `config/deploy.env.example`).
+`bin/deploy` builds the image from this checkout, pushes it to your registry
+and rolls `compose.yaml` on a host over ssh, with `WAMUX_HTTP_IMAGE` pointing
+at what it pushed; it reads `config/deploy.env` (copy
+`config/deploy.env.example`). `docker build .` makes the scratch image and
+`docker build --target ffmpeg .` the one with ffmpeg.
+
+Releases: [docs/releasing.md](docs/releasing.md).
 
 ## Develop
 
-`./scripts/ci.sh` runs every gate (format, generated code, vet, lint, tests
+`./scripts/ci.sh` runs every gate (format, generated code, workflow lint, vet, lint, tests
 with the race detector, coverage document, vulnerabilities); CI runs the same
 script. Tests run against an in-process fake of the core.
 `DASHBOARD_DEV=127.0.0.1:3199 go test ./internal/dashboard -run TestDevServer -v -timeout 0`
@@ -96,7 +114,10 @@ at your option.
 
 The panel embeds [Datastar](https://data-star.dev) (MIT) and the IBM Plex
 fonts (SIL Open Font License 1.1); their licenses sit next to them in
-`internal/dashboard/static/`. Go dependencies carry their own licenses.
+`internal/dashboard/static/`. Go dependencies carry their own licenses. The
+`-ffmpeg` image also carries static ffmpeg 9.0.2 and ffprobe, GPL-3.0, built
+by [wader/static-ffmpeg](https://github.com/wader/static-ffmpeg), whose
+repository has their source and build scripts.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
