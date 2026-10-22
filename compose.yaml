@@ -23,7 +23,7 @@ services:
       - wamux-data:/var/lib/wamux
 
   wamux-http:
-    image: ${WAMUX_HTTP_IMAGE:-ghcr.io/llawli/wamux-http:v0.1.0-ffmpeg}
+    image: ${WAMUX_HTTP_IMAGE:-ghcr.io/llawli/wamux-http:v0.1.1-ffmpeg}
     restart: unless-stopped
     depends_on: [wamux]
     # Runs as uid 10001, like the core, so the core's 0660 socket opens.
