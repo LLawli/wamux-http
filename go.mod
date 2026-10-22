@@ -11,6 +11,7 @@ require (
 	github.com/oklog/ulid/v2 v2.1.2
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	go.mau.fi/whatsmeow v0.0.0-20261017175727-b2b1e71d45e2
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20260916154351-b853e4b620cd
 	golang.org/x/image v0.46.0
 	golang.org/x/net v0.61.0
 	google.golang.org/grpc v1.84.0

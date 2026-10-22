@@ -18,6 +18,11 @@ import (
 	"github.com/LLawli/wamux-http/internal/core"
 	"github.com/LLawli/wamux-http/internal/store"
 	"github.com/LLawli/wamux-http/internal/store/sqlite"
+
+	// Mozilla's CA roots, compiled in and used only when the system has
+	// none: the scratch image has no CA bundle, and webhooks and media
+	// fetches still verify https.
+	_ "golang.org/x/crypto/x509roots/fallback"
 )
 
 func main() {

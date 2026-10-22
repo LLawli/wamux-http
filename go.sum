@@ -59,6 +59,8 @@ github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsT
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 go.mau.fi/whatsmeow v0.0.0-20261017175727-b2b1e71d45e2 h1:/2ifXqR9Ls19CcIJ6ukwF8wpS7DJjhviJ3YJzwKa9+o=
 go.mau.fi/whatsmeow v0.0.0-20261017175727-b2b1e71d45e2/go.mod h1:iY4lm61nTLWsNiIE1EmHUZwhKGBeoV4dhnVE2uMtNoQ=
+golang.org/x/crypto/x509roots/fallback v0.0.0-20260916154351-b853e4b620cd h1:Ua5AO8tq5JvcDZgX2DLJZVWbckWwvsU6IcbWcUjnp+0=
+golang.org/x/crypto/x509roots/fallback v0.0.0-20260916154351-b853e4b620cd/go.mod h1:HPze8vhfG6fO06AM+VSvxRm4E3+5Yk375mgrJ5M2z1E=
 golang.org/x/image v0.46.0 h1:b1+oYj0Jbp6K5MDT4i4/eZpYlk3V8SJhhDKh6LBHAyQ=
 golang.org/x/image v0.46.0/go.mod h1:3B3W05VGVQyuXucLINLjXKrqISASfi4Xj+iCVkLMwew=
 golang.org/x/mod v0.41.0 h1:qJmnOUb4YB+FsEuM3HcWucdZASCPGhsX6uljO6pog0c=
