@@ -6,7 +6,8 @@
 #
 # Leaves in dist/:
 #   wamux-http                                  the binary the images copy
-#   wamux-http-X.Y.Z-linux-amd64.tar.gz         binary, README, CHANGELOG, licenses
+#   wamux-http-X.Y.Z-linux-amd64.tar.gz         binary, README, CHANGELOG, licenses,
+#                                               THIRD-PARTY-LICENSES.md
 #   wamux-http-X.Y.Z-linux-amd64.tar.gz.sha256
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -38,7 +39,7 @@ got=$(./dist/wamux-http --version)
 size=$(stat -c %s dist/wamux-http)
 [ "$size" -gt $((10 << 20)) ] || die "dist/wamux-http is only $size bytes"
 
-cp dist/wamux-http README.md CHANGELOG.md LICENSE-MIT LICENSE-APACHE "dist/$name/"
+cp dist/wamux-http README.md CHANGELOG.md LICENSE-MIT LICENSE-APACHE THIRD-PARTY-LICENSES.md "dist/$name/"
 tar -czf "dist/$name.tar.gz" -C dist "$name"
 rm -r "dist/$name"
 (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")

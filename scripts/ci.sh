@@ -37,6 +37,12 @@ tool golangci-lint run ./...
 step "test"
 go test -race -count=1 ./...
 
+step "third-party licenses"
+tpl=$(mktemp)
+scripts/third-party-licenses.sh "$tpl"
+cmp -s "$tpl" THIRD-PARTY-LICENSES.md || { rm -f "$tpl"; echo "THIRD-PARTY-LICENSES.md is stale: run scripts/third-party-licenses.sh"; exit 1; }
+rm -f "$tpl"
+
 step "coverage document"
 go run ./cmd/coverage -check docs/coverage.md
 
