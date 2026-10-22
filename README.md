@@ -84,3 +84,20 @@ out).
 `WAMUX_BIN=/path/to/wamux scripts/live-smoke.sh` checks the server against a
 real wamux daemon with a throwaway store, up to a QR code from WhatsApp (no
 phone pairs).
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
+
+The panel embeds [Datastar](https://data-star.dev) (MIT) and the IBM Plex
+fonts (SIL Open Font License 1.1); their licenses sit next to them in
+`internal/dashboard/static/`. Go dependencies carry their own licenses.
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
