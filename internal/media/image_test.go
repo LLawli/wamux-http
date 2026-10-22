@@ -7,6 +7,7 @@ import (
 	"hash/crc32"
 	"image"
 	"image/png"
+	"os"
 	"testing"
 )
 
@@ -57,5 +58,22 @@ func TestThumbnailOfAnOrdinaryImage(t *testing.T) {
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(out))
 	if err != nil || cfg.Width != thumbSize || cfg.Height != thumbSize/2 {
 		t.Fatalf("thumbnail %dx%d, %v", cfg.Width, cfg.Height, err)
+	}
+}
+
+// WebP, common in link previews, is decoded in process too: an image with
+// no ffmpeg in it (the scratch container) still gets its thumbnail.
+func TestThumbnailOfAWebPWithoutFFmpeg(t *testing.T) {
+	in, err := os.ReadFile("testdata/sample.webp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := goThumbnail(in, thumbSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(out))
+	if err != nil || format != "jpeg" || cfg.Width != thumbSize || cfg.Height != thumbSize*360/640 {
+		t.Fatalf("thumbnail %s %dx%d, %v", format, cfg.Width, cfg.Height, err)
 	}
 }

@@ -8,6 +8,8 @@ import (
 	_ "image/gif" // decoders for goThumbnail
 	"image/jpeg"
 	_ "image/png"
+
+	_ "golang.org/x/image/webp" // pure Go: no ffmpeg needed for WebP
 )
 
 // maxPixels bounds the images the edge decodes (in-process or through
@@ -19,7 +21,7 @@ const maxPixels = 40_000_000
 // ErrImageTooLarge is an image whose declared size exceeds maxPixels.
 var ErrImageTooLarge = errors.New("image too large")
 
-// goThumbnail scales an image Go can decode (JPEG, PNG, GIF) so its longest
+// goThumbnail scales an image Go can decode (JPEG, PNG, GIF, WebP) so its longest
 // side is at most size, and encodes it as JPEG. Each output pixel averages a
 // 2x2 grid of source samples, which is plenty for a preview. The header is
 // read first, so an oversized image is refused before anything is allocated.
