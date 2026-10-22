@@ -26,6 +26,10 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "version") {
+		fmt.Println("wamux-http", config.Release)
+		return
+	}
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "wamux-http:", err)
 		os.Exit(1)
@@ -64,7 +68,7 @@ func run() error {
 	srv := &http.Server{Addr: cfg.Listen, Handler: a.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	log.Info("listening", "addr", cfg.Listen, "core", cfg.CoreSocket, "worker", cfg.WorkerID)
+	log.Info("listening", "addr", cfg.Listen, "core", cfg.CoreSocket, "worker", cfg.WorkerID, "version", config.Release)
 	select {
 	case err := <-errc:
 		stop()

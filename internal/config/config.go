@@ -22,6 +22,10 @@ const Engine = "GOWS"
 // Version is the WAHA version this edge mirrors (contract/waha-openapi.json).
 const Version = "2026.8.2"
 
+// Release is this edge's own version, set at build time by the release
+// (-ldflags "-X github.com/LLawli/wamux-http/internal/config.Release=X.Y.Z").
+var Release = "dev"
+
 // Config is the whole configuration.
 type Config struct {
 	Listen  string // host:port the HTTP server binds
