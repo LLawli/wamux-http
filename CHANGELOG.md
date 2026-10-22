@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-22
+
 ### Added
 
 - WAHA-compatible HTTP server on top of the wamux core (contract pinned to
@@ -64,4 +66,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   approval and add modes, the channel writes and call rejection need wamux
   v0.2.1; on v0.2.0 they answer 501.
 
-[Unreleased]: https://github.com/LLawli/wamux-http/commits/main
+[Unreleased]: https://github.com/LLawli/wamux-http/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/LLawli/wamux-http/releases/tag/v0.1.0
