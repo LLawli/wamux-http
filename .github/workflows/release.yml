@@ -66,6 +66,8 @@ jobs:
             printf -- "- \`%s:%s\`: the binary alone\n" "$image" "$TAG"
             printf -- "- \`%s:%s-ffmpeg\`: plus ffmpeg and ffprobe, for voice and video conversion, waveforms and durations\n\n" "$image" "$TAG"
             printf 'Next to the core: the reference [compose.yaml](https://github.com/%s/blob/%s/compose.yaml).\n' "$GITHUB_REPOSITORY" "$TAG"
+            printf '\n## Licenses\n\n'
+            printf 'MIT OR Apache-2.0. The tarball and both images carry THIRD-PARTY-LICENSES.md for the code the binary links. The ffmpeg and ffprobe of the -ffmpeg image are GPL-3.0-or-later: the image carries their licenses in /usr/local/share/doc/ffmpeg, whose SOURCE.md names the release that holds their complete corresponding source.\n'
             printf '\n## Verify\n\n'
             printf 'The tarball and both images carry a build provenance attestation; the images are published by a job that starts after this release, so they can appear a few minutes later.\n\n'
             printf '```\n'
@@ -120,8 +122,10 @@ jobs:
         include:
           - target: default
             suffix: ""
+            licenses: MIT OR Apache-2.0
           - target: ffmpeg
             suffix: "-ffmpeg"
+            licenses: (MIT OR Apache-2.0) AND GPL-3.0-or-later
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -173,7 +177,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ needs.release.outputs.version }}
-            org.opencontainers.image.licenses=MIT OR Apache-2.0
+            org.opencontainers.image.licenses=${{ matrix.licenses }}
 
       # What was pushed runs, reports the version, and carries the same
       # binary.

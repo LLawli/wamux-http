@@ -26,7 +26,7 @@ operating system), running as uid 10001 like the core so its socket opens:
 | Image | Size | |
 |---|---|---|
 | `ghcr.io/llawli/wamux-http:v0.1.0` | 35 MB | the binary alone |
-| `ghcr.io/llawli/wamux-http:v0.1.0-ffmpeg` | 430 MB | plus ffmpeg and ffprobe |
+| `ghcr.io/llawli/wamux-http:v0.1.0-ffmpeg` | 440 MB | plus ffmpeg and ffprobe |
 
 Without ffmpeg, `convert: true` on voice and video sends and the
 `/media/convert` routes answer an error, and voice notes and videos go out
@@ -112,12 +112,20 @@ Licensed under either of
 
 at your option.
 
-The panel embeds [Datastar](https://data-star.dev) (MIT) and the IBM Plex
-fonts (SIL Open Font License 1.1); their licenses sit next to them in
-`internal/dashboard/static/`. Go dependencies carry their own licenses. The
-`-ffmpeg` image also carries static ffmpeg 9.0.2 and ffprobe, GPL-3.0, built
-by [wader/static-ffmpeg](https://github.com/wader/static-ffmpeg), whose
-repository has their source and build scripts.
+The binary links Go modules under their own licenses (BSD, MIT, ISC,
+Apache-2.0, MPL-2.0); [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) has
+their texts and where each one's source is, and ships in the tarball and in
+both images (`/usr/local/share/doc/wamux-http`). It also covers what the panel
+embeds: [Datastar](https://data-star.dev) (MIT) and the IBM Plex fonts (SIL
+Open Font License 1.1).
+
+The `-ffmpeg` image also carries ffmpeg 9.0.2 and ffprobe, GPL-3.0-or-later,
+as built by [wader/static-ffmpeg](https://github.com/wader/static-ffmpeg). The
+image ships the GPL text and the license of every component they link
+(`/usr/local/share/doc/ffmpeg`), and their complete corresponding source is
+the [static-ffmpeg-9.0.2-source](https://github.com/LLawli/wamux-http/releases/tag/static-ffmpeg-9.0.2-source)
+release; [packaging/ffmpeg](packaging/ffmpeg/README.md) has how it is
+collected and checked.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be

@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- License notices. The tarball and both images ship
+  `THIRD-PARTY-LICENSES.md`: the texts of every Go module the binary links,
+  with where its source is. The `-ffmpeg` image ships, in
+  `/usr/local/share/doc/ffmpeg`, the GPL-3.0 text and the license of each of
+  the components ffmpeg links, and points at their complete corresponding
+  source, now published as the `static-ffmpeg-9.0.2-source` release
+  (v0.1.0's images lacked all of this).
+
 ## [0.1.0] - 2026-10-22
 
 ### Added

@@ -6,3 +6,4 @@
 *.db-wal
 /config/deploy.env
 .env
+__pycache__/

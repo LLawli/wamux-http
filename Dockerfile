@@ -29,8 +29,9 @@ COPY dist/wamux-http /out/wamux-http
 
 FROM ${BINARY} AS binary
 
-# GPL-3.0 build of ffmpeg 9.0.2 with libopus and libx264, statically linked.
-# Source and build scripts: https://github.com/wader/static-ffmpeg
+# GPL-3.0 build of ffmpeg 9.0.2 (wader/static-ffmpeg at commit dfa84ce),
+# statically linked with 61 components. packaging/ffmpeg/ has how its
+# corresponding source is collected, verified and published.
 FROM mwader/static-ffmpeg:9.0.2@sha256:7d9bdaaf887f7e6ce6151f67325c344074b5ff1fb75316011c3376503e449a7b AS static-ffmpeg
 
 FROM scratch AS ffmpeg
@@ -38,7 +39,11 @@ FROM scratch AS ffmpeg
 # come from the context, owned by the user that writes them.
 COPY --chown=10001:10001 packaging/rootfs/ /
 COPY --from=binary /out/wamux-http /usr/local/bin/wamux-http
+COPY LICENSE-MIT LICENSE-APACHE THIRD-PARTY-LICENSES.md /usr/local/share/doc/wamux-http/
 COPY --from=static-ffmpeg /ffmpeg /ffprobe /usr/local/bin/
+# GPL-3.0 text, the licenses of every component they link, and where their
+# corresponding source is (packaging/ffmpeg/README.md).
+COPY packaging/ffmpeg/doc/ /usr/local/share/doc/ffmpeg/
 ENV PATH=/usr/local/bin \
     TMPDIR=/tmp \
     WAMUX_HTTP_DATABASE_URL=sqlite:///var/lib/wamux-http/wamux-http.db \
@@ -52,6 +57,7 @@ ENTRYPOINT ["/usr/local/bin/wamux-http"]
 FROM scratch AS default
 COPY --chown=10001:10001 packaging/rootfs/ /
 COPY --from=binary /out/wamux-http /usr/local/bin/wamux-http
+COPY LICENSE-MIT LICENSE-APACHE THIRD-PARTY-LICENSES.md /usr/local/share/doc/wamux-http/
 ENV PATH=/usr/local/bin \
     TMPDIR=/tmp \
     WAMUX_HTTP_DATABASE_URL=sqlite:///var/lib/wamux-http/wamux-http.db \
