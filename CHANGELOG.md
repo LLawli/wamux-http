@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- A `reply_to` naming a message in another chat sends a private reply (to a
+  group message) or a reply to a status, quoting the message in its own
+  chat: the stored message's, or the chat in a full WAHA message id.
+- `me.reachoutTimelock` and the `WORKING` status's `data` report WhatsApp's
+  reachout restriction as the core notifies it; a change while `WORKING` is a
+  new `WORKING` event.
+- `scripts/sync-contracts.sh` refreshes the pinned wamux or WAHA contract.
+
+### Changed
+
+- The wamux contract is v0.2.2, and the reference `compose.yaml` runs the
+  core v0.2.2 (a static musl binary on `scratch`).
+- A poll to a channel with several answers is sent as WA Web publishes it
+  (selectable count 0), which wamux v0.2.2 requires.
+
+### Fixed
+
+- Logging out a started session could leave it `FAILED` instead of back at
+  `SCAN_QR_CODE`, when it started again in the same millisecond as the
+  core's logout: the old `LOGGED_OUT` was applied to the new start.
+
 ## [0.1.1] - 2026-10-22
 
 ### Fixed

@@ -10,7 +10,7 @@
 # WAMUX_IMAGE stays on the core version proto/WAMUX_VERSION names.
 services:
   wamux:
-    image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.1}
+    image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.2}
     restart: unless-stopped
     # The core runs as uid and gid 10001 and owns /run/wamux and
     # /var/lib/wamux; the spool lives under the latter.

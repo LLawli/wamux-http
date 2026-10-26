@@ -88,6 +88,16 @@ so they work here:
   always sends null), and the revoked message leaves the store.
 - `label.chat.added` / `label.chat.deleted` carry the stored label instead
   of null.
+- A `reply_to` whose message is in another chat quotes it there: a private
+  reply to a group message, or a reply to a status. The chat comes from the
+  stored message, else from a full WAHA id (`false_<chat>_<id>[_participant]`);
+  GOWS always quotes in the request's chat. Needs wamux v0.2.2: an older core
+  quotes in the request's chat.
+- `me.reachoutTimelock`, and the `data` of `session.status` `WORKING`, follow
+  the reachout restriction the core reports (wamux v0.2.2). The deadline is
+  read as unix seconds or milliseconds, or an RFC 3339 time. `GET
+  /api/sessions/{session}/timelock` still answers 501: WAHA queries WhatsApp
+  there, and the core only relays the notification.
 
 ## Reads come from the store
 
