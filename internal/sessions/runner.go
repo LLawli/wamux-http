@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -262,6 +264,10 @@ func (r *runner) handle(ctx context.Context, s store.Session, ev *pb.EventEnvelo
 		if s, err = r.applyPairing(ctx, e.Pairing, ev); err != nil {
 			return s, err
 		}
+	case *pb.EventEnvelope_ReachoutTimelock:
+		if s, err = r.setTimelock(ctx, s, e.ReachoutTimelock); err != nil {
+			return s, err
+		}
 	case *pb.EventEnvelope_SelfPushName:
 		if s, err = r.setMe(ctx, s, "", e.SelfPushName.GetNewName()); err != nil {
 			return s, err
@@ -312,7 +318,7 @@ func (r *runner) applyState(ctx context.Context, s store.Session, state pb.Conne
 			return s, err
 		}
 		if s.Status != StatusWorking {
-			return r.m.SetStatus(ctx, s, StatusWorking, nil)
+			return r.m.SetStatus(ctx, s, StatusWorking, workingData(s))
 		}
 	case pb.ConnectionState_CONNECTING:
 		if s.Status != StatusStarting && s.Status != StatusScanQR {
@@ -377,12 +383,93 @@ func (r *runner) applyPairing(ctx context.Context, u *pb.PairingUpdate, env *pb.
 
 // Me is WAHA's MeInfo.
 type Me struct {
-	ID               string `json:"id"`
-	PushName         string `json:"pushName"`
-	LID              string `json:"lid,omitempty"`
-	JID              string `json:"jid,omitempty"`
-	ReachoutTimelock any    `json:"reachoutTimelock"`
-	MessageCapping   any    `json:"messageCapping"`
+	ID               string    `json:"id"`
+	PushName         string    `json:"pushName"`
+	LID              string    `json:"lid,omitempty"`
+	JID              string    `json:"jid,omitempty"`
+	ReachoutTimelock *Timelock `json:"reachoutTimelock"`
+	MessageCapping   any       `json:"messageCapping"`
+}
+
+// Timelock is WAHA's ReachoutTimelockData: WhatsApp restricting the new
+// conversations the account may start.
+type Timelock struct {
+	EnforcementType     string `json:"enforcementType"`
+	IsActive            bool   `json:"isActive"`
+	TimeEnforcementEnds int64  `json:"timeEnforcementEnds"` // unix seconds
+}
+
+// enforcementEnds reads the core's deadline, which crosses as the server's
+// string: unix seconds or milliseconds, or an RFC 3339 time.
+func enforcementEnds(v string) (int64, bool) {
+	v = strings.TrimSpace(v)
+	if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+		if n > 1e11 { // milliseconds
+			n /= 1000
+		}
+		return n, true
+	}
+	if t, err := time.Parse(time.RFC3339, v); err == nil {
+		return t.Unix(), true
+	}
+	return 0, false
+}
+
+// setTimelock merges a reachout timelock notification into me. A field the
+// server left out keeps what was known: the core says unset makes no claim.
+// While WORKING, a change is published as a new WORKING whose data carries
+// it, as WAHA does.
+func (r *runner) setTimelock(ctx context.Context, s store.Session, u *pb.ReachoutTimelockUpdate) (store.Session, error) {
+	var me Me
+	_ = json.Unmarshal(s.Me, &me)
+	if me.ID == "" {
+		return s, nil
+	}
+	before := Timelock{}
+	if me.ReachoutTimelock != nil {
+		before = *me.ReachoutTimelock
+	}
+	tl := before
+	if u.EnforcementType != nil {
+		tl.EnforcementType = u.GetEnforcementType()
+	}
+	if u.IsActive != nil {
+		tl.IsActive = u.GetIsActive()
+	}
+	if u.TimeEnforcementEnds != nil {
+		if ends, ok := enforcementEnds(u.GetTimeEnforcementEnds()); ok {
+			tl.TimeEnforcementEnds = ends
+		} else {
+			r.m.Log.Warn("reachout timelock: unreadable deadline", "session", r.name, "value", u.GetTimeEnforcementEnds())
+		}
+	}
+	if me.ReachoutTimelock != nil && tl == before {
+		return s, nil
+	}
+	me.ReachoutTimelock = &tl
+	raw, err := json.Marshal(me)
+	if err != nil {
+		return s, err
+	}
+	rm := json.RawMessage(raw)
+	if s, err = r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{Me: &rm}); err != nil {
+		return s, err
+	}
+	if s.Status == StatusWorking {
+		return r.m.SetStatus(ctx, s, StatusWorking, workingData(s))
+	}
+	return s, nil
+}
+
+// workingData is a WORKING status's data: the account's restrictions while
+// one is active, as WAHA reports them, else nothing.
+func workingData(s store.Session) any {
+	var me Me
+	_ = json.Unmarshal(s.Me, &me)
+	if me.ReachoutTimelock == nil || !me.ReachoutTimelock.IsActive {
+		return nil
+	}
+	return map[string]any{"reachoutTimelock": me.ReachoutTimelock}
 }
 
 // setMe merges what is known about the account into the session's me.

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	"github.com/LLawli/wamux-http/internal/config"
 	pb "github.com/LLawli/wamux-http/internal/core/wamuxv1"
 	"github.com/LLawli/wamux-http/internal/fakecore"
@@ -317,5 +319,60 @@ func TestWebhookRetries(t *testing.T) {
 	}
 	if reqs[0].Header.Get("User-Agent") != "WAHA/"+config.Version || reqs[0].Header.Get("X-Webhook-Timestamp") == "" {
 		t.Fatalf("headers: %v", reqs[0].Header)
+	}
+}
+
+// The reachout timelock the core reports lands in me, and a change while
+// WORKING is a new WORKING whose data carries it while it is active.
+func TestReachoutTimelock(t *testing.T) {
+	e := testenv.Start(t, testenv.Options{})
+	hook := e.NewHook(nil)
+	uuid := e.WorkingSession("default", "5511999999999@s.whatsapp.net",
+		map[string]any{"webhooks": []map[string]any{{"url": hook.URL, "events": []string{"session.status"}}}})
+	working := func() []map[string]any {
+		var out []map[string]any
+		for _, ev := range hook.Events("session.status") {
+			if p, _ := ev["payload"].(map[string]any); p["status"] == "WORKING" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+	e.Eventually("first WORKING", 5*time.Second, func() bool { return len(working()) == 1 })
+	timelock := func(u *pb.ReachoutTimelockUpdate) {
+		e.Core.Emit(uuid, &pb.EventEnvelope{Event: &pb.EventEnvelope_ReachoutTimelock{ReachoutTimelock: u}})
+	}
+	me := func() map[string]any {
+		var m map[string]any
+		e.Do("GET", "/api/sessions/default/me", nil).JSON(t, &m)
+		tl, _ := m["reachoutTimelock"].(map[string]any)
+		return tl
+	}
+
+	timelock(&pb.ReachoutTimelockUpdate{EnforcementType: proto.String("DEFAULT"), IsActive: proto.Bool(true), TimeEnforcementEnds: proto.String("1793100000000")})
+	e.Eventually("restricted WORKING", 5*time.Second, func() bool { return len(working()) == 2 })
+	data, _ := working()[1]["data"].(map[string]any)
+	if tl, _ := data["reachoutTimelock"].(map[string]any); tl["isActive"] != true || tl["enforcementType"] != "DEFAULT" || tl["timeEnforcementEnds"] != float64(1793100000) {
+		t.Fatalf("WORKING data: %v", working()[1])
+	}
+	if tl := me(); tl["isActive"] != true || tl["timeEnforcementEnds"] != float64(1793100000) {
+		t.Fatalf("me: %v", tl)
+	}
+
+	// Lifted, with the other fields left out: they keep what was known.
+	timelock(&pb.ReachoutTimelockUpdate{IsActive: proto.Bool(false)})
+	e.Eventually("lifted WORKING", 5*time.Second, func() bool { return len(working()) == 3 })
+	if working()[2]["data"] != nil {
+		t.Fatalf("lifted WORKING carries data: %v", working()[2])
+	}
+	if tl := me(); tl["isActive"] != false || tl["enforcementType"] != "DEFAULT" || tl["timeEnforcementEnds"] != float64(1793100000) {
+		t.Fatalf("me after lift: %v", tl)
+	}
+
+	// The same state again is not news.
+	timelock(&pb.ReachoutTimelockUpdate{IsActive: proto.Bool(false)})
+	time.Sleep(300 * time.Millisecond)
+	if n := len(working()); n != 3 {
+		t.Fatalf("a repeated state published a WORKING: %d", n)
 	}
 }
