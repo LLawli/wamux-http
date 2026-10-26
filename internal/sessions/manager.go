@@ -274,6 +274,13 @@ func (m *Manager) Logout(ctx context.Context, name string) (store.Session, error
 		return s, err
 	}
 	if wasStarted {
+		// The core stamps the logout's LOGGED_OUT before it answers. A start
+		// in that same millisecond would stamp started_at equal to it, and the
+		// runner, which skips only events older than the start, would apply
+		// the LOGGED_OUT to the new start and fail it. Let the clock move on.
+		for after := waha.NowMs(); waha.NowMs() <= after; {
+			time.Sleep(100 * time.Microsecond)
+		}
 		return m.Start(ctx, name)
 	}
 	return s, nil
