@@ -1479,12 +1479,16 @@ func (x *SendContactRequest) GetQuote() *QuoteContext {
 }
 
 type SendPollRequest struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
-	Account         *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	To              *Jid                   `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
-	Name            string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Options         []string               `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"`                                         // 2..=12 distinct names (lib validates)
-	SelectableCount uint32                 `protobuf:"varint,5,opt,name=selectable_count,json=selectableCount,proto3" json:"selectable_count,omitempty"` // 1..=options.len() (lib validates)
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Account *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	To      *Jid                   `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	Name    string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Options []string               `protobuf:"bytes,4,rep,name=options,proto3" json:"options,omitempty"` // 2..=12 distinct names (lib validates)
+	// A chat: 1..=options.len(). A channel (`@newsletter`): 1 for a single
+	// answer or 0 for several, as WA Web publishes them; anything above 1 is
+	// InvalidArgument (#220). The library validates both, and the core relays
+	// the number as given. A channel also refuses a blank name or option.
+	SelectableCount uint32 `protobuf:"varint,5,opt,name=selectable_count,json=selectableCount,proto3" json:"selectable_count,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1555,7 +1559,9 @@ func (x *SendPollRequest) GetSelectableCount() uint32 {
 }
 
 // message_secret is the per-poll key the edge needs to decrypt incoming votes;
-// the core hands it back as a primitive and stores nothing (relay-pure).
+// the core hands it back as a primitive and stores nothing (relay-pure). A
+// channel poll is plaintext and its votes are not encrypted, so it carries no
+// secret and the field is empty (#220).
 type SendPollResult struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Key           *MessageKey            `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`

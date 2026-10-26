@@ -3321,6 +3321,129 @@ func (*LabelUpdate_Chat) isLabelUpdate_Action() {}
 
 func (*LabelUpdate_Message) isLabelUpdate_Action() {}
 
+// One entry of a label's sublist changed on a linked device (#215): the entry
+// keyed by `(predefined_id, chat)`. Apply it as an upsert or a removal of that
+// key; delivery is not exactly once, and nothing synthesizes a removal when the
+// parent label goes away. `predefined_id` is in `LabelEdit.predefined_id`'s
+// namespace: it is neither a label id nor a list type.
+type LabelSublistUpdate struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	PredefinedId int32                  `protobuf:"varint,1,opt,name=predefined_id,json=predefinedId,proto3" json:"predefined_id,omitempty"`
+	Chat         *Jid                   `protobuf:"bytes,2,opt,name=chat,proto3" json:"chat,omitempty"` // PN or LID, as the mutation named it
+	// The mutation's own time (ms); unset when it carried none or one out of
+	// range. Zero is a time, not "absent".
+	ActionTimestamp *int64 `protobuf:"varint,3,opt,name=action_timestamp,json=actionTimestamp,proto3,oneof" json:"action_timestamp,omitempty"`
+	FromFullSync    bool   `protobuf:"varint,4,opt,name=from_full_sync,json=fromFullSync,proto3" json:"from_full_sync,omitempty"` // replayed by a full app-state sync
+	// Unset for a change this build does not name (the library's enum is open).
+	//
+	// Types that are valid to be assigned to Change:
+	//
+	//	*LabelSublistUpdate_UpsertSubListId
+	//	*LabelSublistUpdate_Remove
+	Change        isLabelSublistUpdate_Change `protobuf_oneof:"change"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LabelSublistUpdate) Reset() {
+	*x = LabelSublistUpdate{}
+	mi := &file_events_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LabelSublistUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LabelSublistUpdate) ProtoMessage() {}
+
+func (x *LabelSublistUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_events_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LabelSublistUpdate.ProtoReflect.Descriptor instead.
+func (*LabelSublistUpdate) Descriptor() ([]byte, []int) {
+	return file_events_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *LabelSublistUpdate) GetPredefinedId() int32 {
+	if x != nil {
+		return x.PredefinedId
+	}
+	return 0
+}
+
+func (x *LabelSublistUpdate) GetChat() *Jid {
+	if x != nil {
+		return x.Chat
+	}
+	return nil
+}
+
+func (x *LabelSublistUpdate) GetActionTimestamp() int64 {
+	if x != nil && x.ActionTimestamp != nil {
+		return *x.ActionTimestamp
+	}
+	return 0
+}
+
+func (x *LabelSublistUpdate) GetFromFullSync() bool {
+	if x != nil {
+		return x.FromFullSync
+	}
+	return false
+}
+
+func (x *LabelSublistUpdate) GetChange() isLabelSublistUpdate_Change {
+	if x != nil {
+		return x.Change
+	}
+	return nil
+}
+
+func (x *LabelSublistUpdate) GetUpsertSubListId() int32 {
+	if x != nil {
+		if x, ok := x.Change.(*LabelSublistUpdate_UpsertSubListId); ok {
+			return x.UpsertSubListId
+		}
+	}
+	return 0
+}
+
+func (x *LabelSublistUpdate) GetRemove() *Empty {
+	if x != nil {
+		if x, ok := x.Change.(*LabelSublistUpdate_Remove); ok {
+			return x.Remove
+		}
+	}
+	return nil
+}
+
+type isLabelSublistUpdate_Change interface {
+	isLabelSublistUpdate_Change()
+}
+
+type LabelSublistUpdate_UpsertSubListId struct {
+	UpsertSubListId int32 `protobuf:"varint,10,opt,name=upsert_sub_list_id,json=upsertSubListId,proto3,oneof"` // the entry's new sublist id; 0 is a value
+}
+
+type LabelSublistUpdate_Remove struct {
+	Remove *Empty `protobuf:"bytes,11,opt,name=remove,proto3,oneof"` // the wire does not carry the old sublist id
+}
+
+func (*LabelSublistUpdate_UpsertSubListId) isLabelSublistUpdate_Change() {}
+
+func (*LabelSublistUpdate_Remove) isLabelSublistUpdate_Change() {}
+
 // A quick reply was created, edited or deleted on a linked device (#149).
 // Deleting is the same mutation with `deleted` true and empty texts, not a
 // removal, so check the flag.
@@ -3341,7 +3464,7 @@ type QuickReplyUpdate struct {
 
 func (x *QuickReplyUpdate) Reset() {
 	*x = QuickReplyUpdate{}
-	mi := &file_events_proto_msgTypes[19]
+	mi := &file_events_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3353,7 +3476,7 @@ func (x *QuickReplyUpdate) String() string {
 func (*QuickReplyUpdate) ProtoMessage() {}
 
 func (x *QuickReplyUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[19]
+	mi := &file_events_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3366,7 +3489,7 @@ func (x *QuickReplyUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuickReplyUpdate.ProtoReflect.Descriptor instead.
 func (*QuickReplyUpdate) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{19}
+	return file_events_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *QuickReplyUpdate) GetId() string {
@@ -3443,6 +3566,7 @@ type AccountSettingUpdate struct {
 	//
 	//	*AccountSettingUpdate_LinkPreviews
 	//	*AccountSettingUpdate_StatusPrivacy
+	//	*AccountSettingUpdate_UnarchiveChats
 	Setting       isAccountSettingUpdate_Setting `protobuf_oneof:"setting"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -3450,7 +3574,7 @@ type AccountSettingUpdate struct {
 
 func (x *AccountSettingUpdate) Reset() {
 	*x = AccountSettingUpdate{}
-	mi := &file_events_proto_msgTypes[20]
+	mi := &file_events_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3462,7 +3586,7 @@ func (x *AccountSettingUpdate) String() string {
 func (*AccountSettingUpdate) ProtoMessage() {}
 
 func (x *AccountSettingUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[20]
+	mi := &file_events_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3475,7 +3599,7 @@ func (x *AccountSettingUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountSettingUpdate.ProtoReflect.Descriptor instead.
 func (*AccountSettingUpdate) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{20}
+	return file_events_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AccountSettingUpdate) GetTimestamp() int64 {
@@ -3524,6 +3648,15 @@ func (x *AccountSettingUpdate) GetStatusPrivacy() *StatusPrivacySetting {
 	return nil
 }
 
+func (x *AccountSettingUpdate) GetUnarchiveChats() *UnarchiveChatsSetting {
+	if x != nil {
+		if x, ok := x.Setting.(*AccountSettingUpdate_UnarchiveChats); ok {
+			return x.UnarchiveChats
+		}
+	}
+	return nil
+}
+
 type isAccountSettingUpdate_Setting interface {
 	isAccountSettingUpdate_Setting()
 }
@@ -3536,9 +3669,105 @@ type AccountSettingUpdate_StatusPrivacy struct {
 	StatusPrivacy *StatusPrivacySetting `protobuf:"bytes,11,opt,name=status_privacy,json=statusPrivacy,proto3,oneof"`
 }
 
+type AccountSettingUpdate_UnarchiveChats struct {
+	UnarchiveChats *UnarchiveChatsSetting `protobuf:"bytes,12,opt,name=unarchive_chats,json=unarchiveChats,proto3,oneof"` // #215
+}
+
 func (*AccountSettingUpdate_LinkPreviews) isAccountSettingUpdate_Setting() {}
 
 func (*AccountSettingUpdate_StatusPrivacy) isAccountSettingUpdate_Setting() {}
+
+func (*AccountSettingUpdate_UnarchiveChats) isAccountSettingUpdate_Setting() {}
+
+// The account's reachout timelock changed (#215): WhatsApp restricting new
+// conversations this account may start. It reports state, not a policy the core
+// applies. Every field crosses as the server sent it: `is_active` false is a
+// lifted restriction, unset makes no claim, and the deadline is the server's
+// string (its format has not been seen on the wire). The same notification also
+// arrives right after as a `MexNotification`.
+type ReachoutTimelockUpdate struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	EnforcementType     *string                `protobuf:"bytes,1,opt,name=enforcement_type,json=enforcementType,proto3,oneof" json:"enforcement_type,omitempty"`
+	IsActive            *bool                  `protobuf:"varint,2,opt,name=is_active,json=isActive,proto3,oneof" json:"is_active,omitempty"`
+	TimeEnforcementEnds *string                `protobuf:"bytes,3,opt,name=time_enforcement_ends,json=timeEnforcementEnds,proto3,oneof" json:"time_enforcement_ends,omitempty"`
+	From                *Jid                   `protobuf:"bytes,4,opt,name=from,proto3" json:"from,omitempty"`
+	StanzaId            *string                `protobuf:"bytes,5,opt,name=stanza_id,json=stanzaId,proto3,oneof" json:"stanza_id,omitempty"`
+	Offline             *string                `protobuf:"bytes,6,opt,name=offline,proto3,oneof" json:"offline,omitempty"` // set on a backlog replay, verbatim
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *ReachoutTimelockUpdate) Reset() {
+	*x = ReachoutTimelockUpdate{}
+	mi := &file_events_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReachoutTimelockUpdate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReachoutTimelockUpdate) ProtoMessage() {}
+
+func (x *ReachoutTimelockUpdate) ProtoReflect() protoreflect.Message {
+	mi := &file_events_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReachoutTimelockUpdate.ProtoReflect.Descriptor instead.
+func (*ReachoutTimelockUpdate) Descriptor() ([]byte, []int) {
+	return file_events_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ReachoutTimelockUpdate) GetEnforcementType() string {
+	if x != nil && x.EnforcementType != nil {
+		return *x.EnforcementType
+	}
+	return ""
+}
+
+func (x *ReachoutTimelockUpdate) GetIsActive() bool {
+	if x != nil && x.IsActive != nil {
+		return *x.IsActive
+	}
+	return false
+}
+
+func (x *ReachoutTimelockUpdate) GetTimeEnforcementEnds() string {
+	if x != nil && x.TimeEnforcementEnds != nil {
+		return *x.TimeEnforcementEnds
+	}
+	return ""
+}
+
+func (x *ReachoutTimelockUpdate) GetFrom() *Jid {
+	if x != nil {
+		return x.From
+	}
+	return nil
+}
+
+func (x *ReachoutTimelockUpdate) GetStanzaId() string {
+	if x != nil && x.StanzaId != nil {
+		return *x.StanzaId
+	}
+	return ""
+}
+
+func (x *ReachoutTimelockUpdate) GetOffline() string {
+	if x != nil && x.Offline != nil {
+		return *x.Offline
+	}
+	return ""
+}
 
 // A channel's tallies, pushed while this account is subscribed to it
 // (NewsletterService.SubscribeNewsletterLiveUpdates, upstream #1554, issue
@@ -3559,7 +3788,7 @@ type NewsletterLiveUpdate struct {
 
 func (x *NewsletterLiveUpdate) Reset() {
 	*x = NewsletterLiveUpdate{}
-	mi := &file_events_proto_msgTypes[21]
+	mi := &file_events_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3571,7 +3800,7 @@ func (x *NewsletterLiveUpdate) String() string {
 func (*NewsletterLiveUpdate) ProtoMessage() {}
 
 func (x *NewsletterLiveUpdate) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[21]
+	mi := &file_events_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3584,7 +3813,7 @@ func (x *NewsletterLiveUpdate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewsletterLiveUpdate.ProtoReflect.Descriptor instead.
 func (*NewsletterLiveUpdate) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{21}
+	return file_events_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *NewsletterLiveUpdate) GetNewsletter() *Jid {
@@ -3616,7 +3845,7 @@ type NewsletterLiveUpdateMessage struct {
 
 func (x *NewsletterLiveUpdateMessage) Reset() {
 	*x = NewsletterLiveUpdateMessage{}
-	mi := &file_events_proto_msgTypes[22]
+	mi := &file_events_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3628,7 +3857,7 @@ func (x *NewsletterLiveUpdateMessage) String() string {
 func (*NewsletterLiveUpdateMessage) ProtoMessage() {}
 
 func (x *NewsletterLiveUpdateMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[22]
+	mi := &file_events_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3641,7 +3870,7 @@ func (x *NewsletterLiveUpdateMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewsletterLiveUpdateMessage.ProtoReflect.Descriptor instead.
 func (*NewsletterLiveUpdateMessage) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{22}
+	return file_events_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *NewsletterLiveUpdateMessage) GetServerId() uint64 {
@@ -3722,7 +3951,7 @@ type CallEvent struct {
 
 func (x *CallEvent) Reset() {
 	*x = CallEvent{}
-	mi := &file_events_proto_msgTypes[23]
+	mi := &file_events_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3734,7 +3963,7 @@ func (x *CallEvent) String() string {
 func (*CallEvent) ProtoMessage() {}
 
 func (x *CallEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[23]
+	mi := &file_events_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3747,7 +3976,7 @@ func (x *CallEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallEvent.ProtoReflect.Descriptor instead.
 func (*CallEvent) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{23}
+	return file_events_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *CallEvent) GetFrom() *Jid {
@@ -4122,7 +4351,7 @@ type RawEvent struct {
 
 func (x *RawEvent) Reset() {
 	*x = RawEvent{}
-	mi := &file_events_proto_msgTypes[24]
+	mi := &file_events_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4134,7 +4363,7 @@ func (x *RawEvent) String() string {
 func (*RawEvent) ProtoMessage() {}
 
 func (x *RawEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[24]
+	mi := &file_events_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4147,7 +4376,7 @@ func (x *RawEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RawEvent.ProtoReflect.Descriptor instead.
 func (*RawEvent) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{24}
+	return file_events_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *RawEvent) GetKind() string {
@@ -4203,7 +4432,7 @@ type ServerAckEvent struct {
 
 func (x *ServerAckEvent) Reset() {
 	*x = ServerAckEvent{}
-	mi := &file_events_proto_msgTypes[25]
+	mi := &file_events_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4215,7 +4444,7 @@ func (x *ServerAckEvent) String() string {
 func (*ServerAckEvent) ProtoMessage() {}
 
 func (x *ServerAckEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[25]
+	mi := &file_events_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4228,7 +4457,7 @@ func (x *ServerAckEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerAckEvent.ProtoReflect.Descriptor instead.
 func (*ServerAckEvent) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{25}
+	return file_events_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ServerAckEvent) GetId() string {
@@ -4288,7 +4517,7 @@ type OfflineSyncPreview struct {
 
 func (x *OfflineSyncPreview) Reset() {
 	*x = OfflineSyncPreview{}
-	mi := &file_events_proto_msgTypes[26]
+	mi := &file_events_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4300,7 +4529,7 @@ func (x *OfflineSyncPreview) String() string {
 func (*OfflineSyncPreview) ProtoMessage() {}
 
 func (x *OfflineSyncPreview) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[26]
+	mi := &file_events_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4313,7 +4542,7 @@ func (x *OfflineSyncPreview) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OfflineSyncPreview.ProtoReflect.Descriptor instead.
 func (*OfflineSyncPreview) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{26}
+	return file_events_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *OfflineSyncPreview) GetTotal() int32 {
@@ -4394,7 +4623,7 @@ type OfflineSyncCompleted struct {
 
 func (x *OfflineSyncCompleted) Reset() {
 	*x = OfflineSyncCompleted{}
-	mi := &file_events_proto_msgTypes[27]
+	mi := &file_events_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4406,7 +4635,7 @@ func (x *OfflineSyncCompleted) String() string {
 func (*OfflineSyncCompleted) ProtoMessage() {}
 
 func (x *OfflineSyncCompleted) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[27]
+	mi := &file_events_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4419,7 +4648,7 @@ func (x *OfflineSyncCompleted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OfflineSyncCompleted.ProtoReflect.Descriptor instead.
 func (*OfflineSyncCompleted) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{27}
+	return file_events_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *OfflineSyncCompleted) GetCount() int32 {
@@ -4449,7 +4678,7 @@ type OfflineSyncInterrupted struct {
 
 func (x *OfflineSyncInterrupted) Reset() {
 	*x = OfflineSyncInterrupted{}
-	mi := &file_events_proto_msgTypes[28]
+	mi := &file_events_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4461,7 +4690,7 @@ func (x *OfflineSyncInterrupted) String() string {
 func (*OfflineSyncInterrupted) ProtoMessage() {}
 
 func (x *OfflineSyncInterrupted) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[28]
+	mi := &file_events_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4474,7 +4703,7 @@ func (x *OfflineSyncInterrupted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OfflineSyncInterrupted.ProtoReflect.Descriptor instead.
 func (*OfflineSyncInterrupted) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{28}
+	return file_events_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *OfflineSyncInterrupted) GetTotal() int32 {
@@ -4511,7 +4740,7 @@ type ConnectionNotice struct {
 
 func (x *ConnectionNotice) Reset() {
 	*x = ConnectionNotice{}
-	mi := &file_events_proto_msgTypes[29]
+	mi := &file_events_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4523,7 +4752,7 @@ func (x *ConnectionNotice) String() string {
 func (*ConnectionNotice) ProtoMessage() {}
 
 func (x *ConnectionNotice) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[29]
+	mi := &file_events_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4536,7 +4765,7 @@ func (x *ConnectionNotice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectionNotice.ProtoReflect.Descriptor instead.
 func (*ConnectionNotice) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{29}
+	return file_events_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ConnectionNotice) GetNotice() isConnectionNotice_Notice {
@@ -4656,7 +4885,7 @@ type ConnectFailureInfo struct {
 
 func (x *ConnectFailureInfo) Reset() {
 	*x = ConnectFailureInfo{}
-	mi := &file_events_proto_msgTypes[30]
+	mi := &file_events_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4668,7 +4897,7 @@ func (x *ConnectFailureInfo) String() string {
 func (*ConnectFailureInfo) ProtoMessage() {}
 
 func (x *ConnectFailureInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[30]
+	mi := &file_events_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4681,7 +4910,7 @@ func (x *ConnectFailureInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConnectFailureInfo.ProtoReflect.Descriptor instead.
 func (*ConnectFailureInfo) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{30}
+	return file_events_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ConnectFailureInfo) GetReason() LogoutReason {
@@ -4722,7 +4951,7 @@ type ClientOutdatedInfo struct {
 
 func (x *ClientOutdatedInfo) Reset() {
 	*x = ClientOutdatedInfo{}
-	mi := &file_events_proto_msgTypes[31]
+	mi := &file_events_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4734,7 +4963,7 @@ func (x *ClientOutdatedInfo) String() string {
 func (*ClientOutdatedInfo) ProtoMessage() {}
 
 func (x *ClientOutdatedInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[31]
+	mi := &file_events_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4747,7 +4976,7 @@ func (x *ClientOutdatedInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientOutdatedInfo.ProtoReflect.Descriptor instead.
 func (*ClientOutdatedInfo) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{31}
+	return file_events_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ClientOutdatedInfo) GetStanza() *StanzaNode {
@@ -4770,7 +4999,7 @@ type StreamErrorInfo struct {
 
 func (x *StreamErrorInfo) Reset() {
 	*x = StreamErrorInfo{}
-	mi := &file_events_proto_msgTypes[32]
+	mi := &file_events_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4782,7 +5011,7 @@ func (x *StreamErrorInfo) String() string {
 func (*StreamErrorInfo) ProtoMessage() {}
 
 func (x *StreamErrorInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[32]
+	mi := &file_events_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4795,7 +5024,7 @@ func (x *StreamErrorInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamErrorInfo.ProtoReflect.Descriptor instead.
 func (*StreamErrorInfo) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{32}
+	return file_events_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *StreamErrorInfo) GetCode() string {
@@ -4827,7 +5056,7 @@ type AppStateSyncFailedInfo struct {
 
 func (x *AppStateSyncFailedInfo) Reset() {
 	*x = AppStateSyncFailedInfo{}
-	mi := &file_events_proto_msgTypes[33]
+	mi := &file_events_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4839,7 +5068,7 @@ func (x *AppStateSyncFailedInfo) String() string {
 func (*AppStateSyncFailedInfo) ProtoMessage() {}
 
 func (x *AppStateSyncFailedInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[33]
+	mi := &file_events_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4852,7 +5081,7 @@ func (x *AppStateSyncFailedInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AppStateSyncFailedInfo.ProtoReflect.Descriptor instead.
 func (*AppStateSyncFailedInfo) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{33}
+	return file_events_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *AppStateSyncFailedInfo) GetFatal() []string {
@@ -4896,7 +5125,7 @@ type ClientExpirationInfo struct {
 
 func (x *ClientExpirationInfo) Reset() {
 	*x = ClientExpirationInfo{}
-	mi := &file_events_proto_msgTypes[34]
+	mi := &file_events_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4908,7 +5137,7 @@ func (x *ClientExpirationInfo) String() string {
 func (*ClientExpirationInfo) ProtoMessage() {}
 
 func (x *ClientExpirationInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[34]
+	mi := &file_events_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4921,7 +5150,7 @@ func (x *ClientExpirationInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientExpirationInfo.ProtoReflect.Descriptor instead.
 func (*ClientExpirationInfo) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{34}
+	return file_events_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ClientExpirationInfo) GetExpiresAt() int64 {
@@ -4956,7 +5185,7 @@ type ClientBuildVersion struct {
 
 func (x *ClientBuildVersion) Reset() {
 	*x = ClientBuildVersion{}
-	mi := &file_events_proto_msgTypes[35]
+	mi := &file_events_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4968,7 +5197,7 @@ func (x *ClientBuildVersion) String() string {
 func (*ClientBuildVersion) ProtoMessage() {}
 
 func (x *ClientBuildVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[35]
+	mi := &file_events_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4981,7 +5210,7 @@ func (x *ClientBuildVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientBuildVersion.ProtoReflect.Descriptor instead.
 func (*ClientBuildVersion) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{35}
+	return file_events_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ClientBuildVersion) GetPrimary() uint32 {
@@ -5025,7 +5254,7 @@ type ContactNotice struct {
 
 func (x *ContactNotice) Reset() {
 	*x = ContactNotice{}
-	mi := &file_events_proto_msgTypes[36]
+	mi := &file_events_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5037,7 +5266,7 @@ func (x *ContactNotice) String() string {
 func (*ContactNotice) ProtoMessage() {}
 
 func (x *ContactNotice) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[36]
+	mi := &file_events_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5050,7 +5279,7 @@ func (x *ContactNotice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactNotice.ProtoReflect.Descriptor instead.
 func (*ContactNotice) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{36}
+	return file_events_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ContactNotice) GetNotice() isContactNotice_Notice {
@@ -5183,7 +5412,7 @@ type PictureChange struct {
 
 func (x *PictureChange) Reset() {
 	*x = PictureChange{}
-	mi := &file_events_proto_msgTypes[37]
+	mi := &file_events_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5195,7 +5424,7 @@ func (x *PictureChange) String() string {
 func (*PictureChange) ProtoMessage() {}
 
 func (x *PictureChange) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[37]
+	mi := &file_events_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5208,7 +5437,7 @@ func (x *PictureChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PictureChange.ProtoReflect.Descriptor instead.
 func (*PictureChange) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{37}
+	return file_events_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *PictureChange) GetJid() *Jid {
@@ -5257,7 +5486,7 @@ type AboutChange struct {
 
 func (x *AboutChange) Reset() {
 	*x = AboutChange{}
-	mi := &file_events_proto_msgTypes[38]
+	mi := &file_events_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5269,7 +5498,7 @@ func (x *AboutChange) String() string {
 func (*AboutChange) ProtoMessage() {}
 
 func (x *AboutChange) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[38]
+	mi := &file_events_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5282,7 +5511,7 @@ func (x *AboutChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AboutChange.ProtoReflect.Descriptor instead.
 func (*AboutChange) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{38}
+	return file_events_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *AboutChange) GetJid() *Jid {
@@ -5319,7 +5548,7 @@ type ContactProfileChange struct {
 
 func (x *ContactProfileChange) Reset() {
 	*x = ContactProfileChange{}
-	mi := &file_events_proto_msgTypes[39]
+	mi := &file_events_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5331,7 +5560,7 @@ func (x *ContactProfileChange) String() string {
 func (*ContactProfileChange) ProtoMessage() {}
 
 func (x *ContactProfileChange) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[39]
+	mi := &file_events_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5344,7 +5573,7 @@ func (x *ContactProfileChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactProfileChange.ProtoReflect.Descriptor instead.
 func (*ContactProfileChange) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{39}
+	return file_events_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ContactProfileChange) GetJid() *Jid {
@@ -5375,7 +5604,7 @@ type NumberChange struct {
 
 func (x *NumberChange) Reset() {
 	*x = NumberChange{}
-	mi := &file_events_proto_msgTypes[40]
+	mi := &file_events_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5387,7 +5616,7 @@ func (x *NumberChange) String() string {
 func (*NumberChange) ProtoMessage() {}
 
 func (x *NumberChange) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[40]
+	mi := &file_events_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5400,7 +5629,7 @@ func (x *NumberChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NumberChange.ProtoReflect.Descriptor instead.
 func (*NumberChange) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{40}
+	return file_events_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *NumberChange) GetOldPn() *Jid {
@@ -5449,7 +5678,7 @@ type ContactSyncRequest struct {
 
 func (x *ContactSyncRequest) Reset() {
 	*x = ContactSyncRequest{}
-	mi := &file_events_proto_msgTypes[41]
+	mi := &file_events_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5461,7 +5690,7 @@ func (x *ContactSyncRequest) String() string {
 func (*ContactSyncRequest) ProtoMessage() {}
 
 func (x *ContactSyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[41]
+	mi := &file_events_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5474,7 +5703,7 @@ func (x *ContactSyncRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContactSyncRequest.ProtoReflect.Descriptor instead.
 func (*ContactSyncRequest) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{41}
+	return file_events_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *ContactSyncRequest) GetAfter() int64 {
@@ -5504,7 +5733,7 @@ type DisappearingModeChange struct {
 
 func (x *DisappearingModeChange) Reset() {
 	*x = DisappearingModeChange{}
-	mi := &file_events_proto_msgTypes[42]
+	mi := &file_events_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5516,7 +5745,7 @@ func (x *DisappearingModeChange) String() string {
 func (*DisappearingModeChange) ProtoMessage() {}
 
 func (x *DisappearingModeChange) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[42]
+	mi := &file_events_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5529,7 +5758,7 @@ func (x *DisappearingModeChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisappearingModeChange.ProtoReflect.Descriptor instead.
 func (*DisappearingModeChange) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{42}
+	return file_events_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *DisappearingModeChange) GetJid() *Jid {
@@ -5570,7 +5799,7 @@ type BusinessStatusChange struct {
 
 func (x *BusinessStatusChange) Reset() {
 	*x = BusinessStatusChange{}
-	mi := &file_events_proto_msgTypes[43]
+	mi := &file_events_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5582,7 +5811,7 @@ func (x *BusinessStatusChange) String() string {
 func (*BusinessStatusChange) ProtoMessage() {}
 
 func (x *BusinessStatusChange) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[43]
+	mi := &file_events_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5595,7 +5824,7 @@ func (x *BusinessStatusChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessStatusChange.ProtoReflect.Descriptor instead.
 func (*BusinessStatusChange) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{43}
+	return file_events_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *BusinessStatusChange) GetJid() *Jid {
@@ -5673,7 +5902,7 @@ type BusinessSubscriptionInfo struct {
 
 func (x *BusinessSubscriptionInfo) Reset() {
 	*x = BusinessSubscriptionInfo{}
-	mi := &file_events_proto_msgTypes[44]
+	mi := &file_events_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5685,7 +5914,7 @@ func (x *BusinessSubscriptionInfo) String() string {
 func (*BusinessSubscriptionInfo) ProtoMessage() {}
 
 func (x *BusinessSubscriptionInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[44]
+	mi := &file_events_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5698,7 +5927,7 @@ func (x *BusinessSubscriptionInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessSubscriptionInfo.ProtoReflect.Descriptor instead.
 func (*BusinessSubscriptionInfo) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{44}
+	return file_events_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *BusinessSubscriptionInfo) GetId() string {
@@ -5744,7 +5973,7 @@ type DeviceNotice struct {
 
 func (x *DeviceNotice) Reset() {
 	*x = DeviceNotice{}
-	mi := &file_events_proto_msgTypes[45]
+	mi := &file_events_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5756,7 +5985,7 @@ func (x *DeviceNotice) String() string {
 func (*DeviceNotice) ProtoMessage() {}
 
 func (x *DeviceNotice) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[45]
+	mi := &file_events_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5769,7 +5998,7 @@ func (x *DeviceNotice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeviceNotice.ProtoReflect.Descriptor instead.
 func (*DeviceNotice) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{45}
+	return file_events_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *DeviceNotice) GetNotice() isDeviceNotice_Notice {
@@ -5827,7 +6056,7 @@ type DeviceListChange struct {
 
 func (x *DeviceListChange) Reset() {
 	*x = DeviceListChange{}
-	mi := &file_events_proto_msgTypes[46]
+	mi := &file_events_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5839,7 +6068,7 @@ func (x *DeviceListChange) String() string {
 func (*DeviceListChange) ProtoMessage() {}
 
 func (x *DeviceListChange) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[46]
+	mi := &file_events_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5852,7 +6081,7 @@ func (x *DeviceListChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeviceListChange.ProtoReflect.Descriptor instead.
 func (*DeviceListChange) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{46}
+	return file_events_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *DeviceListChange) GetUser() *Jid {
@@ -5907,7 +6136,7 @@ type DeviceKeyIndex struct {
 
 func (x *DeviceKeyIndex) Reset() {
 	*x = DeviceKeyIndex{}
-	mi := &file_events_proto_msgTypes[47]
+	mi := &file_events_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5919,7 +6148,7 @@ func (x *DeviceKeyIndex) String() string {
 func (*DeviceKeyIndex) ProtoMessage() {}
 
 func (x *DeviceKeyIndex) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[47]
+	mi := &file_events_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5932,7 +6161,7 @@ func (x *DeviceKeyIndex) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeviceKeyIndex.ProtoReflect.Descriptor instead.
 func (*DeviceKeyIndex) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{47}
+	return file_events_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *DeviceKeyIndex) GetDeviceId() uint32 {
@@ -5959,7 +6188,7 @@ type KeyIndexList struct {
 
 func (x *KeyIndexList) Reset() {
 	*x = KeyIndexList{}
-	mi := &file_events_proto_msgTypes[48]
+	mi := &file_events_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5971,7 +6200,7 @@ func (x *KeyIndexList) String() string {
 func (*KeyIndexList) ProtoMessage() {}
 
 func (x *KeyIndexList) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[48]
+	mi := &file_events_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5984,7 +6213,7 @@ func (x *KeyIndexList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KeyIndexList.ProtoReflect.Descriptor instead.
 func (*KeyIndexList) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{48}
+	return file_events_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *KeyIndexList) GetTimestamp() int64 {
@@ -6014,7 +6243,7 @@ type IdentityChangeInfo struct {
 
 func (x *IdentityChangeInfo) Reset() {
 	*x = IdentityChangeInfo{}
-	mi := &file_events_proto_msgTypes[49]
+	mi := &file_events_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6026,7 +6255,7 @@ func (x *IdentityChangeInfo) String() string {
 func (*IdentityChangeInfo) ProtoMessage() {}
 
 func (x *IdentityChangeInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[49]
+	mi := &file_events_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6039,7 +6268,7 @@ func (x *IdentityChangeInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IdentityChangeInfo.ProtoReflect.Descriptor instead.
 func (*IdentityChangeInfo) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{49}
+	return file_events_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *IdentityChangeInfo) GetUser() *Jid {
@@ -6080,7 +6309,7 @@ type MexNotification struct {
 
 func (x *MexNotification) Reset() {
 	*x = MexNotification{}
-	mi := &file_events_proto_msgTypes[50]
+	mi := &file_events_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6092,7 +6321,7 @@ func (x *MexNotification) String() string {
 func (*MexNotification) ProtoMessage() {}
 
 func (x *MexNotification) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[50]
+	mi := &file_events_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6105,7 +6334,7 @@ func (x *MexNotification) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MexNotification.ProtoReflect.Descriptor instead.
 func (*MexNotification) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{50}
+	return file_events_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *MexNotification) GetOpName() string {
@@ -6148,9 +6377,17 @@ type EventEnvelope struct {
 	// Stays a string (#122): it is not a jid, and no other uuid in the contract
 	// is a message (`AccountRef.uuid`, `Account.uuid`), so a wrapper here would
 	// be the one uuid shaped differently from the rest.
-	AccountUuid  string `protobuf:"bytes,1,opt,name=account_uuid,json=accountUuid,proto3" json:"account_uuid,omitempty"`
-	MonotonicSeq int64  `protobuf:"varint,2,opt,name=monotonic_seq,json=monotonicSeq,proto3" json:"monotonic_seq,omitempty"`
-	TsUnixMs     int64  `protobuf:"varint,3,opt,name=ts_unix_ms,json=tsUnixMs,proto3" json:"ts_unix_ms,omitempty"`
+	AccountUuid string `protobuf:"bytes,1,opt,name=account_uuid,json=accountUuid,proto3" json:"account_uuid,omitempty"`
+	// Per account, a stream delivers envelopes in strictly increasing
+	// monotonic_seq, which is the order the library dispatched the events in
+	// (the replay, then live, with no repeat between them). A subscriber may
+	// treat a seq at or below the highest it accepted as a duplicate. The only
+	// exceptions are the gap markers (seq -1). There is no order across
+	// accounts. The sequence lives in the daemon's memory: it starts again at 0
+	// when the daemon restarts, so a subscriber that keeps its highest seq across
+	// a restart must reset it when the stream ends (#213).
+	MonotonicSeq int64 `protobuf:"varint,2,opt,name=monotonic_seq,json=monotonicSeq,proto3" json:"monotonic_seq,omitempty"`
+	TsUnixMs     int64 `protobuf:"varint,3,opt,name=ts_unix_ms,json=tsUnixMs,proto3" json:"ts_unix_ms,omitempty"`
 	// Types that are valid to be assigned to Event:
 	//
 	//	*EventEnvelope_Message
@@ -6181,6 +6418,9 @@ type EventEnvelope struct {
 	//	*EventEnvelope_ContactNotice
 	//	*EventEnvelope_DeviceNotice
 	//	*EventEnvelope_Mex
+	//	*EventEnvelope_LabelSublist
+	//	*EventEnvelope_CallLogHistory
+	//	*EventEnvelope_ReachoutTimelock
 	//	*EventEnvelope_Raw
 	Event         isEventEnvelope_Event `protobuf_oneof:"event"`
 	unknownFields protoimpl.UnknownFields
@@ -6189,7 +6429,7 @@ type EventEnvelope struct {
 
 func (x *EventEnvelope) Reset() {
 	*x = EventEnvelope{}
-	mi := &file_events_proto_msgTypes[51]
+	mi := &file_events_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6201,7 +6441,7 @@ func (x *EventEnvelope) String() string {
 func (*EventEnvelope) ProtoMessage() {}
 
 func (x *EventEnvelope) ProtoReflect() protoreflect.Message {
-	mi := &file_events_proto_msgTypes[51]
+	mi := &file_events_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6214,7 +6454,7 @@ func (x *EventEnvelope) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EventEnvelope.ProtoReflect.Descriptor instead.
 func (*EventEnvelope) Descriptor() ([]byte, []int) {
-	return file_events_proto_rawDescGZIP(), []int{51}
+	return file_events_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *EventEnvelope) GetAccountUuid() string {
@@ -6497,6 +6737,33 @@ func (x *EventEnvelope) GetMex() *MexNotification {
 	return nil
 }
 
+func (x *EventEnvelope) GetLabelSublist() *LabelSublistUpdate {
+	if x != nil {
+		if x, ok := x.Event.(*EventEnvelope_LabelSublist); ok {
+			return x.LabelSublist
+		}
+	}
+	return nil
+}
+
+func (x *EventEnvelope) GetCallLogHistory() *CallLogHistory {
+	if x != nil {
+		if x, ok := x.Event.(*EventEnvelope_CallLogHistory); ok {
+			return x.CallLogHistory
+		}
+	}
+	return nil
+}
+
+func (x *EventEnvelope) GetReachoutTimelock() *ReachoutTimelockUpdate {
+	if x != nil {
+		if x, ok := x.Event.(*EventEnvelope_ReachoutTimelock); ok {
+			return x.ReachoutTimelock
+		}
+	}
+	return nil
+}
+
 func (x *EventEnvelope) GetRaw() *RawEvent {
 	if x != nil {
 		if x, ok := x.Event.(*EventEnvelope_Raw); ok {
@@ -6622,6 +6889,18 @@ type EventEnvelope_Mex struct {
 	Mex *MexNotification `protobuf:"bytes,37,opt,name=mex,proto3,oneof"` // #151
 }
 
+type EventEnvelope_LabelSublist struct {
+	LabelSublist *LabelSublistUpdate `protobuf:"bytes,38,opt,name=label_sublist,json=labelSublist,proto3,oneof"` // #215
+}
+
+type EventEnvelope_CallLogHistory struct {
+	CallLogHistory *CallLogHistory `protobuf:"bytes,39,opt,name=call_log_history,json=callLogHistory,proto3,oneof"` // #215
+}
+
+type EventEnvelope_ReachoutTimelock struct {
+	ReachoutTimelock *ReachoutTimelockUpdate `protobuf:"bytes,40,opt,name=reachout_timelock,json=reachoutTimelock,proto3,oneof"` // #215
+}
+
 type EventEnvelope_Raw struct {
 	Raw *RawEvent `protobuf:"bytes,99,opt,name=raw,proto3,oneof"`
 }
@@ -6681,6 +6960,12 @@ func (*EventEnvelope_ContactNotice) isEventEnvelope_Event() {}
 func (*EventEnvelope_DeviceNotice) isEventEnvelope_Event() {}
 
 func (*EventEnvelope_Mex) isEventEnvelope_Event() {}
+
+func (*EventEnvelope_LabelSublist) isEventEnvelope_Event() {}
+
+func (*EventEnvelope_CallLogHistory) isEventEnvelope_Event() {}
+
+func (*EventEnvelope_ReachoutTimelock) isEventEnvelope_Event() {}
 
 func (*EventEnvelope_Raw) isEventEnvelope_Event() {}
 
@@ -6912,7 +7197,17 @@ const file_events_proto_rawDesc = "" +
 	" \x01(\v2\x13.wamux.v1.LabelEditH\x00R\x04edit\x124\n" +
 	"\x04chat\x18\v \x01(\v2\x1e.wamux.v1.LabelChatAssociationH\x00R\x04chat\x12=\n" +
 	"\amessage\x18\f \x01(\v2!.wamux.v1.LabelMessageAssociationH\x00R\amessageB\b\n" +
-	"\x06action\"\xdd\x02\n" +
+	"\x06action\"\xab\x02\n" +
+	"\x12LabelSublistUpdate\x12#\n" +
+	"\rpredefined_id\x18\x01 \x01(\x05R\fpredefinedId\x12!\n" +
+	"\x04chat\x18\x02 \x01(\v2\r.wamux.v1.JidR\x04chat\x12.\n" +
+	"\x10action_timestamp\x18\x03 \x01(\x03H\x01R\x0factionTimestamp\x88\x01\x01\x12$\n" +
+	"\x0efrom_full_sync\x18\x04 \x01(\bR\ffromFullSync\x12-\n" +
+	"\x12upsert_sub_list_id\x18\n" +
+	" \x01(\x05H\x00R\x0fupsertSubListId\x12)\n" +
+	"\x06remove\x18\v \x01(\v2\x0f.wamux.v1.EmptyH\x00R\x06removeB\b\n" +
+	"\x06changeB\x13\n" +
+	"\x11_action_timestamp\"\xdd\x02\n" +
 	"\x10QuickReplyUpdate\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12$\n" +
@@ -6928,16 +7223,32 @@ const file_events_proto_rawDesc = "" +
 	"\b_messageB\b\n" +
 	"\x06_countB\n" +
 	"\n" +
-	"\b_deleted\"\xb9\x02\n" +
+	"\b_deleted\"\x85\x03\n" +
 	"\x14AccountSettingUpdate\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12.\n" +
 	"\x10action_timestamp\x18\x02 \x01(\x03H\x01R\x0factionTimestamp\x88\x01\x01\x12$\n" +
 	"\x0efrom_full_sync\x18\x03 \x01(\bR\ffromFullSync\x12D\n" +
 	"\rlink_previews\x18\n" +
 	" \x01(\v2\x1d.wamux.v1.LinkPreviewsSettingH\x00R\flinkPreviews\x12G\n" +
-	"\x0estatus_privacy\x18\v \x01(\v2\x1e.wamux.v1.StatusPrivacySettingH\x00R\rstatusPrivacyB\t\n" +
+	"\x0estatus_privacy\x18\v \x01(\v2\x1e.wamux.v1.StatusPrivacySettingH\x00R\rstatusPrivacy\x12J\n" +
+	"\x0funarchive_chats\x18\f \x01(\v2\x1f.wamux.v1.UnarchiveChatsSettingH\x00R\x0eunarchiveChatsB\t\n" +
 	"\asettingB\x13\n" +
-	"\x11_action_timestamp\"\x9e\x01\n" +
+	"\x11_action_timestamp\"\xde\x02\n" +
+	"\x16ReachoutTimelockUpdate\x12.\n" +
+	"\x10enforcement_type\x18\x01 \x01(\tH\x00R\x0fenforcementType\x88\x01\x01\x12 \n" +
+	"\tis_active\x18\x02 \x01(\bH\x01R\bisActive\x88\x01\x01\x127\n" +
+	"\x15time_enforcement_ends\x18\x03 \x01(\tH\x02R\x13timeEnforcementEnds\x88\x01\x01\x12!\n" +
+	"\x04from\x18\x04 \x01(\v2\r.wamux.v1.JidR\x04from\x12 \n" +
+	"\tstanza_id\x18\x05 \x01(\tH\x03R\bstanzaId\x88\x01\x01\x12\x1d\n" +
+	"\aoffline\x18\x06 \x01(\tH\x04R\aoffline\x88\x01\x01B\x13\n" +
+	"\x11_enforcement_typeB\f\n" +
+	"\n" +
+	"_is_activeB\x18\n" +
+	"\x16_time_enforcement_endsB\f\n" +
+	"\n" +
+	"_stanza_idB\n" +
+	"\n" +
+	"\b_offline\"\x9e\x01\n" +
 	"\x14NewsletterLiveUpdate\x12-\n" +
 	"\n" +
 	"newsletter\x18\x03 \x01(\v2\r.wamux.v1.JidR\n" +
@@ -7149,7 +7460,7 @@ const file_events_proto_rawDesc = "" +
 	"\n" +
 	"_stanza_idB\n" +
 	"\n" +
-	"\b_offline\"\x94\x0f\n" +
+	"\b_offline\"\xf0\x10\n" +
 	"\rEventEnvelope\x12!\n" +
 	"\faccount_uuid\x18\x01 \x01(\tR\vaccountUuid\x12#\n" +
 	"\rmonotonic_seq\x18\x02 \x01(\x03R\fmonotonicSeq\x12\x1c\n" +
@@ -7187,7 +7498,10 @@ const file_events_proto_rawDesc = "" +
 	"\x11connection_notice\x18\" \x01(\v2\x1a.wamux.v1.ConnectionNoticeH\x00R\x10connectionNotice\x12@\n" +
 	"\x0econtact_notice\x18# \x01(\v2\x17.wamux.v1.ContactNoticeH\x00R\rcontactNotice\x12=\n" +
 	"\rdevice_notice\x18$ \x01(\v2\x16.wamux.v1.DeviceNoticeH\x00R\fdeviceNotice\x12-\n" +
-	"\x03mex\x18% \x01(\v2\x19.wamux.v1.MexNotificationH\x00R\x03mex\x12&\n" +
+	"\x03mex\x18% \x01(\v2\x19.wamux.v1.MexNotificationH\x00R\x03mex\x12C\n" +
+	"\rlabel_sublist\x18& \x01(\v2\x1c.wamux.v1.LabelSublistUpdateH\x00R\flabelSublist\x12D\n" +
+	"\x10call_log_history\x18' \x01(\v2\x18.wamux.v1.CallLogHistoryH\x00R\x0ecallLogHistory\x12O\n" +
+	"\x11reachout_timelock\x18( \x01(\v2 .wamux.v1.ReachoutTimelockUpdateH\x00R\x10reachoutTimelock\x12&\n" +
 	"\x03raw\x18c \x01(\v2\x12.wamux.v1.RawEventH\x00R\x03rawB\a\n" +
 	"\x05event*\xc9\x01\n" +
 	"\x11StickerPackOrigin\x12#\n" +
@@ -7283,7 +7597,7 @@ func file_events_proto_rawDescGZIP() []byte {
 }
 
 var file_events_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_events_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
+var file_events_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
 var file_events_proto_goTypes = []any{
 	(StickerPackOrigin)(0),                  // 0: wamux.v1.StickerPackOrigin
 	(ReceiptType)(0),                        // 1: wamux.v1.ReceiptType
@@ -7312,311 +7626,322 @@ var file_events_proto_goTypes = []any{
 	(*StickerUpdate)(nil),                   // 24: wamux.v1.StickerUpdate
 	(*FavoritesChanged)(nil),                // 25: wamux.v1.FavoritesChanged
 	(*LabelUpdate)(nil),                     // 26: wamux.v1.LabelUpdate
-	(*QuickReplyUpdate)(nil),                // 27: wamux.v1.QuickReplyUpdate
-	(*AccountSettingUpdate)(nil),            // 28: wamux.v1.AccountSettingUpdate
-	(*NewsletterLiveUpdate)(nil),            // 29: wamux.v1.NewsletterLiveUpdate
-	(*NewsletterLiveUpdateMessage)(nil),     // 30: wamux.v1.NewsletterLiveUpdateMessage
-	(*CallEvent)(nil),                       // 31: wamux.v1.CallEvent
-	(*RawEvent)(nil),                        // 32: wamux.v1.RawEvent
-	(*ServerAckEvent)(nil),                  // 33: wamux.v1.ServerAckEvent
-	(*OfflineSyncPreview)(nil),              // 34: wamux.v1.OfflineSyncPreview
-	(*OfflineSyncCompleted)(nil),            // 35: wamux.v1.OfflineSyncCompleted
-	(*OfflineSyncInterrupted)(nil),          // 36: wamux.v1.OfflineSyncInterrupted
-	(*ConnectionNotice)(nil),                // 37: wamux.v1.ConnectionNotice
-	(*ConnectFailureInfo)(nil),              // 38: wamux.v1.ConnectFailureInfo
-	(*ClientOutdatedInfo)(nil),              // 39: wamux.v1.ClientOutdatedInfo
-	(*StreamErrorInfo)(nil),                 // 40: wamux.v1.StreamErrorInfo
-	(*AppStateSyncFailedInfo)(nil),          // 41: wamux.v1.AppStateSyncFailedInfo
-	(*ClientExpirationInfo)(nil),            // 42: wamux.v1.ClientExpirationInfo
-	(*ClientBuildVersion)(nil),              // 43: wamux.v1.ClientBuildVersion
-	(*ContactNotice)(nil),                   // 44: wamux.v1.ContactNotice
-	(*PictureChange)(nil),                   // 45: wamux.v1.PictureChange
-	(*AboutChange)(nil),                     // 46: wamux.v1.AboutChange
-	(*ContactProfileChange)(nil),            // 47: wamux.v1.ContactProfileChange
-	(*NumberChange)(nil),                    // 48: wamux.v1.NumberChange
-	(*ContactSyncRequest)(nil),              // 49: wamux.v1.ContactSyncRequest
-	(*DisappearingModeChange)(nil),          // 50: wamux.v1.DisappearingModeChange
-	(*BusinessStatusChange)(nil),            // 51: wamux.v1.BusinessStatusChange
-	(*BusinessSubscriptionInfo)(nil),        // 52: wamux.v1.BusinessSubscriptionInfo
-	(*DeviceNotice)(nil),                    // 53: wamux.v1.DeviceNotice
-	(*DeviceListChange)(nil),                // 54: wamux.v1.DeviceListChange
-	(*DeviceKeyIndex)(nil),                  // 55: wamux.v1.DeviceKeyIndex
-	(*KeyIndexList)(nil),                    // 56: wamux.v1.KeyIndexList
-	(*IdentityChangeInfo)(nil),              // 57: wamux.v1.IdentityChangeInfo
-	(*MexNotification)(nil),                 // 58: wamux.v1.MexNotification
-	(*EventEnvelope)(nil),                   // 59: wamux.v1.EventEnvelope
-	(*AccountRef)(nil),                      // 60: wamux.v1.AccountRef
-	(*Empty)(nil),                           // 61: wamux.v1.Empty
-	(*MessageKey)(nil),                      // 62: wamux.v1.MessageKey
-	(*Jid)(nil),                             // 63: wamux.v1.Jid
-	(*QuoteContext)(nil),                    // 64: wamux.v1.QuoteContext
-	(*Mention)(nil),                         // 65: wamux.v1.Mention
-	(*MediaDescriptor)(nil),                 // 66: wamux.v1.MediaDescriptor
-	(ConnectionState)(0),                    // 67: wamux.v1.ConnectionState
-	(*LogoutMessage)(nil),                   // 68: wamux.v1.LogoutMessage
-	(*StanzaNode)(nil),                      // 69: wamux.v1.StanzaNode
-	(*GroupParticipantsChange)(nil),         // 70: wamux.v1.GroupParticipantsChange
-	(*GroupSubjectChange)(nil),              // 71: wamux.v1.GroupSubjectChange
-	(*GroupDescriptionChange)(nil),          // 72: wamux.v1.GroupDescriptionChange
-	(*GroupLockedChange)(nil),               // 73: wamux.v1.GroupLockedChange
-	(*GroupEphemeralSettings)(nil),          // 74: wamux.v1.GroupEphemeralSettings
-	(*GroupMembershipApprovalMode)(nil),     // 75: wamux.v1.GroupMembershipApprovalMode
-	(*GroupMembershipApprovalRequest)(nil),  // 76: wamux.v1.GroupMembershipApprovalRequest
-	(*GroupCreatedMembershipRequests)(nil),  // 77: wamux.v1.GroupCreatedMembershipRequests
-	(*GroupRevokedMembershipRequests)(nil),  // 78: wamux.v1.GroupRevokedMembershipRequests
-	(*GroupMemberAddModeChange)(nil),        // 79: wamux.v1.GroupMemberAddModeChange
-	(*GroupInviteJoin)(nil),                 // 80: wamux.v1.GroupInviteJoin
-	(*GrowthLockInfo)(nil),                  // 81: wamux.v1.GrowthLockInfo
-	(*GroupCreated)(nil),                    // 82: wamux.v1.GroupCreated
-	(*GroupDeleted)(nil),                    // 83: wamux.v1.GroupDeleted
-	(*GroupLinked)(nil),                     // 84: wamux.v1.GroupLinked
-	(*GroupUnlinked)(nil),                   // 85: wamux.v1.GroupUnlinked
-	(*GroupLimitSharing)(nil),               // 86: wamux.v1.GroupLimitSharing
-	(*GroupSubGroupSuggestionCreated)(nil),  // 87: wamux.v1.GroupSubGroupSuggestionCreated
-	(*GroupSubGroupSuggestionsRevoked)(nil), // 88: wamux.v1.GroupSubGroupSuggestionsRevoked
-	(*GroupChangeNumber)(nil),               // 89: wamux.v1.GroupChangeNumber
-	(*GroupUnknownAction)(nil),              // 90: wamux.v1.GroupUnknownAction
-	(*ContactAction)(nil),                   // 91: wamux.v1.ContactAction
-	(*ArchiveChange)(nil),                   // 92: wamux.v1.ArchiveChange
-	(*PinChange)(nil),                       // 93: wamux.v1.PinChange
-	(*MuteChange)(nil),                      // 94: wamux.v1.MuteChange
-	(*StarChange)(nil),                      // 95: wamux.v1.StarChange
-	(*MarkReadChange)(nil),                  // 96: wamux.v1.MarkReadChange
-	(*DeleteChatChange)(nil),                // 97: wamux.v1.DeleteChatChange
-	(*LockChange)(nil),                      // 98: wamux.v1.LockChange
-	(*ClearChatChange)(nil),                 // 99: wamux.v1.ClearChatChange
-	(*DeleteMessageForMeChange)(nil),        // 100: wamux.v1.DeleteMessageForMeChange
-	(*UserStatusMuteChange)(nil),            // 101: wamux.v1.UserStatusMuteChange
-	(*FavoriteStickerChange)(nil),           // 102: wamux.v1.FavoriteStickerChange
-	(*RemoveRecentStickerChange)(nil),       // 103: wamux.v1.RemoveRecentStickerChange
-	(*LabelEdit)(nil),                       // 104: wamux.v1.LabelEdit
-	(*LabelChatAssociation)(nil),            // 105: wamux.v1.LabelChatAssociation
-	(*LabelMessageAssociation)(nil),         // 106: wamux.v1.LabelMessageAssociation
-	(*LinkPreviewsSetting)(nil),             // 107: wamux.v1.LinkPreviewsSetting
-	(*StatusPrivacySetting)(nil),            // 108: wamux.v1.StatusPrivacySetting
-	(*NewsletterReactionCount)(nil),         // 109: wamux.v1.NewsletterReactionCount
-	(*NewsletterPollVote)(nil),              // 110: wamux.v1.NewsletterPollVote
-	(*GroupCallUpdate)(nil),                 // 111: wamux.v1.GroupCallUpdate
-	(*CallOffer)(nil),                       // 112: wamux.v1.CallOffer
-	(*CallOfferNotice)(nil),                 // 113: wamux.v1.CallOfferNotice
-	(*CallAcceptance)(nil),                  // 114: wamux.v1.CallAcceptance
-	(*CallRejection)(nil),                   // 115: wamux.v1.CallRejection
-	(*CallTermination)(nil),                 // 116: wamux.v1.CallTermination
-	(*CallTransport)(nil),                   // 117: wamux.v1.CallTransport
-	(*CallVideoState)(nil),                  // 118: wamux.v1.CallVideoState
-	(*GroupCallEncRekey)(nil),               // 119: wamux.v1.GroupCallEncRekey
-	(*CallWaitingRoom)(nil),                 // 120: wamux.v1.CallWaitingRoom
-	(*CallRaiseHand)(nil),                   // 121: wamux.v1.CallRaiseHand
-	(*CallScreenShare)(nil),                 // 122: wamux.v1.CallScreenShare
-	(*CallMissed)(nil),                      // 123: wamux.v1.CallMissed
-	(*PairingUpdate)(nil),                   // 124: wamux.v1.PairingUpdate
-	(*CallLogUpdate)(nil),                   // 125: wamux.v1.CallLogUpdate
+	(*LabelSublistUpdate)(nil),              // 27: wamux.v1.LabelSublistUpdate
+	(*QuickReplyUpdate)(nil),                // 28: wamux.v1.QuickReplyUpdate
+	(*AccountSettingUpdate)(nil),            // 29: wamux.v1.AccountSettingUpdate
+	(*ReachoutTimelockUpdate)(nil),          // 30: wamux.v1.ReachoutTimelockUpdate
+	(*NewsletterLiveUpdate)(nil),            // 31: wamux.v1.NewsletterLiveUpdate
+	(*NewsletterLiveUpdateMessage)(nil),     // 32: wamux.v1.NewsletterLiveUpdateMessage
+	(*CallEvent)(nil),                       // 33: wamux.v1.CallEvent
+	(*RawEvent)(nil),                        // 34: wamux.v1.RawEvent
+	(*ServerAckEvent)(nil),                  // 35: wamux.v1.ServerAckEvent
+	(*OfflineSyncPreview)(nil),              // 36: wamux.v1.OfflineSyncPreview
+	(*OfflineSyncCompleted)(nil),            // 37: wamux.v1.OfflineSyncCompleted
+	(*OfflineSyncInterrupted)(nil),          // 38: wamux.v1.OfflineSyncInterrupted
+	(*ConnectionNotice)(nil),                // 39: wamux.v1.ConnectionNotice
+	(*ConnectFailureInfo)(nil),              // 40: wamux.v1.ConnectFailureInfo
+	(*ClientOutdatedInfo)(nil),              // 41: wamux.v1.ClientOutdatedInfo
+	(*StreamErrorInfo)(nil),                 // 42: wamux.v1.StreamErrorInfo
+	(*AppStateSyncFailedInfo)(nil),          // 43: wamux.v1.AppStateSyncFailedInfo
+	(*ClientExpirationInfo)(nil),            // 44: wamux.v1.ClientExpirationInfo
+	(*ClientBuildVersion)(nil),              // 45: wamux.v1.ClientBuildVersion
+	(*ContactNotice)(nil),                   // 46: wamux.v1.ContactNotice
+	(*PictureChange)(nil),                   // 47: wamux.v1.PictureChange
+	(*AboutChange)(nil),                     // 48: wamux.v1.AboutChange
+	(*ContactProfileChange)(nil),            // 49: wamux.v1.ContactProfileChange
+	(*NumberChange)(nil),                    // 50: wamux.v1.NumberChange
+	(*ContactSyncRequest)(nil),              // 51: wamux.v1.ContactSyncRequest
+	(*DisappearingModeChange)(nil),          // 52: wamux.v1.DisappearingModeChange
+	(*BusinessStatusChange)(nil),            // 53: wamux.v1.BusinessStatusChange
+	(*BusinessSubscriptionInfo)(nil),        // 54: wamux.v1.BusinessSubscriptionInfo
+	(*DeviceNotice)(nil),                    // 55: wamux.v1.DeviceNotice
+	(*DeviceListChange)(nil),                // 56: wamux.v1.DeviceListChange
+	(*DeviceKeyIndex)(nil),                  // 57: wamux.v1.DeviceKeyIndex
+	(*KeyIndexList)(nil),                    // 58: wamux.v1.KeyIndexList
+	(*IdentityChangeInfo)(nil),              // 59: wamux.v1.IdentityChangeInfo
+	(*MexNotification)(nil),                 // 60: wamux.v1.MexNotification
+	(*EventEnvelope)(nil),                   // 61: wamux.v1.EventEnvelope
+	(*AccountRef)(nil),                      // 62: wamux.v1.AccountRef
+	(*Empty)(nil),                           // 63: wamux.v1.Empty
+	(*MessageKey)(nil),                      // 64: wamux.v1.MessageKey
+	(*Jid)(nil),                             // 65: wamux.v1.Jid
+	(*QuoteContext)(nil),                    // 66: wamux.v1.QuoteContext
+	(*Mention)(nil),                         // 67: wamux.v1.Mention
+	(*MediaDescriptor)(nil),                 // 68: wamux.v1.MediaDescriptor
+	(ConnectionState)(0),                    // 69: wamux.v1.ConnectionState
+	(*LogoutMessage)(nil),                   // 70: wamux.v1.LogoutMessage
+	(*StanzaNode)(nil),                      // 71: wamux.v1.StanzaNode
+	(*GroupParticipantsChange)(nil),         // 72: wamux.v1.GroupParticipantsChange
+	(*GroupSubjectChange)(nil),              // 73: wamux.v1.GroupSubjectChange
+	(*GroupDescriptionChange)(nil),          // 74: wamux.v1.GroupDescriptionChange
+	(*GroupLockedChange)(nil),               // 75: wamux.v1.GroupLockedChange
+	(*GroupEphemeralSettings)(nil),          // 76: wamux.v1.GroupEphemeralSettings
+	(*GroupMembershipApprovalMode)(nil),     // 77: wamux.v1.GroupMembershipApprovalMode
+	(*GroupMembershipApprovalRequest)(nil),  // 78: wamux.v1.GroupMembershipApprovalRequest
+	(*GroupCreatedMembershipRequests)(nil),  // 79: wamux.v1.GroupCreatedMembershipRequests
+	(*GroupRevokedMembershipRequests)(nil),  // 80: wamux.v1.GroupRevokedMembershipRequests
+	(*GroupMemberAddModeChange)(nil),        // 81: wamux.v1.GroupMemberAddModeChange
+	(*GroupInviteJoin)(nil),                 // 82: wamux.v1.GroupInviteJoin
+	(*GrowthLockInfo)(nil),                  // 83: wamux.v1.GrowthLockInfo
+	(*GroupCreated)(nil),                    // 84: wamux.v1.GroupCreated
+	(*GroupDeleted)(nil),                    // 85: wamux.v1.GroupDeleted
+	(*GroupLinked)(nil),                     // 86: wamux.v1.GroupLinked
+	(*GroupUnlinked)(nil),                   // 87: wamux.v1.GroupUnlinked
+	(*GroupLimitSharing)(nil),               // 88: wamux.v1.GroupLimitSharing
+	(*GroupSubGroupSuggestionCreated)(nil),  // 89: wamux.v1.GroupSubGroupSuggestionCreated
+	(*GroupSubGroupSuggestionsRevoked)(nil), // 90: wamux.v1.GroupSubGroupSuggestionsRevoked
+	(*GroupChangeNumber)(nil),               // 91: wamux.v1.GroupChangeNumber
+	(*GroupUnknownAction)(nil),              // 92: wamux.v1.GroupUnknownAction
+	(*ContactAction)(nil),                   // 93: wamux.v1.ContactAction
+	(*ArchiveChange)(nil),                   // 94: wamux.v1.ArchiveChange
+	(*PinChange)(nil),                       // 95: wamux.v1.PinChange
+	(*MuteChange)(nil),                      // 96: wamux.v1.MuteChange
+	(*StarChange)(nil),                      // 97: wamux.v1.StarChange
+	(*MarkReadChange)(nil),                  // 98: wamux.v1.MarkReadChange
+	(*DeleteChatChange)(nil),                // 99: wamux.v1.DeleteChatChange
+	(*LockChange)(nil),                      // 100: wamux.v1.LockChange
+	(*ClearChatChange)(nil),                 // 101: wamux.v1.ClearChatChange
+	(*DeleteMessageForMeChange)(nil),        // 102: wamux.v1.DeleteMessageForMeChange
+	(*UserStatusMuteChange)(nil),            // 103: wamux.v1.UserStatusMuteChange
+	(*FavoriteStickerChange)(nil),           // 104: wamux.v1.FavoriteStickerChange
+	(*RemoveRecentStickerChange)(nil),       // 105: wamux.v1.RemoveRecentStickerChange
+	(*LabelEdit)(nil),                       // 106: wamux.v1.LabelEdit
+	(*LabelChatAssociation)(nil),            // 107: wamux.v1.LabelChatAssociation
+	(*LabelMessageAssociation)(nil),         // 108: wamux.v1.LabelMessageAssociation
+	(*LinkPreviewsSetting)(nil),             // 109: wamux.v1.LinkPreviewsSetting
+	(*StatusPrivacySetting)(nil),            // 110: wamux.v1.StatusPrivacySetting
+	(*UnarchiveChatsSetting)(nil),           // 111: wamux.v1.UnarchiveChatsSetting
+	(*NewsletterReactionCount)(nil),         // 112: wamux.v1.NewsletterReactionCount
+	(*NewsletterPollVote)(nil),              // 113: wamux.v1.NewsletterPollVote
+	(*GroupCallUpdate)(nil),                 // 114: wamux.v1.GroupCallUpdate
+	(*CallOffer)(nil),                       // 115: wamux.v1.CallOffer
+	(*CallOfferNotice)(nil),                 // 116: wamux.v1.CallOfferNotice
+	(*CallAcceptance)(nil),                  // 117: wamux.v1.CallAcceptance
+	(*CallRejection)(nil),                   // 118: wamux.v1.CallRejection
+	(*CallTermination)(nil),                 // 119: wamux.v1.CallTermination
+	(*CallTransport)(nil),                   // 120: wamux.v1.CallTransport
+	(*CallVideoState)(nil),                  // 121: wamux.v1.CallVideoState
+	(*GroupCallEncRekey)(nil),               // 122: wamux.v1.GroupCallEncRekey
+	(*CallWaitingRoom)(nil),                 // 123: wamux.v1.CallWaitingRoom
+	(*CallRaiseHand)(nil),                   // 124: wamux.v1.CallRaiseHand
+	(*CallScreenShare)(nil),                 // 125: wamux.v1.CallScreenShare
+	(*CallMissed)(nil),                      // 126: wamux.v1.CallMissed
+	(*PairingUpdate)(nil),                   // 127: wamux.v1.PairingUpdate
+	(*CallLogUpdate)(nil),                   // 128: wamux.v1.CallLogUpdate
+	(*CallLogHistory)(nil),                  // 129: wamux.v1.CallLogHistory
 }
 var file_events_proto_depIdxs = []int32{
-	60,  // 0: wamux.v1.SubscribeRequest.account:type_name -> wamux.v1.AccountRef
-	61,  // 1: wamux.v1.SubscribeRequest.all_accounts:type_name -> wamux.v1.Empty
-	62,  // 2: wamux.v1.InboundMessage.key:type_name -> wamux.v1.MessageKey
-	63,  // 3: wamux.v1.InboundMessage.chat:type_name -> wamux.v1.Jid
-	63,  // 4: wamux.v1.InboundMessage.sender:type_name -> wamux.v1.Jid
-	64,  // 5: wamux.v1.InboundMessage.quote:type_name -> wamux.v1.QuoteContext
-	65,  // 6: wamux.v1.InboundMessage.mentions:type_name -> wamux.v1.Mention
-	66,  // 7: wamux.v1.InboundMessage.media:type_name -> wamux.v1.MediaDescriptor
-	62,  // 8: wamux.v1.InboundMessage.reaction_target:type_name -> wamux.v1.MessageKey
-	62,  // 9: wamux.v1.InboundMessage.protocol_target:type_name -> wamux.v1.MessageKey
-	63,  // 10: wamux.v1.InboundMessage.sender_alt:type_name -> wamux.v1.Jid
-	63,  // 11: wamux.v1.InboundMessage.recipient_alt:type_name -> wamux.v1.Jid
+	62,  // 0: wamux.v1.SubscribeRequest.account:type_name -> wamux.v1.AccountRef
+	63,  // 1: wamux.v1.SubscribeRequest.all_accounts:type_name -> wamux.v1.Empty
+	64,  // 2: wamux.v1.InboundMessage.key:type_name -> wamux.v1.MessageKey
+	65,  // 3: wamux.v1.InboundMessage.chat:type_name -> wamux.v1.Jid
+	65,  // 4: wamux.v1.InboundMessage.sender:type_name -> wamux.v1.Jid
+	66,  // 5: wamux.v1.InboundMessage.quote:type_name -> wamux.v1.QuoteContext
+	67,  // 6: wamux.v1.InboundMessage.mentions:type_name -> wamux.v1.Mention
+	68,  // 7: wamux.v1.InboundMessage.media:type_name -> wamux.v1.MediaDescriptor
+	64,  // 8: wamux.v1.InboundMessage.reaction_target:type_name -> wamux.v1.MessageKey
+	64,  // 9: wamux.v1.InboundMessage.protocol_target:type_name -> wamux.v1.MessageKey
+	65,  // 10: wamux.v1.InboundMessage.sender_alt:type_name -> wamux.v1.Jid
+	65,  // 11: wamux.v1.InboundMessage.recipient_alt:type_name -> wamux.v1.Jid
 	10,  // 12: wamux.v1.InboundMessage.sticker_pack:type_name -> wamux.v1.StickerPackInfo
 	11,  // 13: wamux.v1.StickerPackInfo.stickers:type_name -> wamux.v1.StickerPackEntry
 	0,   // 14: wamux.v1.StickerPackInfo.origin:type_name -> wamux.v1.StickerPackOrigin
-	66,  // 15: wamux.v1.StickerPackInfo.thumbnail:type_name -> wamux.v1.MediaDescriptor
-	63,  // 16: wamux.v1.ReceiptEvent.chat:type_name -> wamux.v1.Jid
-	63,  // 17: wamux.v1.ReceiptEvent.sender:type_name -> wamux.v1.Jid
+	68,  // 15: wamux.v1.StickerPackInfo.thumbnail:type_name -> wamux.v1.MediaDescriptor
+	65,  // 16: wamux.v1.ReceiptEvent.chat:type_name -> wamux.v1.Jid
+	65,  // 17: wamux.v1.ReceiptEvent.sender:type_name -> wamux.v1.Jid
 	1,   // 18: wamux.v1.ReceiptEvent.type:type_name -> wamux.v1.ReceiptType
-	63,  // 19: wamux.v1.UndecryptableEvent.chat:type_name -> wamux.v1.Jid
-	63,  // 20: wamux.v1.UndecryptableEvent.sender:type_name -> wamux.v1.Jid
+	65,  // 19: wamux.v1.UndecryptableEvent.chat:type_name -> wamux.v1.Jid
+	65,  // 20: wamux.v1.UndecryptableEvent.sender:type_name -> wamux.v1.Jid
 	2,   // 21: wamux.v1.UndecryptableEvent.reason:type_name -> wamux.v1.UnavailableReason
-	67,  // 22: wamux.v1.ConnectionStateChanged.state:type_name -> wamux.v1.ConnectionState
+	69,  // 22: wamux.v1.ConnectionStateChanged.state:type_name -> wamux.v1.ConnectionState
 	15,  // 23: wamux.v1.ConnectionStateChanged.logged_out:type_name -> wamux.v1.LoggedOutInfo
 	16,  // 24: wamux.v1.ConnectionStateChanged.ban:type_name -> wamux.v1.TemporaryBanInfo
 	3,   // 25: wamux.v1.LoggedOutInfo.reason:type_name -> wamux.v1.LogoutReason
-	68,  // 26: wamux.v1.LoggedOutInfo.logout_message:type_name -> wamux.v1.LogoutMessage
-	69,  // 27: wamux.v1.LoggedOutInfo.stanza:type_name -> wamux.v1.StanzaNode
+	70,  // 26: wamux.v1.LoggedOutInfo.logout_message:type_name -> wamux.v1.LogoutMessage
+	71,  // 27: wamux.v1.LoggedOutInfo.stanza:type_name -> wamux.v1.StanzaNode
 	4,   // 28: wamux.v1.TemporaryBanInfo.reason:type_name -> wamux.v1.BanReason
-	69,  // 29: wamux.v1.TemporaryBanInfo.stanza:type_name -> wamux.v1.StanzaNode
-	63,  // 30: wamux.v1.PresenceUpdate.jid:type_name -> wamux.v1.Jid
+	71,  // 29: wamux.v1.TemporaryBanInfo.stanza:type_name -> wamux.v1.StanzaNode
+	65,  // 30: wamux.v1.PresenceUpdate.jid:type_name -> wamux.v1.Jid
 	5,   // 31: wamux.v1.PresenceUpdate.chat_state:type_name -> wamux.v1.ChatState
-	63,  // 32: wamux.v1.PresenceUpdate.chat:type_name -> wamux.v1.Jid
-	63,  // 33: wamux.v1.GroupUpdate.group:type_name -> wamux.v1.Jid
-	63,  // 34: wamux.v1.GroupUpdate.participant:type_name -> wamux.v1.Jid
-	63,  // 35: wamux.v1.GroupUpdate.participant_pn:type_name -> wamux.v1.Jid
-	70,  // 36: wamux.v1.GroupUpdate.add:type_name -> wamux.v1.GroupParticipantsChange
-	70,  // 37: wamux.v1.GroupUpdate.remove:type_name -> wamux.v1.GroupParticipantsChange
-	70,  // 38: wamux.v1.GroupUpdate.promote:type_name -> wamux.v1.GroupParticipantsChange
-	70,  // 39: wamux.v1.GroupUpdate.demote:type_name -> wamux.v1.GroupParticipantsChange
-	70,  // 40: wamux.v1.GroupUpdate.modify:type_name -> wamux.v1.GroupParticipantsChange
-	71,  // 41: wamux.v1.GroupUpdate.subject:type_name -> wamux.v1.GroupSubjectChange
-	72,  // 42: wamux.v1.GroupUpdate.description:type_name -> wamux.v1.GroupDescriptionChange
-	73,  // 43: wamux.v1.GroupUpdate.locked:type_name -> wamux.v1.GroupLockedChange
-	61,  // 44: wamux.v1.GroupUpdate.unlocked:type_name -> wamux.v1.Empty
-	61,  // 45: wamux.v1.GroupUpdate.announcement:type_name -> wamux.v1.Empty
-	61,  // 46: wamux.v1.GroupUpdate.not_announcement:type_name -> wamux.v1.Empty
-	74,  // 47: wamux.v1.GroupUpdate.ephemeral:type_name -> wamux.v1.GroupEphemeralSettings
-	75,  // 48: wamux.v1.GroupUpdate.membership_approval_mode:type_name -> wamux.v1.GroupMembershipApprovalMode
-	76,  // 49: wamux.v1.GroupUpdate.membership_approval_request:type_name -> wamux.v1.GroupMembershipApprovalRequest
-	77,  // 50: wamux.v1.GroupUpdate.created_membership_requests:type_name -> wamux.v1.GroupCreatedMembershipRequests
-	78,  // 51: wamux.v1.GroupUpdate.revoked_membership_requests:type_name -> wamux.v1.GroupRevokedMembershipRequests
-	79,  // 52: wamux.v1.GroupUpdate.member_add_mode:type_name -> wamux.v1.GroupMemberAddModeChange
-	61,  // 53: wamux.v1.GroupUpdate.no_frequently_forwarded:type_name -> wamux.v1.Empty
-	61,  // 54: wamux.v1.GroupUpdate.frequently_forwarded_ok:type_name -> wamux.v1.Empty
-	80,  // 55: wamux.v1.GroupUpdate.invite:type_name -> wamux.v1.GroupInviteJoin
-	61,  // 56: wamux.v1.GroupUpdate.revoke:type_name -> wamux.v1.Empty
-	81,  // 57: wamux.v1.GroupUpdate.growth_locked:type_name -> wamux.v1.GrowthLockInfo
-	61,  // 58: wamux.v1.GroupUpdate.growth_unlocked:type_name -> wamux.v1.Empty
-	82,  // 59: wamux.v1.GroupUpdate.create:type_name -> wamux.v1.GroupCreated
-	83,  // 60: wamux.v1.GroupUpdate.delete:type_name -> wamux.v1.GroupDeleted
-	84,  // 61: wamux.v1.GroupUpdate.link:type_name -> wamux.v1.GroupLinked
-	85,  // 62: wamux.v1.GroupUpdate.unlink:type_name -> wamux.v1.GroupUnlinked
-	70,  // 63: wamux.v1.GroupUpdate.linked_group_promote:type_name -> wamux.v1.GroupParticipantsChange
-	70,  // 64: wamux.v1.GroupUpdate.linked_group_demote:type_name -> wamux.v1.GroupParticipantsChange
-	61,  // 65: wamux.v1.GroupUpdate.suspended:type_name -> wamux.v1.Empty
-	61,  // 66: wamux.v1.GroupUpdate.unsuspended:type_name -> wamux.v1.Empty
-	61,  // 67: wamux.v1.GroupUpdate.auto_add_disabled:type_name -> wamux.v1.Empty
-	61,  // 68: wamux.v1.GroupUpdate.is_capi_hosted_group:type_name -> wamux.v1.Empty
-	61,  // 69: wamux.v1.GroupUpdate.group_safety_check:type_name -> wamux.v1.Empty
-	86,  // 70: wamux.v1.GroupUpdate.limit_sharing_enabled:type_name -> wamux.v1.GroupLimitSharing
-	61,  // 71: wamux.v1.GroupUpdate.allow_admin_reports:type_name -> wamux.v1.Empty
-	61,  // 72: wamux.v1.GroupUpdate.not_allow_admin_reports:type_name -> wamux.v1.Empty
-	61,  // 73: wamux.v1.GroupUpdate.reports:type_name -> wamux.v1.Empty
-	61,  // 74: wamux.v1.GroupUpdate.allow_non_admin_sub_group_creation:type_name -> wamux.v1.Empty
-	61,  // 75: wamux.v1.GroupUpdate.not_allow_non_admin_sub_group_creation:type_name -> wamux.v1.Empty
-	87,  // 76: wamux.v1.GroupUpdate.created_sub_group_suggestion:type_name -> wamux.v1.GroupSubGroupSuggestionCreated
-	88,  // 77: wamux.v1.GroupUpdate.revoked_sub_group_suggestions:type_name -> wamux.v1.GroupSubGroupSuggestionsRevoked
-	89,  // 78: wamux.v1.GroupUpdate.change_number:type_name -> wamux.v1.GroupChangeNumber
-	90,  // 79: wamux.v1.GroupUpdate.unknown:type_name -> wamux.v1.GroupUnknownAction
-	63,  // 80: wamux.v1.PushNameUpdate.jid:type_name -> wamux.v1.Jid
-	63,  // 81: wamux.v1.ContactUpdate.jid:type_name -> wamux.v1.Jid
-	91,  // 82: wamux.v1.ContactUpdate.action:type_name -> wamux.v1.ContactAction
-	63,  // 83: wamux.v1.AppStateUpdate.chat:type_name -> wamux.v1.Jid
-	92,  // 84: wamux.v1.AppStateUpdate.archive:type_name -> wamux.v1.ArchiveChange
-	93,  // 85: wamux.v1.AppStateUpdate.pin:type_name -> wamux.v1.PinChange
-	94,  // 86: wamux.v1.AppStateUpdate.mute:type_name -> wamux.v1.MuteChange
-	95,  // 87: wamux.v1.AppStateUpdate.star:type_name -> wamux.v1.StarChange
-	96,  // 88: wamux.v1.AppStateUpdate.mark_read:type_name -> wamux.v1.MarkReadChange
-	97,  // 89: wamux.v1.AppStateUpdate.delete_chat:type_name -> wamux.v1.DeleteChatChange
-	98,  // 90: wamux.v1.AppStateUpdate.lock:type_name -> wamux.v1.LockChange
-	99,  // 91: wamux.v1.AppStateUpdate.clear_chat:type_name -> wamux.v1.ClearChatChange
-	100, // 92: wamux.v1.AppStateUpdate.delete_message_for_me:type_name -> wamux.v1.DeleteMessageForMeChange
-	101, // 93: wamux.v1.AppStateUpdate.user_status_mute:type_name -> wamux.v1.UserStatusMuteChange
-	102, // 94: wamux.v1.StickerUpdate.favorite:type_name -> wamux.v1.FavoriteStickerChange
-	103, // 95: wamux.v1.StickerUpdate.remove_recent:type_name -> wamux.v1.RemoveRecentStickerChange
-	63,  // 96: wamux.v1.FavoritesChanged.chats:type_name -> wamux.v1.Jid
-	104, // 97: wamux.v1.LabelUpdate.edit:type_name -> wamux.v1.LabelEdit
-	105, // 98: wamux.v1.LabelUpdate.chat:type_name -> wamux.v1.LabelChatAssociation
-	106, // 99: wamux.v1.LabelUpdate.message:type_name -> wamux.v1.LabelMessageAssociation
-	107, // 100: wamux.v1.AccountSettingUpdate.link_previews:type_name -> wamux.v1.LinkPreviewsSetting
-	108, // 101: wamux.v1.AccountSettingUpdate.status_privacy:type_name -> wamux.v1.StatusPrivacySetting
-	63,  // 102: wamux.v1.NewsletterLiveUpdate.newsletter:type_name -> wamux.v1.Jid
-	30,  // 103: wamux.v1.NewsletterLiveUpdate.messages:type_name -> wamux.v1.NewsletterLiveUpdateMessage
-	109, // 104: wamux.v1.NewsletterLiveUpdateMessage.reactions:type_name -> wamux.v1.NewsletterReactionCount
-	110, // 105: wamux.v1.NewsletterLiveUpdateMessage.votes:type_name -> wamux.v1.NewsletterPollVote
-	63,  // 106: wamux.v1.CallEvent.from:type_name -> wamux.v1.Jid
-	63,  // 107: wamux.v1.CallEvent.call_creator:type_name -> wamux.v1.Jid
-	63,  // 108: wamux.v1.CallEvent.participant:type_name -> wamux.v1.Jid
-	63,  // 109: wamux.v1.CallEvent.recipient:type_name -> wamux.v1.Jid
-	111, // 110: wamux.v1.CallEvent.group:type_name -> wamux.v1.GroupCallUpdate
-	112, // 111: wamux.v1.CallEvent.offer:type_name -> wamux.v1.CallOffer
-	113, // 112: wamux.v1.CallEvent.offer_notice:type_name -> wamux.v1.CallOfferNotice
-	114, // 113: wamux.v1.CallEvent.pre_accept:type_name -> wamux.v1.CallAcceptance
-	114, // 114: wamux.v1.CallEvent.accept:type_name -> wamux.v1.CallAcceptance
-	115, // 115: wamux.v1.CallEvent.reject:type_name -> wamux.v1.CallRejection
-	116, // 116: wamux.v1.CallEvent.terminate:type_name -> wamux.v1.CallTermination
-	117, // 117: wamux.v1.CallEvent.transport:type_name -> wamux.v1.CallTransport
-	61,  // 118: wamux.v1.CallEvent.relay_latency:type_name -> wamux.v1.Empty
-	118, // 119: wamux.v1.CallEvent.video_state:type_name -> wamux.v1.CallVideoState
-	111, // 120: wamux.v1.CallEvent.group_update:type_name -> wamux.v1.GroupCallUpdate
-	119, // 121: wamux.v1.CallEvent.enc_rekey:type_name -> wamux.v1.GroupCallEncRekey
-	120, // 122: wamux.v1.CallEvent.waiting_room_update:type_name -> wamux.v1.CallWaitingRoom
-	121, // 123: wamux.v1.CallEvent.raise_hand:type_name -> wamux.v1.CallRaiseHand
-	122, // 124: wamux.v1.CallEvent.screen_share:type_name -> wamux.v1.CallScreenShare
-	123, // 125: wamux.v1.CallEvent.missed:type_name -> wamux.v1.CallMissed
-	63,  // 126: wamux.v1.ServerAckEvent.from:type_name -> wamux.v1.Jid
-	38,  // 127: wamux.v1.ConnectionNotice.connect_failure:type_name -> wamux.v1.ConnectFailureInfo
-	39,  // 128: wamux.v1.ConnectionNotice.client_outdated:type_name -> wamux.v1.ClientOutdatedInfo
-	40,  // 129: wamux.v1.ConnectionNotice.stream_error:type_name -> wamux.v1.StreamErrorInfo
-	61,  // 130: wamux.v1.ConnectionNotice.stream_replaced:type_name -> wamux.v1.Empty
-	41,  // 131: wamux.v1.ConnectionNotice.app_state_sync_failed:type_name -> wamux.v1.AppStateSyncFailedInfo
-	42,  // 132: wamux.v1.ConnectionNotice.client_expiration:type_name -> wamux.v1.ClientExpirationInfo
-	3,   // 133: wamux.v1.ConnectFailureInfo.reason:type_name -> wamux.v1.LogoutReason
-	69,  // 134: wamux.v1.ConnectFailureInfo.stanza:type_name -> wamux.v1.StanzaNode
-	69,  // 135: wamux.v1.ClientOutdatedInfo.stanza:type_name -> wamux.v1.StanzaNode
-	69,  // 136: wamux.v1.StreamErrorInfo.stanza:type_name -> wamux.v1.StanzaNode
-	43,  // 137: wamux.v1.ClientExpirationInfo.version:type_name -> wamux.v1.ClientBuildVersion
-	45,  // 138: wamux.v1.ContactNotice.picture:type_name -> wamux.v1.PictureChange
-	46,  // 139: wamux.v1.ContactNotice.about:type_name -> wamux.v1.AboutChange
-	47,  // 140: wamux.v1.ContactNotice.profile:type_name -> wamux.v1.ContactProfileChange
-	48,  // 141: wamux.v1.ContactNotice.number:type_name -> wamux.v1.NumberChange
-	49,  // 142: wamux.v1.ContactNotice.sync_requested:type_name -> wamux.v1.ContactSyncRequest
-	50,  // 143: wamux.v1.ContactNotice.disappearing_mode:type_name -> wamux.v1.DisappearingModeChange
-	51,  // 144: wamux.v1.ContactNotice.business:type_name -> wamux.v1.BusinessStatusChange
-	63,  // 145: wamux.v1.PictureChange.jid:type_name -> wamux.v1.Jid
-	63,  // 146: wamux.v1.PictureChange.author:type_name -> wamux.v1.Jid
-	63,  // 147: wamux.v1.AboutChange.jid:type_name -> wamux.v1.Jid
-	63,  // 148: wamux.v1.ContactProfileChange.jid:type_name -> wamux.v1.Jid
-	63,  // 149: wamux.v1.NumberChange.old_pn:type_name -> wamux.v1.Jid
-	63,  // 150: wamux.v1.NumberChange.new_pn:type_name -> wamux.v1.Jid
-	63,  // 151: wamux.v1.NumberChange.old_lid:type_name -> wamux.v1.Jid
-	63,  // 152: wamux.v1.NumberChange.new_lid:type_name -> wamux.v1.Jid
-	63,  // 153: wamux.v1.DisappearingModeChange.jid:type_name -> wamux.v1.Jid
-	63,  // 154: wamux.v1.BusinessStatusChange.jid:type_name -> wamux.v1.Jid
-	6,   // 155: wamux.v1.BusinessStatusChange.update_type:type_name -> wamux.v1.BusinessUpdateType
-	63,  // 156: wamux.v1.BusinessStatusChange.target:type_name -> wamux.v1.Jid
-	52,  // 157: wamux.v1.BusinessStatusChange.subscriptions:type_name -> wamux.v1.BusinessSubscriptionInfo
-	54,  // 158: wamux.v1.DeviceNotice.device_list:type_name -> wamux.v1.DeviceListChange
-	57,  // 159: wamux.v1.DeviceNotice.identity:type_name -> wamux.v1.IdentityChangeInfo
-	63,  // 160: wamux.v1.DeviceListChange.user:type_name -> wamux.v1.Jid
-	63,  // 161: wamux.v1.DeviceListChange.lid_user:type_name -> wamux.v1.Jid
-	7,   // 162: wamux.v1.DeviceListChange.update_type:type_name -> wamux.v1.DeviceListChangeType
-	55,  // 163: wamux.v1.DeviceListChange.devices:type_name -> wamux.v1.DeviceKeyIndex
-	56,  // 164: wamux.v1.DeviceListChange.key_index:type_name -> wamux.v1.KeyIndexList
-	63,  // 165: wamux.v1.IdentityChangeInfo.user:type_name -> wamux.v1.Jid
-	63,  // 166: wamux.v1.IdentityChangeInfo.lid_user:type_name -> wamux.v1.Jid
-	63,  // 167: wamux.v1.MexNotification.from:type_name -> wamux.v1.Jid
-	9,   // 168: wamux.v1.EventEnvelope.message:type_name -> wamux.v1.InboundMessage
-	12,  // 169: wamux.v1.EventEnvelope.receipt:type_name -> wamux.v1.ReceiptEvent
-	13,  // 170: wamux.v1.EventEnvelope.undecryptable:type_name -> wamux.v1.UndecryptableEvent
-	14,  // 171: wamux.v1.EventEnvelope.connection:type_name -> wamux.v1.ConnectionStateChanged
-	124, // 172: wamux.v1.EventEnvelope.pairing:type_name -> wamux.v1.PairingUpdate
-	17,  // 173: wamux.v1.EventEnvelope.presence:type_name -> wamux.v1.PresenceUpdate
-	18,  // 174: wamux.v1.EventEnvelope.group:type_name -> wamux.v1.GroupUpdate
-	19,  // 175: wamux.v1.EventEnvelope.push_name:type_name -> wamux.v1.PushNameUpdate
-	20,  // 176: wamux.v1.EventEnvelope.contact:type_name -> wamux.v1.ContactUpdate
-	22,  // 177: wamux.v1.EventEnvelope.history_sync:type_name -> wamux.v1.HistorySyncEvent
-	23,  // 178: wamux.v1.EventEnvelope.app_state:type_name -> wamux.v1.AppStateUpdate
-	31,  // 179: wamux.v1.EventEnvelope.call:type_name -> wamux.v1.CallEvent
-	33,  // 180: wamux.v1.EventEnvelope.server_ack:type_name -> wamux.v1.ServerAckEvent
-	34,  // 181: wamux.v1.EventEnvelope.offline_sync_preview:type_name -> wamux.v1.OfflineSyncPreview
-	35,  // 182: wamux.v1.EventEnvelope.offline_sync_completed:type_name -> wamux.v1.OfflineSyncCompleted
-	36,  // 183: wamux.v1.EventEnvelope.offline_sync_interrupted:type_name -> wamux.v1.OfflineSyncInterrupted
-	25,  // 184: wamux.v1.EventEnvelope.favorites_changed:type_name -> wamux.v1.FavoritesChanged
-	29,  // 185: wamux.v1.EventEnvelope.newsletter_live_update:type_name -> wamux.v1.NewsletterLiveUpdate
-	24,  // 186: wamux.v1.EventEnvelope.sticker:type_name -> wamux.v1.StickerUpdate
-	26,  // 187: wamux.v1.EventEnvelope.label:type_name -> wamux.v1.LabelUpdate
-	27,  // 188: wamux.v1.EventEnvelope.quick_reply:type_name -> wamux.v1.QuickReplyUpdate
-	28,  // 189: wamux.v1.EventEnvelope.account_setting:type_name -> wamux.v1.AccountSettingUpdate
-	21,  // 190: wamux.v1.EventEnvelope.self_push_name:type_name -> wamux.v1.SelfPushNameUpdate
-	125, // 191: wamux.v1.EventEnvelope.call_log:type_name -> wamux.v1.CallLogUpdate
-	37,  // 192: wamux.v1.EventEnvelope.connection_notice:type_name -> wamux.v1.ConnectionNotice
-	44,  // 193: wamux.v1.EventEnvelope.contact_notice:type_name -> wamux.v1.ContactNotice
-	53,  // 194: wamux.v1.EventEnvelope.device_notice:type_name -> wamux.v1.DeviceNotice
-	58,  // 195: wamux.v1.EventEnvelope.mex:type_name -> wamux.v1.MexNotification
-	32,  // 196: wamux.v1.EventEnvelope.raw:type_name -> wamux.v1.RawEvent
-	8,   // 197: wamux.v1.EventService.SubscribeEvents:input_type -> wamux.v1.SubscribeRequest
-	59,  // 198: wamux.v1.EventService.SubscribeEvents:output_type -> wamux.v1.EventEnvelope
-	198, // [198:199] is the sub-list for method output_type
-	197, // [197:198] is the sub-list for method input_type
-	197, // [197:197] is the sub-list for extension type_name
-	197, // [197:197] is the sub-list for extension extendee
-	0,   // [0:197] is the sub-list for field type_name
+	65,  // 32: wamux.v1.PresenceUpdate.chat:type_name -> wamux.v1.Jid
+	65,  // 33: wamux.v1.GroupUpdate.group:type_name -> wamux.v1.Jid
+	65,  // 34: wamux.v1.GroupUpdate.participant:type_name -> wamux.v1.Jid
+	65,  // 35: wamux.v1.GroupUpdate.participant_pn:type_name -> wamux.v1.Jid
+	72,  // 36: wamux.v1.GroupUpdate.add:type_name -> wamux.v1.GroupParticipantsChange
+	72,  // 37: wamux.v1.GroupUpdate.remove:type_name -> wamux.v1.GroupParticipantsChange
+	72,  // 38: wamux.v1.GroupUpdate.promote:type_name -> wamux.v1.GroupParticipantsChange
+	72,  // 39: wamux.v1.GroupUpdate.demote:type_name -> wamux.v1.GroupParticipantsChange
+	72,  // 40: wamux.v1.GroupUpdate.modify:type_name -> wamux.v1.GroupParticipantsChange
+	73,  // 41: wamux.v1.GroupUpdate.subject:type_name -> wamux.v1.GroupSubjectChange
+	74,  // 42: wamux.v1.GroupUpdate.description:type_name -> wamux.v1.GroupDescriptionChange
+	75,  // 43: wamux.v1.GroupUpdate.locked:type_name -> wamux.v1.GroupLockedChange
+	63,  // 44: wamux.v1.GroupUpdate.unlocked:type_name -> wamux.v1.Empty
+	63,  // 45: wamux.v1.GroupUpdate.announcement:type_name -> wamux.v1.Empty
+	63,  // 46: wamux.v1.GroupUpdate.not_announcement:type_name -> wamux.v1.Empty
+	76,  // 47: wamux.v1.GroupUpdate.ephemeral:type_name -> wamux.v1.GroupEphemeralSettings
+	77,  // 48: wamux.v1.GroupUpdate.membership_approval_mode:type_name -> wamux.v1.GroupMembershipApprovalMode
+	78,  // 49: wamux.v1.GroupUpdate.membership_approval_request:type_name -> wamux.v1.GroupMembershipApprovalRequest
+	79,  // 50: wamux.v1.GroupUpdate.created_membership_requests:type_name -> wamux.v1.GroupCreatedMembershipRequests
+	80,  // 51: wamux.v1.GroupUpdate.revoked_membership_requests:type_name -> wamux.v1.GroupRevokedMembershipRequests
+	81,  // 52: wamux.v1.GroupUpdate.member_add_mode:type_name -> wamux.v1.GroupMemberAddModeChange
+	63,  // 53: wamux.v1.GroupUpdate.no_frequently_forwarded:type_name -> wamux.v1.Empty
+	63,  // 54: wamux.v1.GroupUpdate.frequently_forwarded_ok:type_name -> wamux.v1.Empty
+	82,  // 55: wamux.v1.GroupUpdate.invite:type_name -> wamux.v1.GroupInviteJoin
+	63,  // 56: wamux.v1.GroupUpdate.revoke:type_name -> wamux.v1.Empty
+	83,  // 57: wamux.v1.GroupUpdate.growth_locked:type_name -> wamux.v1.GrowthLockInfo
+	63,  // 58: wamux.v1.GroupUpdate.growth_unlocked:type_name -> wamux.v1.Empty
+	84,  // 59: wamux.v1.GroupUpdate.create:type_name -> wamux.v1.GroupCreated
+	85,  // 60: wamux.v1.GroupUpdate.delete:type_name -> wamux.v1.GroupDeleted
+	86,  // 61: wamux.v1.GroupUpdate.link:type_name -> wamux.v1.GroupLinked
+	87,  // 62: wamux.v1.GroupUpdate.unlink:type_name -> wamux.v1.GroupUnlinked
+	72,  // 63: wamux.v1.GroupUpdate.linked_group_promote:type_name -> wamux.v1.GroupParticipantsChange
+	72,  // 64: wamux.v1.GroupUpdate.linked_group_demote:type_name -> wamux.v1.GroupParticipantsChange
+	63,  // 65: wamux.v1.GroupUpdate.suspended:type_name -> wamux.v1.Empty
+	63,  // 66: wamux.v1.GroupUpdate.unsuspended:type_name -> wamux.v1.Empty
+	63,  // 67: wamux.v1.GroupUpdate.auto_add_disabled:type_name -> wamux.v1.Empty
+	63,  // 68: wamux.v1.GroupUpdate.is_capi_hosted_group:type_name -> wamux.v1.Empty
+	63,  // 69: wamux.v1.GroupUpdate.group_safety_check:type_name -> wamux.v1.Empty
+	88,  // 70: wamux.v1.GroupUpdate.limit_sharing_enabled:type_name -> wamux.v1.GroupLimitSharing
+	63,  // 71: wamux.v1.GroupUpdate.allow_admin_reports:type_name -> wamux.v1.Empty
+	63,  // 72: wamux.v1.GroupUpdate.not_allow_admin_reports:type_name -> wamux.v1.Empty
+	63,  // 73: wamux.v1.GroupUpdate.reports:type_name -> wamux.v1.Empty
+	63,  // 74: wamux.v1.GroupUpdate.allow_non_admin_sub_group_creation:type_name -> wamux.v1.Empty
+	63,  // 75: wamux.v1.GroupUpdate.not_allow_non_admin_sub_group_creation:type_name -> wamux.v1.Empty
+	89,  // 76: wamux.v1.GroupUpdate.created_sub_group_suggestion:type_name -> wamux.v1.GroupSubGroupSuggestionCreated
+	90,  // 77: wamux.v1.GroupUpdate.revoked_sub_group_suggestions:type_name -> wamux.v1.GroupSubGroupSuggestionsRevoked
+	91,  // 78: wamux.v1.GroupUpdate.change_number:type_name -> wamux.v1.GroupChangeNumber
+	92,  // 79: wamux.v1.GroupUpdate.unknown:type_name -> wamux.v1.GroupUnknownAction
+	65,  // 80: wamux.v1.PushNameUpdate.jid:type_name -> wamux.v1.Jid
+	65,  // 81: wamux.v1.ContactUpdate.jid:type_name -> wamux.v1.Jid
+	93,  // 82: wamux.v1.ContactUpdate.action:type_name -> wamux.v1.ContactAction
+	65,  // 83: wamux.v1.AppStateUpdate.chat:type_name -> wamux.v1.Jid
+	94,  // 84: wamux.v1.AppStateUpdate.archive:type_name -> wamux.v1.ArchiveChange
+	95,  // 85: wamux.v1.AppStateUpdate.pin:type_name -> wamux.v1.PinChange
+	96,  // 86: wamux.v1.AppStateUpdate.mute:type_name -> wamux.v1.MuteChange
+	97,  // 87: wamux.v1.AppStateUpdate.star:type_name -> wamux.v1.StarChange
+	98,  // 88: wamux.v1.AppStateUpdate.mark_read:type_name -> wamux.v1.MarkReadChange
+	99,  // 89: wamux.v1.AppStateUpdate.delete_chat:type_name -> wamux.v1.DeleteChatChange
+	100, // 90: wamux.v1.AppStateUpdate.lock:type_name -> wamux.v1.LockChange
+	101, // 91: wamux.v1.AppStateUpdate.clear_chat:type_name -> wamux.v1.ClearChatChange
+	102, // 92: wamux.v1.AppStateUpdate.delete_message_for_me:type_name -> wamux.v1.DeleteMessageForMeChange
+	103, // 93: wamux.v1.AppStateUpdate.user_status_mute:type_name -> wamux.v1.UserStatusMuteChange
+	104, // 94: wamux.v1.StickerUpdate.favorite:type_name -> wamux.v1.FavoriteStickerChange
+	105, // 95: wamux.v1.StickerUpdate.remove_recent:type_name -> wamux.v1.RemoveRecentStickerChange
+	65,  // 96: wamux.v1.FavoritesChanged.chats:type_name -> wamux.v1.Jid
+	106, // 97: wamux.v1.LabelUpdate.edit:type_name -> wamux.v1.LabelEdit
+	107, // 98: wamux.v1.LabelUpdate.chat:type_name -> wamux.v1.LabelChatAssociation
+	108, // 99: wamux.v1.LabelUpdate.message:type_name -> wamux.v1.LabelMessageAssociation
+	65,  // 100: wamux.v1.LabelSublistUpdate.chat:type_name -> wamux.v1.Jid
+	63,  // 101: wamux.v1.LabelSublistUpdate.remove:type_name -> wamux.v1.Empty
+	109, // 102: wamux.v1.AccountSettingUpdate.link_previews:type_name -> wamux.v1.LinkPreviewsSetting
+	110, // 103: wamux.v1.AccountSettingUpdate.status_privacy:type_name -> wamux.v1.StatusPrivacySetting
+	111, // 104: wamux.v1.AccountSettingUpdate.unarchive_chats:type_name -> wamux.v1.UnarchiveChatsSetting
+	65,  // 105: wamux.v1.ReachoutTimelockUpdate.from:type_name -> wamux.v1.Jid
+	65,  // 106: wamux.v1.NewsletterLiveUpdate.newsletter:type_name -> wamux.v1.Jid
+	32,  // 107: wamux.v1.NewsletterLiveUpdate.messages:type_name -> wamux.v1.NewsletterLiveUpdateMessage
+	112, // 108: wamux.v1.NewsletterLiveUpdateMessage.reactions:type_name -> wamux.v1.NewsletterReactionCount
+	113, // 109: wamux.v1.NewsletterLiveUpdateMessage.votes:type_name -> wamux.v1.NewsletterPollVote
+	65,  // 110: wamux.v1.CallEvent.from:type_name -> wamux.v1.Jid
+	65,  // 111: wamux.v1.CallEvent.call_creator:type_name -> wamux.v1.Jid
+	65,  // 112: wamux.v1.CallEvent.participant:type_name -> wamux.v1.Jid
+	65,  // 113: wamux.v1.CallEvent.recipient:type_name -> wamux.v1.Jid
+	114, // 114: wamux.v1.CallEvent.group:type_name -> wamux.v1.GroupCallUpdate
+	115, // 115: wamux.v1.CallEvent.offer:type_name -> wamux.v1.CallOffer
+	116, // 116: wamux.v1.CallEvent.offer_notice:type_name -> wamux.v1.CallOfferNotice
+	117, // 117: wamux.v1.CallEvent.pre_accept:type_name -> wamux.v1.CallAcceptance
+	117, // 118: wamux.v1.CallEvent.accept:type_name -> wamux.v1.CallAcceptance
+	118, // 119: wamux.v1.CallEvent.reject:type_name -> wamux.v1.CallRejection
+	119, // 120: wamux.v1.CallEvent.terminate:type_name -> wamux.v1.CallTermination
+	120, // 121: wamux.v1.CallEvent.transport:type_name -> wamux.v1.CallTransport
+	63,  // 122: wamux.v1.CallEvent.relay_latency:type_name -> wamux.v1.Empty
+	121, // 123: wamux.v1.CallEvent.video_state:type_name -> wamux.v1.CallVideoState
+	114, // 124: wamux.v1.CallEvent.group_update:type_name -> wamux.v1.GroupCallUpdate
+	122, // 125: wamux.v1.CallEvent.enc_rekey:type_name -> wamux.v1.GroupCallEncRekey
+	123, // 126: wamux.v1.CallEvent.waiting_room_update:type_name -> wamux.v1.CallWaitingRoom
+	124, // 127: wamux.v1.CallEvent.raise_hand:type_name -> wamux.v1.CallRaiseHand
+	125, // 128: wamux.v1.CallEvent.screen_share:type_name -> wamux.v1.CallScreenShare
+	126, // 129: wamux.v1.CallEvent.missed:type_name -> wamux.v1.CallMissed
+	65,  // 130: wamux.v1.ServerAckEvent.from:type_name -> wamux.v1.Jid
+	40,  // 131: wamux.v1.ConnectionNotice.connect_failure:type_name -> wamux.v1.ConnectFailureInfo
+	41,  // 132: wamux.v1.ConnectionNotice.client_outdated:type_name -> wamux.v1.ClientOutdatedInfo
+	42,  // 133: wamux.v1.ConnectionNotice.stream_error:type_name -> wamux.v1.StreamErrorInfo
+	63,  // 134: wamux.v1.ConnectionNotice.stream_replaced:type_name -> wamux.v1.Empty
+	43,  // 135: wamux.v1.ConnectionNotice.app_state_sync_failed:type_name -> wamux.v1.AppStateSyncFailedInfo
+	44,  // 136: wamux.v1.ConnectionNotice.client_expiration:type_name -> wamux.v1.ClientExpirationInfo
+	3,   // 137: wamux.v1.ConnectFailureInfo.reason:type_name -> wamux.v1.LogoutReason
+	71,  // 138: wamux.v1.ConnectFailureInfo.stanza:type_name -> wamux.v1.StanzaNode
+	71,  // 139: wamux.v1.ClientOutdatedInfo.stanza:type_name -> wamux.v1.StanzaNode
+	71,  // 140: wamux.v1.StreamErrorInfo.stanza:type_name -> wamux.v1.StanzaNode
+	45,  // 141: wamux.v1.ClientExpirationInfo.version:type_name -> wamux.v1.ClientBuildVersion
+	47,  // 142: wamux.v1.ContactNotice.picture:type_name -> wamux.v1.PictureChange
+	48,  // 143: wamux.v1.ContactNotice.about:type_name -> wamux.v1.AboutChange
+	49,  // 144: wamux.v1.ContactNotice.profile:type_name -> wamux.v1.ContactProfileChange
+	50,  // 145: wamux.v1.ContactNotice.number:type_name -> wamux.v1.NumberChange
+	51,  // 146: wamux.v1.ContactNotice.sync_requested:type_name -> wamux.v1.ContactSyncRequest
+	52,  // 147: wamux.v1.ContactNotice.disappearing_mode:type_name -> wamux.v1.DisappearingModeChange
+	53,  // 148: wamux.v1.ContactNotice.business:type_name -> wamux.v1.BusinessStatusChange
+	65,  // 149: wamux.v1.PictureChange.jid:type_name -> wamux.v1.Jid
+	65,  // 150: wamux.v1.PictureChange.author:type_name -> wamux.v1.Jid
+	65,  // 151: wamux.v1.AboutChange.jid:type_name -> wamux.v1.Jid
+	65,  // 152: wamux.v1.ContactProfileChange.jid:type_name -> wamux.v1.Jid
+	65,  // 153: wamux.v1.NumberChange.old_pn:type_name -> wamux.v1.Jid
+	65,  // 154: wamux.v1.NumberChange.new_pn:type_name -> wamux.v1.Jid
+	65,  // 155: wamux.v1.NumberChange.old_lid:type_name -> wamux.v1.Jid
+	65,  // 156: wamux.v1.NumberChange.new_lid:type_name -> wamux.v1.Jid
+	65,  // 157: wamux.v1.DisappearingModeChange.jid:type_name -> wamux.v1.Jid
+	65,  // 158: wamux.v1.BusinessStatusChange.jid:type_name -> wamux.v1.Jid
+	6,   // 159: wamux.v1.BusinessStatusChange.update_type:type_name -> wamux.v1.BusinessUpdateType
+	65,  // 160: wamux.v1.BusinessStatusChange.target:type_name -> wamux.v1.Jid
+	54,  // 161: wamux.v1.BusinessStatusChange.subscriptions:type_name -> wamux.v1.BusinessSubscriptionInfo
+	56,  // 162: wamux.v1.DeviceNotice.device_list:type_name -> wamux.v1.DeviceListChange
+	59,  // 163: wamux.v1.DeviceNotice.identity:type_name -> wamux.v1.IdentityChangeInfo
+	65,  // 164: wamux.v1.DeviceListChange.user:type_name -> wamux.v1.Jid
+	65,  // 165: wamux.v1.DeviceListChange.lid_user:type_name -> wamux.v1.Jid
+	7,   // 166: wamux.v1.DeviceListChange.update_type:type_name -> wamux.v1.DeviceListChangeType
+	57,  // 167: wamux.v1.DeviceListChange.devices:type_name -> wamux.v1.DeviceKeyIndex
+	58,  // 168: wamux.v1.DeviceListChange.key_index:type_name -> wamux.v1.KeyIndexList
+	65,  // 169: wamux.v1.IdentityChangeInfo.user:type_name -> wamux.v1.Jid
+	65,  // 170: wamux.v1.IdentityChangeInfo.lid_user:type_name -> wamux.v1.Jid
+	65,  // 171: wamux.v1.MexNotification.from:type_name -> wamux.v1.Jid
+	9,   // 172: wamux.v1.EventEnvelope.message:type_name -> wamux.v1.InboundMessage
+	12,  // 173: wamux.v1.EventEnvelope.receipt:type_name -> wamux.v1.ReceiptEvent
+	13,  // 174: wamux.v1.EventEnvelope.undecryptable:type_name -> wamux.v1.UndecryptableEvent
+	14,  // 175: wamux.v1.EventEnvelope.connection:type_name -> wamux.v1.ConnectionStateChanged
+	127, // 176: wamux.v1.EventEnvelope.pairing:type_name -> wamux.v1.PairingUpdate
+	17,  // 177: wamux.v1.EventEnvelope.presence:type_name -> wamux.v1.PresenceUpdate
+	18,  // 178: wamux.v1.EventEnvelope.group:type_name -> wamux.v1.GroupUpdate
+	19,  // 179: wamux.v1.EventEnvelope.push_name:type_name -> wamux.v1.PushNameUpdate
+	20,  // 180: wamux.v1.EventEnvelope.contact:type_name -> wamux.v1.ContactUpdate
+	22,  // 181: wamux.v1.EventEnvelope.history_sync:type_name -> wamux.v1.HistorySyncEvent
+	23,  // 182: wamux.v1.EventEnvelope.app_state:type_name -> wamux.v1.AppStateUpdate
+	33,  // 183: wamux.v1.EventEnvelope.call:type_name -> wamux.v1.CallEvent
+	35,  // 184: wamux.v1.EventEnvelope.server_ack:type_name -> wamux.v1.ServerAckEvent
+	36,  // 185: wamux.v1.EventEnvelope.offline_sync_preview:type_name -> wamux.v1.OfflineSyncPreview
+	37,  // 186: wamux.v1.EventEnvelope.offline_sync_completed:type_name -> wamux.v1.OfflineSyncCompleted
+	38,  // 187: wamux.v1.EventEnvelope.offline_sync_interrupted:type_name -> wamux.v1.OfflineSyncInterrupted
+	25,  // 188: wamux.v1.EventEnvelope.favorites_changed:type_name -> wamux.v1.FavoritesChanged
+	31,  // 189: wamux.v1.EventEnvelope.newsletter_live_update:type_name -> wamux.v1.NewsletterLiveUpdate
+	24,  // 190: wamux.v1.EventEnvelope.sticker:type_name -> wamux.v1.StickerUpdate
+	26,  // 191: wamux.v1.EventEnvelope.label:type_name -> wamux.v1.LabelUpdate
+	28,  // 192: wamux.v1.EventEnvelope.quick_reply:type_name -> wamux.v1.QuickReplyUpdate
+	29,  // 193: wamux.v1.EventEnvelope.account_setting:type_name -> wamux.v1.AccountSettingUpdate
+	21,  // 194: wamux.v1.EventEnvelope.self_push_name:type_name -> wamux.v1.SelfPushNameUpdate
+	128, // 195: wamux.v1.EventEnvelope.call_log:type_name -> wamux.v1.CallLogUpdate
+	39,  // 196: wamux.v1.EventEnvelope.connection_notice:type_name -> wamux.v1.ConnectionNotice
+	46,  // 197: wamux.v1.EventEnvelope.contact_notice:type_name -> wamux.v1.ContactNotice
+	55,  // 198: wamux.v1.EventEnvelope.device_notice:type_name -> wamux.v1.DeviceNotice
+	60,  // 199: wamux.v1.EventEnvelope.mex:type_name -> wamux.v1.MexNotification
+	27,  // 200: wamux.v1.EventEnvelope.label_sublist:type_name -> wamux.v1.LabelSublistUpdate
+	129, // 201: wamux.v1.EventEnvelope.call_log_history:type_name -> wamux.v1.CallLogHistory
+	30,  // 202: wamux.v1.EventEnvelope.reachout_timelock:type_name -> wamux.v1.ReachoutTimelockUpdate
+	34,  // 203: wamux.v1.EventEnvelope.raw:type_name -> wamux.v1.RawEvent
+	8,   // 204: wamux.v1.EventService.SubscribeEvents:input_type -> wamux.v1.SubscribeRequest
+	61,  // 205: wamux.v1.EventService.SubscribeEvents:output_type -> wamux.v1.EventEnvelope
+	205, // [205:206] is the sub-list for method output_type
+	204, // [204:205] is the sub-list for method input_type
+	204, // [204:204] is the sub-list for extension type_name
+	204, // [204:204] is the sub-list for extension extendee
+	0,   // [0:204] is the sub-list for field type_name
 }
 
 func init() { file_events_proto_init() }
@@ -7705,13 +8030,19 @@ func file_events_proto_init() {
 		(*LabelUpdate_Chat)(nil),
 		(*LabelUpdate_Message)(nil),
 	}
-	file_events_proto_msgTypes[19].OneofWrappers = []any{}
-	file_events_proto_msgTypes[20].OneofWrappers = []any{
+	file_events_proto_msgTypes[19].OneofWrappers = []any{
+		(*LabelSublistUpdate_UpsertSubListId)(nil),
+		(*LabelSublistUpdate_Remove)(nil),
+	}
+	file_events_proto_msgTypes[20].OneofWrappers = []any{}
+	file_events_proto_msgTypes[21].OneofWrappers = []any{
 		(*AccountSettingUpdate_LinkPreviews)(nil),
 		(*AccountSettingUpdate_StatusPrivacy)(nil),
+		(*AccountSettingUpdate_UnarchiveChats)(nil),
 	}
 	file_events_proto_msgTypes[22].OneofWrappers = []any{}
-	file_events_proto_msgTypes[23].OneofWrappers = []any{
+	file_events_proto_msgTypes[24].OneofWrappers = []any{}
+	file_events_proto_msgTypes[25].OneofWrappers = []any{
 		(*CallEvent_Offer)(nil),
 		(*CallEvent_OfferNotice)(nil),
 		(*CallEvent_PreAccept)(nil),
@@ -7729,7 +8060,7 @@ func file_events_proto_init() {
 		(*CallEvent_UnknownAction)(nil),
 		(*CallEvent_Missed)(nil),
 	}
-	file_events_proto_msgTypes[29].OneofWrappers = []any{
+	file_events_proto_msgTypes[31].OneofWrappers = []any{
 		(*ConnectionNotice_ConnectFailure)(nil),
 		(*ConnectionNotice_ClientOutdated)(nil),
 		(*ConnectionNotice_StreamError)(nil),
@@ -7737,9 +8068,9 @@ func file_events_proto_init() {
 		(*ConnectionNotice_AppStateSyncFailed)(nil),
 		(*ConnectionNotice_ClientExpiration)(nil),
 	}
-	file_events_proto_msgTypes[30].OneofWrappers = []any{}
-	file_events_proto_msgTypes[34].OneofWrappers = []any{}
-	file_events_proto_msgTypes[36].OneofWrappers = []any{
+	file_events_proto_msgTypes[32].OneofWrappers = []any{}
+	file_events_proto_msgTypes[36].OneofWrappers = []any{}
+	file_events_proto_msgTypes[38].OneofWrappers = []any{
 		(*ContactNotice_Picture)(nil),
 		(*ContactNotice_About)(nil),
 		(*ContactNotice_Profile)(nil),
@@ -7748,19 +8079,19 @@ func file_events_proto_init() {
 		(*ContactNotice_DisappearingMode)(nil),
 		(*ContactNotice_Business)(nil),
 	}
-	file_events_proto_msgTypes[37].OneofWrappers = []any{}
-	file_events_proto_msgTypes[41].OneofWrappers = []any{}
+	file_events_proto_msgTypes[39].OneofWrappers = []any{}
 	file_events_proto_msgTypes[43].OneofWrappers = []any{}
-	file_events_proto_msgTypes[44].OneofWrappers = []any{}
-	file_events_proto_msgTypes[45].OneofWrappers = []any{
+	file_events_proto_msgTypes[45].OneofWrappers = []any{}
+	file_events_proto_msgTypes[46].OneofWrappers = []any{}
+	file_events_proto_msgTypes[47].OneofWrappers = []any{
 		(*DeviceNotice_DeviceList)(nil),
 		(*DeviceNotice_Identity)(nil),
 	}
-	file_events_proto_msgTypes[46].OneofWrappers = []any{}
-	file_events_proto_msgTypes[47].OneofWrappers = []any{}
 	file_events_proto_msgTypes[48].OneofWrappers = []any{}
+	file_events_proto_msgTypes[49].OneofWrappers = []any{}
 	file_events_proto_msgTypes[50].OneofWrappers = []any{}
-	file_events_proto_msgTypes[51].OneofWrappers = []any{
+	file_events_proto_msgTypes[52].OneofWrappers = []any{}
+	file_events_proto_msgTypes[53].OneofWrappers = []any{
 		(*EventEnvelope_Message)(nil),
 		(*EventEnvelope_Receipt)(nil),
 		(*EventEnvelope_Undecryptable)(nil),
@@ -7789,6 +8120,9 @@ func file_events_proto_init() {
 		(*EventEnvelope_ContactNotice)(nil),
 		(*EventEnvelope_DeviceNotice)(nil),
 		(*EventEnvelope_Mex)(nil),
+		(*EventEnvelope_LabelSublist)(nil),
+		(*EventEnvelope_CallLogHistory)(nil),
+		(*EventEnvelope_ReachoutTimelock)(nil),
 		(*EventEnvelope_Raw)(nil),
 	}
 	type x struct{}
@@ -7797,7 +8131,7 @@ func file_events_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_events_proto_rawDesc), len(file_events_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   52,
+			NumMessages:   54,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

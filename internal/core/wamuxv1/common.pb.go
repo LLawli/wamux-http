@@ -433,6 +433,16 @@ func (x *Mention) GetJid() *Jid {
 	return nil
 }
 
+// The message a message quotes (#217). `quoted.chat` is the chat the QUOTED
+// message is in, which is not always the reply's:
+//   - Inbound, it is the context's `remoteJid` when the sender set one (a private
+//     reply to a group message names the group, a reply to a status names
+//     `status@broadcast`), else the reply's own chat. Any message type can
+//     carry a quote, a media reply included.
+//   - On a send, a `quoted.chat` other than `to` goes out as the `remoteJid`, so a
+//     private reply or a reply to a status can be sent. One equal to `to`, unset
+//     or empty sends none, as WhatsApp's clients do for a reply in the same chat.
+//     A value that is not a jid is InvalidArgument.
 type QuoteContext struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Quoted        *MessageKey            `protobuf:"bytes,1,opt,name=quoted,proto3" json:"quoted,omitempty"`

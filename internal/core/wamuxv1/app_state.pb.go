@@ -1331,6 +1331,54 @@ func (x *LinkPreviewsSetting) GetPreviewsDisabled() bool {
 	return false
 }
 
+// The "keep chats archived" setting (#215). The flag is the inverse of the
+// phone's switch: `unarchive_chats` is true when "keep chats archived" is OFF,
+// so a new message moves its chat out of the archive. The library emits the
+// update only when the wire carried the flag, so it is never a default.
+type UnarchiveChatsSetting struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UnarchiveChats bool                   `protobuf:"varint,1,opt,name=unarchive_chats,json=unarchiveChats,proto3" json:"unarchive_chats,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UnarchiveChatsSetting) Reset() {
+	*x = UnarchiveChatsSetting{}
+	mi := &file_app_state_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnarchiveChatsSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnarchiveChatsSetting) ProtoMessage() {}
+
+func (x *UnarchiveChatsSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_app_state_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnarchiveChatsSetting.ProtoReflect.Descriptor instead.
+func (*UnarchiveChatsSetting) Descriptor() ([]byte, []int) {
+	return file_app_state_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *UnarchiveChatsSetting) GetUnarchiveChats() bool {
+	if x != nil {
+		return x.UnarchiveChats
+	}
+	return false
+}
+
 // One status audience mode. The library keeps this enum open, so a number it
 // does not know crosses as UNKNOWN with the number in `mode_code` (0 otherwise).
 type StatusAudience struct {
@@ -1343,7 +1391,7 @@ type StatusAudience struct {
 
 func (x *StatusAudience) Reset() {
 	*x = StatusAudience{}
-	mi := &file_app_state_proto_msgTypes[18]
+	mi := &file_app_state_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1355,7 +1403,7 @@ func (x *StatusAudience) String() string {
 func (*StatusAudience) ProtoMessage() {}
 
 func (x *StatusAudience) ProtoReflect() protoreflect.Message {
-	mi := &file_app_state_proto_msgTypes[18]
+	mi := &file_app_state_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1368,7 +1416,7 @@ func (x *StatusAudience) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusAudience.ProtoReflect.Descriptor instead.
 func (*StatusAudience) Descriptor() ([]byte, []int) {
-	return file_app_state_proto_rawDescGZIP(), []int{18}
+	return file_app_state_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *StatusAudience) GetMode() StatusAudienceMode {
@@ -1399,7 +1447,7 @@ type StatusCustomList struct {
 
 func (x *StatusCustomList) Reset() {
 	*x = StatusCustomList{}
-	mi := &file_app_state_proto_msgTypes[19]
+	mi := &file_app_state_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1411,7 +1459,7 @@ func (x *StatusCustomList) String() string {
 func (*StatusCustomList) ProtoMessage() {}
 
 func (x *StatusCustomList) ProtoReflect() protoreflect.Message {
-	mi := &file_app_state_proto_msgTypes[19]
+	mi := &file_app_state_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1424,7 +1472,7 @@ func (x *StatusCustomList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusCustomList.ProtoReflect.Descriptor instead.
 func (*StatusCustomList) Descriptor() ([]byte, []int) {
-	return file_app_state_proto_rawDescGZIP(), []int{19}
+	return file_app_state_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *StatusCustomList) GetListId() string {
@@ -1482,7 +1530,7 @@ type StatusPrivacySetting struct {
 
 func (x *StatusPrivacySetting) Reset() {
 	*x = StatusPrivacySetting{}
-	mi := &file_app_state_proto_msgTypes[20]
+	mi := &file_app_state_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1494,7 +1542,7 @@ func (x *StatusPrivacySetting) String() string {
 func (*StatusPrivacySetting) ProtoMessage() {}
 
 func (x *StatusPrivacySetting) ProtoReflect() protoreflect.Message {
-	mi := &file_app_state_proto_msgTypes[20]
+	mi := &file_app_state_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1507,7 +1555,7 @@ func (x *StatusPrivacySetting) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusPrivacySetting.ProtoReflect.Descriptor instead.
 func (*StatusPrivacySetting) Descriptor() ([]byte, []int) {
-	return file_app_state_proto_rawDescGZIP(), []int{20}
+	return file_app_state_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *StatusPrivacySetting) GetMode() *StatusAudience {
@@ -1567,7 +1615,7 @@ type LogoutMessage struct {
 
 func (x *LogoutMessage) Reset() {
 	*x = LogoutMessage{}
-	mi := &file_app_state_proto_msgTypes[21]
+	mi := &file_app_state_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1579,7 +1627,7 @@ func (x *LogoutMessage) String() string {
 func (*LogoutMessage) ProtoMessage() {}
 
 func (x *LogoutMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_app_state_proto_msgTypes[21]
+	mi := &file_app_state_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1592,7 +1640,7 @@ func (x *LogoutMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogoutMessage.ProtoReflect.Descriptor instead.
 func (*LogoutMessage) Descriptor() ([]byte, []int) {
-	return file_app_state_proto_rawDescGZIP(), []int{21}
+	return file_app_state_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *LogoutMessage) GetHeader() string {
@@ -1749,7 +1797,9 @@ const file_app_state_proto_rawDesc = "" +
 	"\x10_model_meta_data\"]\n" +
 	"\x13LinkPreviewsSetting\x120\n" +
 	"\x11previews_disabled\x18\x01 \x01(\bH\x00R\x10previewsDisabled\x88\x01\x01B\x14\n" +
-	"\x12_previews_disabled\"_\n" +
+	"\x12_previews_disabled\"@\n" +
+	"\x15UnarchiveChatsSetting\x12'\n" +
+	"\x0funarchive_chats\x18\x01 \x01(\bR\x0eunarchiveChats\"_\n" +
 	"\x0eStatusAudience\x120\n" +
 	"\x04mode\x18\x01 \x01(\x0e2\x1c.wamux.v1.StatusAudienceModeR\x04mode\x12\x1b\n" +
 	"\tmode_code\x18\x02 \x01(\x05R\bmodeCode\"\xde\x01\n" +
@@ -1827,7 +1877,7 @@ func file_app_state_proto_rawDescGZIP() []byte {
 }
 
 var file_app_state_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_app_state_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_app_state_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_app_state_proto_goTypes = []any{
 	(LabelListType)(0),                // 0: wamux.v1.LabelListType
 	(StatusAudienceMode)(0),           // 1: wamux.v1.StatusAudienceMode
@@ -1849,33 +1899,34 @@ var file_app_state_proto_goTypes = []any{
 	(*LabelChatAssociation)(nil),      // 17: wamux.v1.LabelChatAssociation
 	(*LabelMessageAssociation)(nil),   // 18: wamux.v1.LabelMessageAssociation
 	(*LinkPreviewsSetting)(nil),       // 19: wamux.v1.LinkPreviewsSetting
-	(*StatusAudience)(nil),            // 20: wamux.v1.StatusAudience
-	(*StatusCustomList)(nil),          // 21: wamux.v1.StatusCustomList
-	(*StatusPrivacySetting)(nil),      // 22: wamux.v1.StatusPrivacySetting
-	(*LogoutMessage)(nil),             // 23: wamux.v1.LogoutMessage
-	(*MessageKey)(nil),                // 24: wamux.v1.MessageKey
-	(*Jid)(nil),                       // 25: wamux.v1.Jid
-	(*MediaDescriptor)(nil),           // 26: wamux.v1.MediaDescriptor
+	(*UnarchiveChatsSetting)(nil),     // 20: wamux.v1.UnarchiveChatsSetting
+	(*StatusAudience)(nil),            // 21: wamux.v1.StatusAudience
+	(*StatusCustomList)(nil),          // 22: wamux.v1.StatusCustomList
+	(*StatusPrivacySetting)(nil),      // 23: wamux.v1.StatusPrivacySetting
+	(*LogoutMessage)(nil),             // 24: wamux.v1.LogoutMessage
+	(*MessageKey)(nil),                // 25: wamux.v1.MessageKey
+	(*Jid)(nil),                       // 26: wamux.v1.Jid
+	(*MediaDescriptor)(nil),           // 27: wamux.v1.MediaDescriptor
 }
 var file_app_state_proto_depIdxs = []int32{
 	3,  // 0: wamux.v1.SyncMessageRange.messages:type_name -> wamux.v1.SyncRangeMessage
-	24, // 1: wamux.v1.SyncRangeMessage.key:type_name -> wamux.v1.MessageKey
+	25, // 1: wamux.v1.SyncRangeMessage.key:type_name -> wamux.v1.MessageKey
 	2,  // 2: wamux.v1.ArchiveChange.message_range:type_name -> wamux.v1.SyncMessageRange
-	25, // 3: wamux.v1.StarChange.participant:type_name -> wamux.v1.Jid
+	26, // 3: wamux.v1.StarChange.participant:type_name -> wamux.v1.Jid
 	2,  // 4: wamux.v1.MarkReadChange.message_range:type_name -> wamux.v1.SyncMessageRange
 	2,  // 5: wamux.v1.DeleteChatChange.message_range:type_name -> wamux.v1.SyncMessageRange
 	2,  // 6: wamux.v1.ClearChatChange.message_range:type_name -> wamux.v1.SyncMessageRange
-	25, // 7: wamux.v1.DeleteMessageForMeChange.participant:type_name -> wamux.v1.Jid
-	26, // 8: wamux.v1.FavoriteStickerChange.media:type_name -> wamux.v1.MediaDescriptor
+	26, // 7: wamux.v1.DeleteMessageForMeChange.participant:type_name -> wamux.v1.Jid
+	27, // 8: wamux.v1.FavoriteStickerChange.media:type_name -> wamux.v1.MediaDescriptor
 	0,  // 9: wamux.v1.LabelEdit.list_type:type_name -> wamux.v1.LabelListType
-	25, // 10: wamux.v1.LabelChatAssociation.chat:type_name -> wamux.v1.Jid
-	25, // 11: wamux.v1.LabelMessageAssociation.chat:type_name -> wamux.v1.Jid
+	26, // 10: wamux.v1.LabelChatAssociation.chat:type_name -> wamux.v1.Jid
+	26, // 11: wamux.v1.LabelMessageAssociation.chat:type_name -> wamux.v1.Jid
 	1,  // 12: wamux.v1.StatusAudience.mode:type_name -> wamux.v1.StatusAudienceMode
-	25, // 13: wamux.v1.StatusCustomList.users:type_name -> wamux.v1.Jid
-	20, // 14: wamux.v1.StatusPrivacySetting.mode:type_name -> wamux.v1.StatusAudience
-	25, // 15: wamux.v1.StatusPrivacySetting.users:type_name -> wamux.v1.Jid
-	21, // 16: wamux.v1.StatusPrivacySetting.custom_lists:type_name -> wamux.v1.StatusCustomList
-	20, // 17: wamux.v1.StatusPrivacySetting.modes:type_name -> wamux.v1.StatusAudience
+	26, // 13: wamux.v1.StatusCustomList.users:type_name -> wamux.v1.Jid
+	21, // 14: wamux.v1.StatusPrivacySetting.mode:type_name -> wamux.v1.StatusAudience
+	26, // 15: wamux.v1.StatusPrivacySetting.users:type_name -> wamux.v1.Jid
+	22, // 16: wamux.v1.StatusPrivacySetting.custom_lists:type_name -> wamux.v1.StatusCustomList
+	21, // 17: wamux.v1.StatusPrivacySetting.modes:type_name -> wamux.v1.StatusAudience
 	18, // [18:18] is the sub-list for method output_type
 	18, // [18:18] is the sub-list for method input_type
 	18, // [18:18] is the sub-list for extension type_name
@@ -1905,16 +1956,16 @@ func file_app_state_proto_init() {
 	file_app_state_proto_msgTypes[15].OneofWrappers = []any{}
 	file_app_state_proto_msgTypes[16].OneofWrappers = []any{}
 	file_app_state_proto_msgTypes[17].OneofWrappers = []any{}
-	file_app_state_proto_msgTypes[19].OneofWrappers = []any{}
 	file_app_state_proto_msgTypes[20].OneofWrappers = []any{}
 	file_app_state_proto_msgTypes[21].OneofWrappers = []any{}
+	file_app_state_proto_msgTypes[22].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_app_state_proto_rawDesc), len(file_app_state_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   22,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
