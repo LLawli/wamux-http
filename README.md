@@ -25,8 +25,8 @@ operating system), running as uid 10001 like the core so its socket opens:
 
 | Image | Size | |
 |---|---|---|
-| `ghcr.io/llawli/wamux-http:v0.1.1` | 35 MB | the binary alone |
-| `ghcr.io/llawli/wamux-http:v0.1.1-ffmpeg` | 440 MB | plus ffmpeg and ffprobe |
+| `ghcr.io/llawli/wamux-http:v0.1.2` | 35 MB | the binary alone |
+| `ghcr.io/llawli/wamux-http:v0.1.2-ffmpeg` | 440 MB | plus ffmpeg and ffprobe |
 
 Without ffmpeg, `convert: true` on voice and video sends and the
 `/media/convert` routes answer an error, and voice notes and videos go out

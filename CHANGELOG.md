@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-26
+
 ### Added
 
 - A `reply_to` naming a message in another chat sends a private reply (to a
@@ -105,6 +107,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   approval and add modes, the channel writes and call rejection need wamux
   v0.2.1; on v0.2.0 they answer 501.
 
-[Unreleased]: https://github.com/LLawli/wamux-http/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/LLawli/wamux-http/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/LLawli/wamux-http/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/LLawli/wamux-http/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/LLawli/wamux-http/releases/tag/v0.1.0
