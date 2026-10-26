@@ -159,6 +159,10 @@ Operations the core has no mechanism for answer WAHA's 501, as GOWS itself
 does for several of them (delete group, for one). The list is
 [coverage.md](coverage.md).
 
+Voting in a channel poll (`POST /api/sendPollVote` with a `@newsletter`
+chat) answers 501: the core votes there by the poll's server id with hashed
+options, and this edge keeps neither.
+
 Block and unblock, profile status, the group approval and add modes, the
 channel writes and call rejection use RPCs added in wamux v0.2.1. Against a
 v0.2.0 core they answer 501 too.

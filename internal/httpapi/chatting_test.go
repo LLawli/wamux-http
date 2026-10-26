@@ -455,6 +455,9 @@ func TestPollAndVote(t *testing.T) {
 	if p := last[*pb.SendPollRequest](t, e); p.GetSelectableCount() != 1 {
 		t.Fatalf("channel, single answer: %v", p)
 	}
+	if r := e.Do("POST", "/api/sendPollVote", map[string]any{"session": "default", "chatId": channel, "pollMessageId": "3EB0CHANNELPOLL", "votes": []string{"a"}}); r.Status != 501 {
+		t.Fatalf("vote in a channel poll: %d %s", r.Status, r.Body)
+	}
 	if r := e.Do("POST", "/api/sendPoll", map[string]any{"session": "default", "chatId": peer}); r.Status != 400 {
 		t.Fatalf("no poll: %d", r.Status)
 	}

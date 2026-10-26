@@ -719,6 +719,12 @@ func (s *Server) sendPollVote(c *Ctx) error {
 	if err != nil {
 		return err
 	}
+	// A channel poll is voted by its server id with hashed options
+	// (SendNewsletterPollVote), and has no secret since wamux v0.2.2; this
+	// edge keeps neither, so it says so instead of "poll not found".
+	if waha.IsNewsletter(to.GetValue()) {
+		return ErrNotImplemented("Voting in a channel poll is not supported")
+	}
 	acc, err := c.Account()
 	if err != nil {
 		return err

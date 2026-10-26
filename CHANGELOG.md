@@ -22,6 +22,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   core v0.2.2 (a static musl binary on `scratch`).
 - A poll to a channel with several answers is sent as WA Web publishes it
   (selectable count 0), which wamux v0.2.2 requires.
+- `POST /api/sendPollVote` to a channel answers 501. It never voted there:
+  a channel poll is voted by its server id with hashed options, which this
+  edge does not keep, and since wamux v0.2.2 it has no secret, so the
+  answer had become a misleading 422 "Poll not found".
 
 ### Fixed
 
