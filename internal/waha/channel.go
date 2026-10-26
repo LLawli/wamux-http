@@ -62,6 +62,10 @@ func ChannelFromPB(n *pb.Newsletter) Channel {
 // IsNewsletter reports whether an id (either form) is a channel.
 func IsNewsletter(id string) bool { return strings.HasSuffix(id, "@newsletter") }
 
+// IsStatusBroadcast reports the chat statuses are posted to, as a JID or a
+// WAHA chat id (both are "status@broadcast").
+func IsStatusBroadcast(id string) bool { return id == "status@broadcast" }
+
 // ChannelMessage is WAHA's ChannelMessage.
 type ChannelMessage struct {
 	Reactions map[string]uint64 `json:"reactions"`

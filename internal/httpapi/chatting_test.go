@@ -166,6 +166,43 @@ func TestReplyToStoredMessage(t *testing.T) {
 	}
 }
 
+// A reply_to whose message is in another chat quotes it there: the core
+// sends a private reply to a group message, or a reply to a status.
+func TestReplyToAnotherChat(t *testing.T) {
+	e := working(t)
+	member := "5511777777777@s.whatsapp.net"
+	inGroup := waha.MessageID{Chat: group, ID: "3EB0INGROUP", Participant: "5511777777777@c.us"}
+	putMessage(t, e, inGroup, &pb.InboundMessage{Sender: &pb.Jid{Value: "5511777777777:3@s.whatsapp.net"}, Text: "in the group"}, 2, time.Now().UnixMilli())
+
+	// Stored: the bare id is enough, the store knows the chat.
+	e.Do("POST", "/api/sendText", map[string]any{"session": "default", "chatId": "5511777777777@c.us", "text": "privately", "reply_to": "3EB0INGROUP"})
+	q := last[*pb.SendTextRequest](t, e).GetQuote()
+	if q.GetQuoted().GetChat().GetValue() != group || q.GetQuoted().GetParticipant().GetValue() != member || q.GetParticipant().GetValue() != member {
+		t.Fatalf("private reply to a stored group message: %v", q)
+	}
+
+	// Not stored: a full WAHA id names the chat and the author.
+	e.Do("POST", "/api/sendText", map[string]any{"session": "default", "chatId": peer, "text": "nice",
+		"reply_to": "false_status@broadcast_3EB0STATUS_5511888888888@c.us"})
+	q = last[*pb.SendTextRequest](t, e).GetQuote()
+	if q.GetQuoted().GetChat().GetValue() != "status@broadcast" || q.GetQuoted().GetId() != "3EB0STATUS" ||
+		q.GetQuoted().GetParticipant().GetValue() != peerJ || q.GetParticipant().GetValue() != peerJ {
+		t.Fatalf("reply to a status: %v", q)
+	}
+	e.Do("POST", "/api/sendText", map[string]any{"session": "default", "chatId": peer, "text": "privately",
+		"reply_to": "false_" + group + "_3EB0NOTSTORED_5511777777777@c.us"})
+	q = last[*pb.SendTextRequest](t, e).GetQuote()
+	if q.GetQuoted().GetChat().GetValue() != group || q.GetQuoted().GetParticipant().GetValue() != member {
+		t.Fatalf("private reply to a group message not stored: %v", q)
+	}
+
+	// The request's chat stays the quoted one otherwise.
+	e.Do("POST", "/api/sendText", map[string]any{"session": "default", "chatId": peer, "text": "re", "reply_to": "3EB0UNKNOWN"})
+	if q := last[*pb.SendTextRequest](t, e).GetQuote(); q.GetQuoted().GetChat().GetValue() != peerJ || q.GetQuoted().GetParticipant() != nil {
+		t.Fatalf("same-chat reply: %v", q)
+	}
+}
+
 func TestSendTextLinkPreview(t *testing.T) {
 	t.Setenv("WAMUX_HTTP_MEDIA_ALLOW_PRIVATE", "true")
 	var card bytes.Buffer
@@ -407,6 +444,16 @@ func TestPollAndVote(t *testing.T) {
 	e.Do("POST", "/api/sendPoll", map[string]any{"session": "default", "chatId": peer, "poll": map[string]any{"name": "One", "options": []string{"a", "b"}}})
 	if p := last[*pb.SendPollRequest](t, e); p.GetSelectableCount() != 1 {
 		t.Fatalf("single answer: %v", p)
+	}
+	// A channel takes 0 for several answers and 1 for one, as WA Web does.
+	channel := "123456789012345678@newsletter"
+	e.Do("POST", "/api/sendPoll", map[string]any{"session": "default", "chatId": channel, "poll": map[string]any{"name": "Many", "options": []string{"a", "b", "c"}, "multipleAnswers": true}})
+	if p := last[*pb.SendPollRequest](t, e); p.GetTo().GetValue() != channel || p.GetSelectableCount() != 0 {
+		t.Fatalf("channel, several answers: %v", p)
+	}
+	e.Do("POST", "/api/sendPoll", map[string]any{"session": "default", "chatId": channel, "poll": map[string]any{"name": "One", "options": []string{"a", "b"}}})
+	if p := last[*pb.SendPollRequest](t, e); p.GetSelectableCount() != 1 {
+		t.Fatalf("channel, single answer: %v", p)
 	}
 	if r := e.Do("POST", "/api/sendPoll", map[string]any{"session": "default", "chatId": peer}); r.Status != 400 {
 		t.Fatalf("no poll: %d", r.Status)

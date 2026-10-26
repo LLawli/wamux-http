@@ -226,38 +226,57 @@ func plainJID(j string) string {
 	return out
 }
 
-// quote builds the quote for reply_to. Like GOWS it keeps only the raw id
-// and quotes it in the request's chat; the stored message, when this edge
-// has it, says who wrote it. raw is the quoted message's wa.Message.
+// quote builds the quote for reply_to. The quoted message's chat comes from
+// the stored message when this edge has it, else from a full WAHA id
+// (false_<chat>_<id>[_participant]), else it is the request's chat. When it
+// is another chat, the core sends a private reply (to a group message) or a
+// reply to a status (status@broadcast); GOWS always quotes in the request's
+// chat. raw is the quoted message's wa.Message.
 func (s *Server) quote(c *Ctx, to *pb.Jid, replyTo string) (q *pb.QuoteContext, raw []byte, err error) {
-	if strings.TrimSpace(replyTo) == "" {
+	replyTo = strings.TrimSpace(replyTo)
+	if replyTo == "" {
 		return nil, nil, nil
 	}
-	id, err := bareID(replyTo)
-	if err != nil {
-		return nil, nil, err
+	mid := waha.MessageID{ID: replyTo}
+	if strings.Contains(replyTo, "_") {
+		if mid, err = waha.ParseMessageID(replyTo); err != nil {
+			return nil, nil, errBadMessageID()
+		}
 	}
-	key := &pb.MessageKey{Chat: to, Id: id}
+	chat := to
+	if mid.Chat != "" {
+		if j, err := waha.JIDFromChatID(mid.Chat); err == nil {
+			chat = &pb.Jid{Value: j}
+		}
+	}
+	key := &pb.MessageKey{Chat: chat, Id: mid.ID, FromMe: mid.FromMe}
 	q = &pb.QuoteContext{Quoted: key}
-	st, ok, err := s.lookup(c.R.Context(), c.Session, id)
+	st, ok, err := s.lookup(c.R.Context(), c.Session, mid.ID)
 	if err != nil {
 		return nil, nil, err
 	}
 	author := ""
 	switch {
 	case ok:
+		if stored := st.in.GetChat(); stored.GetValue() != "" {
+			key.Chat = stored
+		}
 		key.FromMe = st.msg.FromMe
 		author = st.sender
 		if author == "" && st.msg.FromMe {
-			author = c.myJID(to.GetValue())
+			author = c.myJID(key.Chat.GetValue())
 		}
 		raw = st.in.GetRawMessage()
-	case !waha.IsGroup(to.GetValue()):
-		author = to.GetValue()
+	case mid.Participant != "":
+		author, _ = waha.JIDFromChatID(mid.Participant)
+	case mid.FromMe:
+		author = c.myJID(key.Chat.GetValue())
+	case !waha.IsGroup(key.Chat.GetValue()) && !waha.IsStatusBroadcast(key.Chat.GetValue()):
+		author = key.Chat.GetValue()
 	}
 	if author != "" {
 		q.Participant = &pb.Jid{Value: author}
-		if waha.IsGroup(to.GetValue()) {
+		if waha.IsGroup(key.Chat.GetValue()) || waha.IsStatusBroadcast(key.Chat.GetValue()) {
 			key.Participant = &pb.Jid{Value: author}
 		}
 	}
@@ -654,8 +673,13 @@ func (s *Server) sendPoll(c *Ctx) error {
 	if err != nil {
 		return err
 	}
+	// A chat takes how many options may be picked; a channel, as WA Web
+	// publishes it, 1 for a single answer and 0 for several.
 	selectable := uint32(1)
-	if req.Poll.MultipleAnswers {
+	switch {
+	case req.Poll.MultipleAnswers && waha.IsNewsletter(to.GetValue()):
+		selectable = 0
+	case req.Poll.MultipleAnswers:
 		selectable = uint32(len(req.Poll.Options))
 	}
 	res, err := s.Core.Messaging.SendPoll(c.R.Context(), &pb.SendPollRequest{
