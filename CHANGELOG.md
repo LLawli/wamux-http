@@ -15,6 +15,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   selector or ZWJ answers 400. Every vote carries the whole selection, and an
   empty `votes` removes the vote.
 
+### Fixed
+
+- A reply in a DM to a message stored under the peer's LID chat went out
+  as a reply from another chat (the LID as `remoteJid`). Only a group
+  message or a status is quoted from another chat now.
+- An event from the core over 4 MiB (a history sync, 4.67 MB measured)
+  broke the session's event stream, losing it. The edge now takes up to
+  256 MiB.
+- The reference `compose.yaml` gives the core a `/tmp`. The core image has
+  none, and without it the core's SQLite store failed right after pairing,
+  so the session never reached `WORKING`.
+
 ## [0.1.2] - 2026-10-26
 
 ### Added

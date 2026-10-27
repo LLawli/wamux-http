@@ -1,6 +1,7 @@
 package httpapi_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"sync/atomic"
@@ -212,6 +213,21 @@ func TestIngestMessages(t *testing.T) {
 	if _, err := ie.App.Store.GetMessageByWAID(context.Background(), "default", "SKD"); err == nil {
 		t.Fatal("a key share was stored")
 	}
+}
+
+// An event past gRPC's default 4 MiB receive limit still arrives: a history
+// sync blob measured 4.67 MB live, and the stream broke on it.
+func TestIngestLargeEvent(t *testing.T) {
+	ie := startIngest(t, testenv.Options{}, nil)
+	big := text(t, peerJID, peerJID, "BIG1", "big", false)
+	big.RawMessage = rawMsg(t, &waE2E.Message{
+		Conversation:       proto.String("big"),
+		MessageContextInfo: &waE2E.MessageContextInfo{PaddingBytes: bytes.Repeat([]byte{1}, 5<<20)},
+	})
+	ie.emitMsg(big)
+	ie.emitMsg(text(t, peerJID, peerJID, "AFTER1", "after", false))
+	ie.wait("message", byID("false_"+peerID+"_BIG1"))
+	ie.wait("message", byID("false_"+peerID+"_AFTER1"))
 }
 
 func TestIngestMedia(t *testing.T) {

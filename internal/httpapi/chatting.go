@@ -276,6 +276,12 @@ func (s *Server) quote(c *Ctx, to *pb.Jid, replyTo string) (q *pb.QuoteContext, 
 	case !waha.IsGroup(key.Chat.GetValue()) && !waha.IsStatusBroadcast(key.Chat.GetValue()):
 		author = key.Chat.GetValue()
 	}
+	// Only a group message or a status is quoted from another chat. A DM's
+	// other id is the same conversation (a peer's LID chat and its phone
+	// chat), and naming it would send a reply from another chat.
+	if c := key.Chat.GetValue(); c != to.GetValue() && !waha.IsGroup(c) && !waha.IsStatusBroadcast(c) {
+		key.Chat = to
+	}
 	if author != "" {
 		q.Participant = &pb.Jid{Value: author}
 		if waha.IsGroup(key.Chat.GetValue()) || waha.IsStatusBroadcast(key.Chat.GetValue()) {

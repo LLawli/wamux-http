@@ -18,6 +18,11 @@ services:
       WAMUX_SOCKET_PATH: /run/wamux/wamux.sock
       WAMUX_DATABASE_URL: sqlite:///var/lib/wamux/wamux.db
       WAMUX_MEDIA_SPOOL_DIR: /var/lib/wamux/spool
+    # The image has no /tmp, and SQLite needs one for its temporary journals:
+    # without it the store fails right after pairing (SQLITE_IOERR_GETTEMPPATH)
+    # and the session never reaches WORKING.
+    tmpfs:
+      - /tmp:mode=1777
     volumes:
       - wamux-run:/run/wamux
       - wamux-data:/var/lib/wamux

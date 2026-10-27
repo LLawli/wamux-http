@@ -32,6 +32,12 @@ type Client struct {
 	Admin       pb.AdminServiceClient
 }
 
+// maxRecvBytes bounds one message from the core. gRPC's default of 4 MiB is
+// smaller than a history sync event can be (4.67 MB measured live, which
+// broke the event stream); the socket is local and the core trusted, so
+// the bound only stops a runaway.
+const maxRecvBytes = 256 << 20
+
 // Dial connects to the core's Unix socket. The connection is lazy: a missing
 // socket shows up as Unavailable on the first call, not here, so the edge can
 // start before the core does.
@@ -40,6 +46,7 @@ func Dial(socketPath string) (*Client, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(unaryTrailers),
 		grpc.WithStreamInterceptor(streamTrailers),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(maxRecvBytes)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("dial core at %s: %w", socketPath, err)

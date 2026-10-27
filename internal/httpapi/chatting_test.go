@@ -201,6 +201,19 @@ func TestReplyToAnotherChat(t *testing.T) {
 	if q := last[*pb.SendTextRequest](t, e).GetQuote(); q.GetQuoted().GetChat().GetValue() != peerJ || q.GetQuoted().GetParticipant() != nil {
 		t.Fatalf("same-chat reply: %v", q)
 	}
+
+	// A DM keyed by the peer's LID is the same conversation as its phone
+	// chat: replying there is no reply from another chat (measured live: the
+	// quote went out with the LID as remoteJid).
+	peerLID := "123456789012345@lid"
+	inLID := waha.MessageID{Chat: peerLID, ID: "3EB0INLID"}
+	putMessage(t, e, inLID, &pb.InboundMessage{Sender: &pb.Jid{Value: "123456789012345:2@lid"}, Text: "by lid"}, 2, time.Now().UnixMilli())
+	for _, replyTo := range []string{"3EB0INLID", "false_" + peerLID + "_3EB0LIDNOTSTORED"} {
+		e.Do("POST", "/api/sendText", map[string]any{"session": "default", "chatId": peer, "text": "re", "reply_to": replyTo})
+		if q := last[*pb.SendTextRequest](t, e).GetQuote(); q.GetQuoted().GetChat().GetValue() != peerJ {
+			t.Fatalf("reply to %s in the peer's LID chat: %v", replyTo, q)
+		}
+	}
 }
 
 func TestSendTextLinkPreview(t *testing.T) {
