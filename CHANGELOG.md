@@ -17,6 +17,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Logging out or deleting a session left the device in the phone's linked
+  devices: the edge stopped the session before asking the core to log out,
+  and the core logs out only a connected account. The logout now comes
+  first, and a stopped session is connected for it.
 - A reply in a DM to a message stored under the peer's LID chat went out
   as a reply from another chat (the LID as `remoteJid`). Only a group
   message or a status is quoted from another chat now.

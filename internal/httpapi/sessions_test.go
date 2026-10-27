@@ -4,6 +4,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -116,6 +117,9 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Fatalf("logout: %d %s", r.Status, r.Body)
 	}
 	e.Eventually("SCAN_QR_CODE after logout", 5*time.Second, func() bool { return e.Status("default") == "SCAN_QR_CODE" })
+	if acc, _ := e.Core.Account("default"); acc.Paired {
+		t.Fatal("logout left the account paired")
+	}
 
 	if r := e.Do("DELETE", "/api/sessions/default", nil); r.Status != 200 || len(r.Body) != 0 {
 		t.Fatalf("delete: %d %s", r.Status, r.Body)
@@ -128,6 +132,39 @@ func TestSessionLifecycle(t *testing.T) {
 	}
 	if r := e.Do("DELETE", "/api/sessions/default", nil); r.Status != 200 {
 		t.Fatalf("delete is idempotent in WAHA: %d", r.Status)
+	}
+}
+
+// Logout and delete drop the device from the phone's linked devices even
+// when the session is stopped: the core logs out only a connected account
+// (measured live), so the edge connects it for that.
+func TestUnpairStoppedSession(t *testing.T) {
+	e := testenv.Start(t, testenv.Options{})
+	one := e.WorkingSession("one", meJID, nil)
+	two := e.WorkingSession("two", "5511999990002@s.whatsapp.net", nil)
+	three := e.WorkingSession("three", "5511999990003@s.whatsapp.net", nil)
+	for _, n := range []string{"one", "two"} {
+		if r := e.Do("POST", "/api/sessions/"+n+"/stop", nil); r.Status != 201 {
+			t.Fatalf("stop %s: %d %s", n, r.Status, r.Body)
+		}
+	}
+	if r := e.Do("POST", "/api/sessions/one/logout", nil); r.Status != 201 || r.Map(t)["status"] != "STOPPED" {
+		t.Fatalf("logout stopped: %d %s", r.Status, r.Body)
+	}
+	if acc, _ := e.Core.Account(one); acc.Paired || acc.State == pb.ConnectionState_CONNECTED {
+		t.Fatalf("stopped session after logout: paired=%v state=%v", acc.Paired, acc.State)
+	}
+	for _, n := range []string{"two", "three"} {
+		if r := e.Do("DELETE", "/api/sessions/"+n, nil); r.Status != 200 {
+			t.Fatalf("delete %s: %d %s", n, r.Status, r.Body)
+		}
+	}
+	if got := e.Core.Unpaired(); !slices.Equal(got, []string{one, two, three}) {
+		t.Fatalf("unpaired %v, want one, two (stopped) and three (working)", got)
+	}
+	// Logging out again has nothing left to drop.
+	if r := e.Do("POST", "/api/sessions/one/logout", nil); r.Status != 201 {
+		t.Fatalf("second logout: %d %s", r.Status, r.Body)
 	}
 }
 

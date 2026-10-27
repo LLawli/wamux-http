@@ -14,6 +14,7 @@ import (
 	"io"
 	"net"
 	"path/filepath"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -63,6 +64,15 @@ type Core struct {
 	// as the core's replay ring is.
 	ring map[string][]*pb.EventEnvelope
 	req  []proto.Message // every request, in order
+	// unpaired are the accounts a Logout dropped from WhatsApp, by uuid.
+	unpaired []string
+}
+
+// Unpaired lists the accounts a Logout dropped from WhatsApp, by uuid.
+func (c *Core) Unpaired() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.unpaired)
 }
 
 // Start serves the fake on a socket in t's temp dir until the test ends.
@@ -322,6 +332,9 @@ func (s *accounts) DisconnectAccount(_ context.Context, r *pb.AccountRef) (*pb.A
 	return status2(a), nil
 }
 
+// Logout refuses an account that is not connected, as the core does
+// (measured live: FailedPrecondition after DisconnectAccount), since telling
+// WhatsApp to drop the device needs the connection.
 func (s *accounts) Logout(_ context.Context, r *pb.AccountRef) (*pb.Empty, error) {
 	s.c.record(r)
 	s.c.mu.Lock()
@@ -330,7 +343,11 @@ func (s *accounts) Logout(_ context.Context, r *pb.AccountRef) (*pb.Empty, error
 	if err != nil {
 		return nil, err
 	}
+	if a.State != pb.ConnectionState_CONNECTED {
+		return nil, status.Errorf(codes.FailedPrecondition, "account %s is not connected", a.UUID)
+	}
 	a.Paired, a.JID = false, ""
+	s.c.unpaired = append(s.c.unpaired, a.UUID)
 	s.c.setState(a, pb.ConnectionState_LOGGED_OUT)
 	return &pb.Empty{}, nil
 }

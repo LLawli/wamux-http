@@ -36,6 +36,7 @@ const (
 	reconnectMax    = time.Minute
 	superviseEvery  = 2 * time.Second
 	coreCallTimeout = 30 * time.Second
+	logoutPoll      = 200 * time.Millisecond
 	replayRing      = 256
 )
 
@@ -258,16 +259,11 @@ func (m *Manager) Logout(ctx context.Context, name string) (store.Session, error
 		return s, err
 	}
 	wasStarted := s.Started
-	if s, err = m.Stop(ctx, name); err != nil {
+	if err := m.unpair(ctx, s); err != nil {
 		return s, err
 	}
-	if s.AccountUUID != "" {
-		cctx, cancel := context.WithTimeout(ctx, coreCallTimeout)
-		_, err := m.Core.Accounts.Logout(cctx, Ref(s))
-		cancel()
-		if err != nil && core.CodeOf(err) != codes.NotFound {
-			return s, err
-		}
+	if s, err = m.Stop(ctx, name); err != nil {
+		return s, err
 	}
 	null := json.RawMessage(nil)
 	if s, err = m.Store.UpdateSession(ctx, name, store.SessionPatch{Me: &null}); err != nil {
@@ -286,6 +282,59 @@ func (m *Manager) Logout(ctx context.Context, name string) (store.Session, error
 	return s, nil
 }
 
+// unpair tells WhatsApp to drop this device, so it leaves the phone's linked
+// devices. The core does it only while the account is connected
+// (FailedPrecondition otherwise, measured live), so it runs before a stop,
+// and a stopped session is connected for it. An account never paired has
+// nothing to drop.
+func (m *Manager) unpair(ctx context.Context, s store.Session) error {
+	if s.AccountUUID == "" || len(s.Me) == 0 || string(s.Me) == "null" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, coreCallTimeout)
+	defer cancel()
+	_, err := m.Core.Accounts.Logout(ctx, Ref(s))
+	if core.CodeOf(err) == codes.FailedPrecondition {
+		var connected bool
+		if connected, err = m.connectFor(ctx, s); connected {
+			_, err = m.Core.Accounts.Logout(ctx, Ref(s))
+		}
+		if err != nil {
+			// Do not leave a stopped session connected.
+			dctx, dcancel := context.WithTimeout(context.WithoutCancel(ctx), coreCallTimeout)
+			_, _ = m.Core.Accounts.DisconnectAccount(dctx, Ref(s))
+			dcancel()
+		}
+	}
+	if core.CodeOf(err) == codes.NotFound {
+		return nil
+	}
+	return err
+}
+
+// connectFor connects a stopped session's account for one call and waits
+// until it is up; connected is false when the core reports it already
+// logged out, which leaves nothing to do. The caller's logout ends the
+// connection, or the caller disconnects when it fails.
+func (m *Manager) connectFor(ctx context.Context, s store.Session) (connected bool, err error) {
+	st, err := m.Core.Accounts.ConnectAccount(ctx, &pb.ConnectAccountRequest{Account: Ref(s)})
+	for err == nil {
+		switch st.GetState() {
+		case pb.ConnectionState_CONNECTED:
+			return true, nil
+		case pb.ConnectionState_LOGGED_OUT:
+			return false, nil
+		}
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case <-time.After(logoutPoll):
+		}
+		st, err = m.Core.Accounts.GetAccountStatus(ctx, Ref(s))
+	}
+	return false, err
+}
+
 // Delete unpairs the account, removes it from the core and forgets the
 // session and everything stored for it.
 func (m *Manager) Delete(ctx context.Context, name string) error {
@@ -296,15 +345,15 @@ func (m *Manager) Delete(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
+	if err := m.unpair(ctx, s); err != nil {
+		m.Log.Warn("logout on delete", "session", name, "err", err)
+	}
 	if _, err := m.Stop(ctx, name); err != nil {
 		return err
 	}
 	if s.AccountUUID != "" {
 		cctx, cancel := context.WithTimeout(ctx, coreCallTimeout)
 		defer cancel()
-		if _, err := m.Core.Accounts.Logout(cctx, Ref(s)); err != nil && core.CodeOf(err) != codes.NotFound {
-			m.Log.Warn("logout on delete", "session", name, "err", err)
-		}
 		if _, err := m.Core.Accounts.DeleteAccount(cctx, Ref(s)); err != nil && core.CodeOf(err) != codes.NotFound {
 			return err
 		}
