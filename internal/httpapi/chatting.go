@@ -2,10 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -704,6 +706,7 @@ func (s *Server) sendPollVote(c *Ctx) error {
 	var req struct {
 		ChatID        string `json:"chatId"`
 		PollMessageID string `json:"pollMessageId"`
+		PollServerID  any    `json:"pollServerId"`
 		Votes         []any  `json:"votes"`
 	}
 	if err := c.Bind(&req); err != nil {
@@ -715,15 +718,13 @@ func (s *Server) sendPollVote(c *Ctx) error {
 	if req.Votes == nil {
 		return ErrBadRequest([]string{"votes must be an array"})
 	}
-	to, err := chatJID(req.ChatID)
+	serverID, err := pollServerID(req.PollServerID)
 	if err != nil {
 		return err
 	}
-	// A channel poll is voted by its server id with hashed options
-	// (SendNewsletterPollVote), and has no secret since wamux v0.2.2; this
-	// edge keeps neither, so it says so instead of "poll not found".
-	if waha.IsNewsletter(to.GetValue()) {
-		return ErrNotImplemented("Voting in a channel poll is not supported")
+	to, err := chatJID(req.ChatID)
+	if err != nil {
+		return err
 	}
 	acc, err := c.Account()
 	if err != nil {
@@ -750,16 +751,15 @@ func (s *Server) sendPollVote(c *Ctx) error {
 	if err != nil {
 		return err
 	}
+	if waha.IsNewsletter(to.GetValue()) {
+		return s.sendChannelPollVote(c, acc, to, id, serverID, votes)
+	}
 	poll, err := s.pollFor(c, id)
 	if err != nil {
 		return err
 	}
-	if len(poll.Options) > 0 {
-		for _, v := range votes {
-			if !slices.Contains(poll.Options, v) {
-				return ErrBadRequest(fmt.Sprintf("%q is not an option of the poll", v))
-			}
-		}
+	if err := checkVotes(poll.Options, votes); err != nil {
+		return err
 	}
 	res, err := s.Core.Messaging.SendPollVote(c.R.Context(), &pb.SendPollVoteRequest{
 		Account: acc, Chat: to, PollId: id, PollCreator: &pb.Jid{Value: poll.Creator},
@@ -771,10 +771,144 @@ func (s *Server) sendPollVote(c *Ctx) error {
 	return c.JSON(http.StatusCreated, sent(c, to, res.GetKey(), res))
 }
 
-// pollFor gathers what a vote needs: what was stored when the poll was
+// checkVotes refuses a vote for a name the poll does not have, when the
+// options are known. The comparison is exact: a channel vote names each
+// option by the hash of its spelling, so a retyped emoji would be a vote the
+// server does not count.
+func checkVotes(options, votes []string) error {
+	if len(options) == 0 {
+		return nil
+	}
+	for _, v := range votes {
+		if !slices.Contains(options, v) {
+			return ErrBadRequest(fmt.Sprintf("%q is not an option of the poll", v))
+		}
+	}
+	return nil
+}
+
+// pollServerID reads WAHA's optional pollServerId, 0 when absent.
+func pollServerID(v any) (uint64, error) {
+	if v == nil {
+		return 0, nil
+	}
+	// A server id is far below 2^53, where a JSON number stops being exact.
+	n, ok := v.(float64)
+	if !ok || n < 1 || n > 1<<53 || n != math.Trunc(n) {
+		return 0, ErrBadRequest([]string{numberMessage("pollServerId")})
+	}
+	return uint64(n), nil
+}
+
+// The history read that finds a channel poll the caller gave no
+// pollServerId for: newest first, at most channelPollPages pages.
+const (
+	channelPollPage  = 100
+	channelPollPages = 3
+)
+
+// sendChannelPollVote votes in a channel poll. A channel is not E2E, so
+// there is no secret: the vote names the poll by its server id and each
+// option by the sha256 of its name. Every vote carries the whole selection;
+// an empty one removes the vote.
+func (s *Server) sendChannelPollVote(c *Ctx, acc *pb.AccountRef, channel *pb.Jid, id string, serverID uint64, votes []string) error {
+	ctx := c.R.Context()
+	poll, err := s.knownPoll(c, id)
+	if err != nil {
+		return err
+	}
+	if serverID == 0 {
+		row, err := s.channelPollRow(ctx, acc, channel, id)
+		if err != nil {
+			return err
+		}
+		serverID = row.GetServerId()
+		if len(poll.Options) == 0 {
+			poll.Options = pollOptions(row.GetMessage().GetRawMessage())
+		}
+	}
+	if err := checkVotes(poll.Options, votes); err != nil {
+		return err
+	}
+	// The core refuses a repeated hash; a selection is a set.
+	var hashes [][]byte
+	for i, v := range votes {
+		if slices.Contains(votes[:i], v) {
+			continue
+		}
+		h := sha256.Sum256([]byte(v))
+		hashes = append(hashes, h[:])
+	}
+	res, err := s.Core.Newsletters.SendNewsletterPollVote(ctx, &pb.SendNewsletterPollVoteRequest{
+		Account: acc, Jid: channel, ServerId: serverID, OptionHashes: hashes,
+	})
+	if err != nil {
+		return err
+	}
+	// A vote puts no message in the channel: the id is the vote stanza's.
+	return c.JSON(http.StatusCreated, sent(c, channel, &pb.MessageKey{Chat: channel, Id: res.GetStanzaId(), FromMe: true}, res))
+}
+
+// channelPollRow pages a channel's history back to the poll with this
+// message id, which is where its server id is.
+func (s *Server) channelPollRow(ctx context.Context, acc *pb.AccountRef, channel *pb.Jid, id string) (*pb.NewsletterMessage, error) {
+	var before uint64
+	for range channelPollPages {
+		res, err := s.Core.Newsletters.GetNewsletterMessages(ctx, &pb.GetNewsletterMessagesRequest{
+			Account: acc, Jid: channel, Count: channelPollPage, Before: before,
+		})
+		if err != nil {
+			return nil, err
+		}
+		oldest := before
+		for _, row := range res.GetMessages() {
+			if row.GetMessage().GetKey().GetId() == id {
+				return row, nil
+			}
+			if oldest == 0 || row.GetServerId() < oldest {
+				oldest = row.GetServerId()
+			}
+		}
+		if oldest == 0 || oldest == before {
+			break // the start of the channel
+		}
+		before = oldest
+	}
+	return nil, ErrUnprocessable(fmt.Sprintf("Poll with id '%s' not found in the channel's last %d messages, pass its pollServerId",
+		id, channelPollPage*channelPollPages))
+}
+
+// pollOptions are the option names of the poll in a raw wa.Message, as it
+// spells them.
+func pollOptions(raw []byte) []string {
+	m, err := waha.DecodeRaw(raw)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, o := range pollCreation(m).GetOptions() {
+		out = append(out, o.GetOptionName())
+	}
+	return out
+}
+
+// pollFor gathers what a vote in a chat poll needs, which includes the
+// secret and the creator.
+func (s *Server) pollFor(c *Ctx, id string) (store.Poll, error) {
+	poll, err := s.knownPoll(c, id)
+	if err != nil {
+		return poll, err
+	}
+	if len(poll.Secret) == 0 || poll.Creator == "" {
+		return poll, ErrUnprocessable(fmt.Sprintf("Poll with id '%s' not found", id))
+	}
+	return poll, nil
+}
+
+// knownPoll is what this edge has on a poll: what was stored when it was
 // sent, completed by the stored poll message (a received poll carries its
 // secret and options in its wa.Message).
-func (s *Server) pollFor(c *Ctx, id string) (store.Poll, error) {
+func (s *Server) knownPoll(c *Ctx, id string) (store.Poll, error) {
 	ctx := c.R.Context()
 	poll, err := s.Store.GetPoll(ctx, c.Session, id)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
@@ -792,20 +926,13 @@ func (s *Server) pollFor(c *Ctx, id string) (store.Poll, error) {
 					poll.Creator = c.myJID(st.in.GetChat().GetValue())
 				}
 			}
-			if raw, err := waha.DecodeRaw(st.in.GetRawMessage()); err == nil {
-				if len(poll.Options) == 0 {
-					for _, o := range pollCreation(raw).GetOptions() {
-						poll.Options = append(poll.Options, o.GetOptionName())
-					}
-				}
-				if len(poll.Secret) == 0 {
-					poll.Secret = raw.GetMessageContextInfo().GetMessageSecret()
-				}
+			if len(poll.Options) == 0 {
+				poll.Options = pollOptions(st.in.GetRawMessage())
+			}
+			if raw, err := waha.DecodeRaw(st.in.GetRawMessage()); err == nil && len(poll.Secret) == 0 {
+				poll.Secret = raw.GetMessageContextInfo().GetMessageSecret()
 			}
 		}
-	}
-	if len(poll.Secret) == 0 || poll.Creator == "" {
-		return poll, ErrUnprocessable(fmt.Sprintf("Poll with id '%s' not found", id))
 	}
 	return poll, nil
 }

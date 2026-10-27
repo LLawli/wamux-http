@@ -24,6 +24,8 @@ type Newsletters struct {
 	muted  map[string]bool
 	follow map[string]bool
 	made   int
+	votes  map[uint64][][]byte
+	voted  int
 }
 
 func (n *Newsletters) ListSubscribedNewsletters(_ context.Context, r *pb.AccountRef) (*pb.NewsletterList, error) {
@@ -41,18 +43,62 @@ func (n *Newsletters) GetNewsletterMetadata(_ context.Context, r *pb.JidRequest)
 	return nil, status.Errorf(codes.NotFound, "no channel %s", r.GetJid().GetValue())
 }
 
-// GetNewsletterMessages answers the first `count` rows, refusing a count of
-// 0 as the core does.
+// GetNewsletterMessages answers the first `count` rows older than `before`
+// (all of them when it is 0), refusing a count of 0 as the core does.
 func (n *Newsletters) GetNewsletterMessages(_ context.Context, r *pb.GetNewsletterMessagesRequest) (*pb.NewsletterMessageList, error) {
 	n.log(r)
 	if r.GetCount() == 0 {
 		return nil, status.Error(codes.InvalidArgument, "count is required")
 	}
-	rows := n.Messages[r.GetJid().GetValue()]
+	var rows []*pb.NewsletterMessage
+	for _, row := range n.Messages[r.GetJid().GetValue()] {
+		if r.GetBefore() == 0 || row.GetServerId() < r.GetBefore() {
+			rows = append(rows, row)
+		}
+	}
 	if len(rows) > int(r.GetCount()) {
 		rows = rows[:r.GetCount()]
 	}
 	return &pb.NewsletterMessageList{Messages: rows}, nil
+}
+
+// SendNewsletterPollVote checks the hashes as the core does (32 bytes each,
+// at most 1000, none repeated) and keeps the last selection per poll.
+func (n *Newsletters) SendNewsletterPollVote(_ context.Context, r *pb.SendNewsletterPollVoteRequest) (*pb.SendNewsletterPollVoteResponse, error) {
+	n.log(r)
+	if r.GetServerId() == 0 {
+		return nil, status.Error(codes.InvalidArgument, "server_id is required")
+	}
+	if len(r.GetOptionHashes()) > 1000 {
+		return nil, status.Error(codes.InvalidArgument, "too many option hashes")
+	}
+	seen := map[string]bool{}
+	for _, h := range r.GetOptionHashes() {
+		if len(h) != 32 {
+			return nil, status.Errorf(codes.InvalidArgument, "an option hash is %d bytes, not 32", len(h))
+		}
+		if seen[string(h)] {
+			return nil, status.Error(codes.InvalidArgument, "repeated option hash")
+		}
+		seen[string(h)] = true
+	}
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.votes == nil {
+		n.votes = map[uint64][][]byte{}
+	}
+	n.votes[r.GetServerId()] = r.GetOptionHashes()
+	n.voted++
+	return &pb.SendNewsletterPollVoteResponse{StanzaId: fmt.Sprintf("3EB0VOTE%04d", n.voted)}, nil
+}
+
+// PollVote is the last selection sent for the poll with this server id; ok
+// is false when none was.
+func (n *Newsletters) PollVote(serverID uint64) (hashes [][]byte, ok bool) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	hashes, ok = n.votes[serverID]
+	return hashes, ok
 }
 
 // Following reports whether the account follows jid through FollowNewsletter

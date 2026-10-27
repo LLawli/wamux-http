@@ -140,6 +140,13 @@ name is what the phone synced or the push name last seen.
   `viewCount` is 0 with no media downloaded.
 - Creating a channel with a `picture` answers 501 and creates nothing: the
   core's create takes no picture.
+- A vote in a channel poll without `pollServerId` looks for the poll in the
+  channel's last 300 messages (three history reads at most) and answers 422
+  when it is older; GOWS looks in its own storage. The vote's `id` is the
+  vote stanza's, since a vote puts no message in the channel. A vote for a
+  name the poll does not spell exactly answers 400 when the edge knows the
+  options; with `pollServerId` for a poll it has never seen, the names are
+  hashed as given. NOWEB has no vote at all (501).
 - Quoted media in `replyTo` is never downloaded (`media: null`).
 - The LID list holds only mappings that have both sides.
 
@@ -158,10 +165,6 @@ account's profile and API keys.
 Operations the core has no mechanism for answer WAHA's 501, as GOWS itself
 does for several of them (delete group, for one). The list is
 [coverage.md](coverage.md).
-
-Voting in a channel poll (`POST /api/sendPollVote` with a `@newsletter`
-chat) answers 501: the core votes there by the poll's server id with hashed
-options, and this edge keeps neither.
 
 Block and unblock, profile status, the group approval and add modes, the
 channel writes and call rejection use RPCs added in wamux v0.2.1. Against a

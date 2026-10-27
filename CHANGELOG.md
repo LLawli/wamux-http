@@ -6,6 +6,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `POST /api/sendPollVote` votes in a channel poll (#2). The poll is found by
+  its message id in the channel's last 300 messages, or named directly by
+  WAHA's `pollServerId`. Each option is sent as the hash of its name exactly
+  as the poll spells it, so a name retyped without its emoji variation
+  selector or ZWJ answers 400. Every vote carries the whole selection, and an
+  empty `votes` removes the vote.
+
 ## [0.1.2] - 2026-10-26
 
 ### Added
