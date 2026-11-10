@@ -823,6 +823,8 @@ func (x *PairingQrCodesExhaustedInfo) GetDisconnected() bool {
 // PairWithQr and PairWithCode end after `paired`, `error`, `code_error`,
 // `code_refresh`, or `qr_codes_exhausted` with `disconnected` true: nothing
 // more can come on that flow (#150). Asking again is the caller's decision.
+// The stream also ends with no terminal update when the daemon shuts down
+// (#247); the caller can ask again once it is back.
 type PairingUpdate struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Event:

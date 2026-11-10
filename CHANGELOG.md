@@ -14,6 +14,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   as the poll spells it, so a name retyped without its emoji variation
   selector or ZWJ answers 400. Every vote carries the whole selection, and an
   empty `votes` removes the vote.
+- A reply (`reply_to` on `sendText`, the media sends and `sendContactVcard`)
+  carries the quoted message's content when the edge stored it, so a
+  receiver that does not hold the original still shows what was quoted, as
+  GOWS does. Needs wamux v0.2.4.
+
+### Changed
+
+- The wamux contract is v0.2.4, and the reference `compose.yaml` runs the
+  core v0.2.4, whose image ships its own `/tmp`.
 
 ### Fixed
 
@@ -27,9 +36,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - An event from the core over 4 MiB (a history sync, 4.67 MB measured)
   broke the session's event stream, losing it. The edge now takes up to
   256 MiB.
-- The reference `compose.yaml` gives the core a `/tmp`. The core image has
-  none, and without it the core's SQLite store failed right after pairing,
-  so the session never reached `WORKING`.
 
 ## [0.1.2] - 2026-10-26
 

@@ -10,7 +10,7 @@
 # WAMUX_IMAGE stays on the core version proto/WAMUX_VERSION names.
 services:
   wamux:
-    image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.2}
+    image: ${WAMUX_IMAGE:-ghcr.io/llawli/wamux:v0.2.4}
     restart: unless-stopped
     # The core runs as uid and gid 10001 and owns /run/wamux and
     # /var/lib/wamux; the spool lives under the latter.
@@ -18,11 +18,6 @@ services:
       WAMUX_SOCKET_PATH: /run/wamux/wamux.sock
       WAMUX_DATABASE_URL: sqlite:///var/lib/wamux/wamux.db
       WAMUX_MEDIA_SPOOL_DIR: /var/lib/wamux/spool
-    # The image has no /tmp, and SQLite needs one for its temporary journals:
-    # without it the store fails right after pairing (SQLITE_IOERR_GETTEMPPATH)
-    # and the session never reaches WORKING.
-    tmpfs:
-      - /tmp:mode=1777
     volumes:
       - wamux-run:/run/wamux
       - wamux-data:/var/lib/wamux

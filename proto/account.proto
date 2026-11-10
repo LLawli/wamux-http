@@ -117,6 +117,8 @@ enum PairCodeRejection {
 // PairWithQr and PairWithCode end after `paired`, `error`, `code_error`,
 // `code_refresh`, or `qr_codes_exhausted` with `disconnected` true: nothing
 // more can come on that flow (#150). Asking again is the caller's decision.
+// The stream also ends with no terminal update when the daemon shuts down
+// (#247); the caller can ask again once it is back.
 message PairingUpdate {
   oneof event {
     string qr_code = 1;
@@ -133,10 +135,26 @@ service AccountService {
   rpc CreateAccount(CreateAccountRequest) returns (Account);
   rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
   rpc GetAccountStatus(AccountRef) returns (AccountStatus);
+  // A connect that fails fails this call itself, with the Status ConnectAccount
+  // gives, before any stream exists (#250).
+  // An account with a stored identity (paired or logged out) gets
+  // FailedPrecondition: it would log in, and no QR or code would ever come
+  // (#253). To pair again, DeleteAccount and CreateAccount; pass the same
+  // external_ref to keep addressing it by that ref. Only the uuid changes.
   rpc PairWithQr(PairWithQrRequest) returns (stream PairingUpdate);
+  // A connect that fails fails this call itself, with the Status ConnectAccount
+  // gives, before any stream exists (#250).
+  // An account with a stored identity (paired or logged out) gets
+  // FailedPrecondition: it would log in, and no QR or code would ever come
+  // (#253). To pair again, DeleteAccount and CreateAccount; pass the same
+  // external_ref to keep addressing it by that ref. Only the uuid changes.
   rpc PairWithCode(PairWithCodeRequest) returns (stream PairingUpdate);
   rpc ConnectAccount(ConnectAccountRequest) returns (AccountStatus);
   rpc DisconnectAccount(AccountRef) returns (AccountStatus);
+  // Unlinks the device but keeps the account row and its stored identity,
+  // so the account cannot pair again (see PairWithQr). The core keeps no
+  // reset of its own: delete and create compose it, and external_ref
+  // carries the caller's key across (#255).
   rpc Logout(AccountRef) returns (Empty);
   rpc DeleteAccount(AccountRef) returns (Empty);
 }

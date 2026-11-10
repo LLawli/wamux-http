@@ -166,6 +166,42 @@ func TestReplyToStoredMessage(t *testing.T) {
 	}
 }
 
+// A reply carries the quoted message's own content when this edge stored
+// it, so a receiver that does not hold the original still shows the quote.
+func TestReplyCarriesQuotedMessage(t *testing.T) {
+	e := working(t)
+	original, _ := proto.Marshal(&waE2E.Message{Conversation: proto.String("original")})
+	putMessage(t, e, waha.MessageID{Chat: peer, ID: "3EB0ORIG"}, &pb.InboundMessage{Sender: &pb.Jid{Value: peerJ}, RawMessage: original}, 2, time.Now().UnixMilli())
+	var img bytes.Buffer
+	_ = png.Encode(&img, image.NewRGBA(image.Rect(0, 0, 8, 8)))
+	for _, replyTo := range []string{"3EB0ORIG", "3EB0UNKNOWN"} {
+		want := original
+		if replyTo == "3EB0UNKNOWN" {
+			want = nil // not stored: the quote goes alone, as before
+		}
+		sends := []struct {
+			path string
+			body map[string]any
+			got  func() []byte
+		}{
+			{"/api/sendText", map[string]any{"text": "re"}, func() []byte { return last[*pb.SendTextRequest](t, e).GetQuotedMessage() }},
+			{"/api/sendImage", map[string]any{"file": map[string]any{"data": base64.StdEncoding.EncodeToString(img.Bytes())}},
+				func() []byte { return last[*pb.SendMediaHeader](t, e).GetQuotedMessage() }},
+			{"/api/sendContactVcard", map[string]any{"contacts": []any{map[string]any{"fullName": "Ana", "phoneNumber": "+55 11 98888-7777"}}},
+				func() []byte { return last[*pb.SendContactRequest](t, e).GetQuotedMessage() }},
+		}
+		for _, send := range sends {
+			send.body["session"], send.body["chatId"], send.body["reply_to"] = "default", peer, replyTo
+			if r := e.Do("POST", send.path, send.body); r.Status != 201 {
+				t.Fatalf("%s: %d %s", send.path, r.Status, r.Body)
+			}
+			if got := send.got(); !bytes.Equal(got, want) {
+				t.Fatalf("%s replying to %s: quoted_message %x, want %x", send.path, replyTo, got, want)
+			}
+		}
+	}
+}
+
 // A reply_to whose message is in another chat quotes it there: the core
 // sends a private reply to a group message, or a reply to a status.
 func TestReplyToAnotherChat(t *testing.T) {

@@ -346,7 +346,7 @@ func (s *Server) doSendText(c *Ctx, req textRequest, status int, preview *pb.Lin
 	if err != nil {
 		return err
 	}
-	q, _, err := s.quote(c, to, req.ReplyTo)
+	q, raw, err := s.quote(c, to, req.ReplyTo)
 	if err != nil {
 		return err
 	}
@@ -354,7 +354,7 @@ func (s *Server) doSendText(c *Ctx, req textRequest, status int, preview *pb.Lin
 		preview = s.Media.LinkPreview(c.R.Context(), req.Text)
 	}
 	res, err := s.Core.Messaging.SendText(c.R.Context(), &pb.SendTextRequest{
-		Account: acc, To: to, Text: req.Text, Mentions: ms, Quote: q, LinkPreview: preview,
+		Account: acc, To: to, Text: req.Text, Mentions: ms, Quote: q, QuotedMessage: raw, LinkPreview: preview,
 	})
 	if err != nil {
 		return err
@@ -477,7 +477,7 @@ func (s *Server) sendMediaAs(kind media.Kind) Handler {
 		if err != nil {
 			return err
 		}
-		q, _, err := s.quote(c, to, req.ReplyTo)
+		q, raw, err := s.quote(c, to, req.ReplyTo)
 		if err != nil {
 			return err
 		}
@@ -488,7 +488,7 @@ func (s *Server) sendMediaAs(kind media.Kind) Handler {
 		}
 		hdr := &pb.SendMediaHeader{
 			Account: acc, To: to, MimeType: blob.Mimetype, Caption: req.Caption,
-			Mentions: ms, Quote: q, Filename: blob.Filename,
+			Mentions: ms, Quote: q, QuotedMessage: raw, Filename: blob.Filename,
 		}
 		conv := s.Media.Converter()
 		switch kind {
@@ -636,7 +636,7 @@ func (s *Server) sendContactVcard(c *Ctx) error {
 	if err != nil {
 		return err
 	}
-	q, _, err := s.quote(c, to, req.ReplyTo)
+	q, raw, err := s.quote(c, to, req.ReplyTo)
 	if err != nil {
 		return err
 	}
@@ -644,7 +644,7 @@ func (s *Server) sendContactVcard(c *Ctx) error {
 	for _, ct := range req.Contacts {
 		name, vcard := ct.card()
 		if res, err = s.Core.Messaging.SendContact(c.R.Context(), &pb.SendContactRequest{
-			Account: acc, To: to, DisplayName: name, Vcard: vcard, Quote: q,
+			Account: acc, To: to, DisplayName: name, Vcard: vcard, Quote: q, QuotedMessage: raw,
 		}); err != nil {
 			return err
 		}

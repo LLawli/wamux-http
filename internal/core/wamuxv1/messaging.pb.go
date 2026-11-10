@@ -180,8 +180,14 @@ type SendTextRequest struct {
 	// supplies the chat's current disappearing-messages setting; the core never
 	// tracks or decides durations.
 	EphemeralSeconds uint32 `protobuf:"varint,7,opt,name=ephemeral_seconds,json=ephemeralSeconds,proto3" json:"ephemeral_seconds,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The quoted message's own payload, a serialized `wa.Message` (#230): relayed
+	// as `ContextInfo.quotedMessage` with the quote, so a receiver that does not
+	// hold the original still shows what was quoted. Empty sends none. The core
+	// looks nothing up. Bytes with no `quote.quoted` are InvalidArgument, and so
+	// are bytes that are not a `wa.Message`.
+	QuotedMessage []byte `protobuf:"bytes,8,opt,name=quoted_message,json=quotedMessage,proto3" json:"quoted_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SendTextRequest) Reset() {
@@ -261,6 +267,13 @@ func (x *SendTextRequest) GetEphemeralSeconds() uint32 {
 		return x.EphemeralSeconds
 	}
 	return 0
+}
+
+func (x *SendTextRequest) GetQuotedMessage() []byte {
+	if x != nil {
+		return x.QuotedMessage
+	}
+	return nil
 }
 
 type SendResult struct {
@@ -429,7 +442,13 @@ type SendMediaHeader struct {
 	// Video note (PTV, the round "instant video"): when media_type is VIDEO and
 	// ptv=true, the built VideoMessage ships as Message.ptv_message instead of
 	// video_message. The edge supplies a square clip; the core does not transcode.
-	Ptv           bool `protobuf:"varint,15,opt,name=ptv,proto3" json:"ptv,omitempty"`
+	Ptv bool `protobuf:"varint,15,opt,name=ptv,proto3" json:"ptv,omitempty"`
+	// The quoted message's own payload, a serialized `wa.Message` (#230): relayed
+	// as `ContextInfo.quotedMessage` with the quote, so a receiver that does not
+	// hold the original still shows what was quoted. Empty sends none. The core
+	// looks nothing up. Bytes with no `quote.quoted` are InvalidArgument, and so
+	// are bytes that are not a `wa.Message`.
+	QuotedMessage []byte `protobuf:"bytes,17,opt,name=quoted_message,json=quotedMessage,proto3" json:"quoted_message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -553,6 +572,13 @@ func (x *SendMediaHeader) GetPtv() bool {
 		return x.Ptv
 	}
 	return false
+}
+
+func (x *SendMediaHeader) GetQuotedMessage() []byte {
+	if x != nil {
+		return x.QuotedMessage
+	}
+	return nil
 }
 
 type SendMediaChunk struct {
@@ -1403,12 +1429,18 @@ func (x *DeleteChatRequest) GetDeleteMedia() bool {
 }
 
 type SendContactRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Account       *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-	To            *Jid                   `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
-	Vcard         string                 `protobuf:"bytes,4,opt,name=vcard,proto3" json:"vcard,omitempty"`
-	Quote         *QuoteContext          `protobuf:"bytes,5,opt,name=quote,proto3" json:"quote,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Account     *AccountRef            `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	To          *Jid                   `protobuf:"bytes,2,opt,name=to,proto3" json:"to,omitempty"`
+	DisplayName string                 `protobuf:"bytes,3,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Vcard       string                 `protobuf:"bytes,4,opt,name=vcard,proto3" json:"vcard,omitempty"`
+	Quote       *QuoteContext          `protobuf:"bytes,5,opt,name=quote,proto3" json:"quote,omitempty"`
+	// The quoted message's own payload, a serialized `wa.Message` (#230): relayed
+	// as `ContextInfo.quotedMessage` with the quote, so a receiver that does not
+	// hold the original still shows what was quoted. Empty sends none. The core
+	// looks nothing up. Bytes with no `quote.quoted` are InvalidArgument, and so
+	// are bytes that are not a `wa.Message`.
+	QuotedMessage []byte `protobuf:"bytes,6,opt,name=quoted_message,json=quotedMessage,proto3" json:"quoted_message,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1474,6 +1506,13 @@ func (x *SendContactRequest) GetVcard() string {
 func (x *SendContactRequest) GetQuote() *QuoteContext {
 	if x != nil {
 		return x.Quote
+	}
+	return nil
+}
+
+func (x *SendContactRequest) GetQuotedMessage() []byte {
+	if x != nil {
+		return x.QuotedMessage
 	}
 	return nil
 }
@@ -2758,7 +2797,7 @@ const file_messaging_proto_rawDesc = "" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12%\n" +
 	"\x0ejpeg_thumbnail\x18\x04 \x01(\fR\rjpegThumbnail\x12!\n" +
-	"\fpreview_type\x18\x05 \x01(\x05R\vpreviewType\"\xb8\x02\n" +
+	"\fpreview_type\x18\x05 \x01(\x05R\vpreviewType\"\xdf\x02\n" +
 	"\x0fSendTextRequest\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x1d\n" +
 	"\x02to\x18\x02 \x01(\v2\r.wamux.v1.JidR\x02to\x12\x12\n" +
@@ -2766,7 +2805,8 @@ const file_messaging_proto_rawDesc = "" +
 	"\bmentions\x18\x04 \x03(\v2\x11.wamux.v1.MentionR\bmentions\x12,\n" +
 	"\x05quote\x18\x05 \x01(\v2\x16.wamux.v1.QuoteContextR\x05quote\x128\n" +
 	"\flink_preview\x18\x06 \x01(\v2\x15.wamux.v1.LinkPreviewR\vlinkPreview\x12+\n" +
-	"\x11ephemeral_seconds\x18\a \x01(\rR\x10ephemeralSeconds\"\xa5\x01\n" +
+	"\x11ephemeral_seconds\x18\a \x01(\rR\x10ephemeralSeconds\x12%\n" +
+	"\x0equoted_message\x18\b \x01(\fR\rquotedMessage\"\xa5\x01\n" +
 	"\n" +
 	"SendResult\x12&\n" +
 	"\x03key\x18\x01 \x01(\v2\x14.wamux.v1.MessageKeyR\x03key\x12)\n" +
@@ -2776,7 +2816,7 @@ const file_messaging_proto_rawDesc = "" +
 	"\taddressed\x18\x01 \x01(\rR\taddressed\x12\x1c\n" +
 	"\tencrypted\x18\x02 \x01(\rR\tencrypted\x12'\n" +
 	"\x0fskipped_primary\x18\x03 \x01(\bR\x0eskippedPrimary\x126\n" +
-	"\x17had_unregistered_device\x18\x04 \x01(\bR\x15hadUnregisteredDevice\"\xf2\x03\n" +
+	"\x17had_unregistered_device\x18\x04 \x01(\bR\x15hadUnregisteredDevice\"\x99\x04\n" +
 	"\x0fSendMediaHeader\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x1d\n" +
 	"\x02to\x18\x02 \x01(\v2\r.wamux.v1.JidR\x02to\x12\x1b\n" +
@@ -2792,7 +2832,8 @@ const file_messaging_proto_rawDesc = "" +
 	"\aseconds\x18\f \x01(\rR\aseconds\x12\x1a\n" +
 	"\bwaveform\x18\r \x01(\fR\bwaveform\x12+\n" +
 	"\x11ephemeral_seconds\x18\x0e \x01(\rR\x10ephemeralSeconds\x12\x10\n" +
-	"\x03ptv\x18\x0f \x01(\bR\x03ptvJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\t\x10\n" +
+	"\x03ptv\x18\x0f \x01(\bR\x03ptv\x12%\n" +
+	"\x0equoted_message\x18\x11 \x01(\fR\rquotedMessageJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\t\x10\n" +
 	"R\x06inlineR\x03urlR\x06source\"e\n" +
 	"\x0eSendMediaChunk\x123\n" +
 	"\x06header\x18\x01 \x01(\v2\x19.wamux.v1.SendMediaHeaderH\x00R\x06header\x12\x16\n" +
@@ -2850,13 +2891,14 @@ const file_messaging_proto_rawDesc = "" +
 	"\x11DeleteChatRequest\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12!\n" +
 	"\x04chat\x18\x02 \x01(\v2\r.wamux.v1.JidR\x04chat\x12!\n" +
-	"\fdelete_media\x18\x03 \x01(\bR\vdeleteMedia\"\xca\x01\n" +
+	"\fdelete_media\x18\x03 \x01(\bR\vdeleteMedia\"\xf1\x01\n" +
 	"\x12SendContactRequest\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x1d\n" +
 	"\x02to\x18\x02 \x01(\v2\r.wamux.v1.JidR\x02to\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12\x14\n" +
 	"\x05vcard\x18\x04 \x01(\tR\x05vcard\x12,\n" +
-	"\x05quote\x18\x05 \x01(\v2\x16.wamux.v1.QuoteContextR\x05quote\"\xb9\x01\n" +
+	"\x05quote\x18\x05 \x01(\v2\x16.wamux.v1.QuoteContextR\x05quote\x12%\n" +
+	"\x0equoted_message\x18\x06 \x01(\fR\rquotedMessage\"\xb9\x01\n" +
 	"\x0fSendPollRequest\x12.\n" +
 	"\aaccount\x18\x01 \x01(\v2\x14.wamux.v1.AccountRefR\aaccount\x12\x1d\n" +
 	"\x02to\x18\x02 \x01(\v2\r.wamux.v1.JidR\x02to\x12\x12\n" +

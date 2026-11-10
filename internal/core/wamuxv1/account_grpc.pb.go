@@ -37,10 +37,26 @@ type AccountServiceClient interface {
 	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*Account, error)
 	ListAccounts(ctx context.Context, in *ListAccountsRequest, opts ...grpc.CallOption) (*ListAccountsResponse, error)
 	GetAccountStatus(ctx context.Context, in *AccountRef, opts ...grpc.CallOption) (*AccountStatus, error)
+	// A connect that fails fails this call itself, with the Status ConnectAccount
+	// gives, before any stream exists (#250).
+	// An account with a stored identity (paired or logged out) gets
+	// FailedPrecondition: it would log in, and no QR or code would ever come
+	// (#253). To pair again, DeleteAccount and CreateAccount; pass the same
+	// external_ref to keep addressing it by that ref. Only the uuid changes.
 	PairWithQr(ctx context.Context, in *PairWithQrRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PairingUpdate], error)
+	// A connect that fails fails this call itself, with the Status ConnectAccount
+	// gives, before any stream exists (#250).
+	// An account with a stored identity (paired or logged out) gets
+	// FailedPrecondition: it would log in, and no QR or code would ever come
+	// (#253). To pair again, DeleteAccount and CreateAccount; pass the same
+	// external_ref to keep addressing it by that ref. Only the uuid changes.
 	PairWithCode(ctx context.Context, in *PairWithCodeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[PairingUpdate], error)
 	ConnectAccount(ctx context.Context, in *ConnectAccountRequest, opts ...grpc.CallOption) (*AccountStatus, error)
 	DisconnectAccount(ctx context.Context, in *AccountRef, opts ...grpc.CallOption) (*AccountStatus, error)
+	// Unlinks the device but keeps the account row and its stored identity,
+	// so the account cannot pair again (see PairWithQr). The core keeps no
+	// reset of its own: delete and create compose it, and external_ref
+	// carries the caller's key across (#255).
 	Logout(ctx context.Context, in *AccountRef, opts ...grpc.CallOption) (*Empty, error)
 	DeleteAccount(ctx context.Context, in *AccountRef, opts ...grpc.CallOption) (*Empty, error)
 }
@@ -168,10 +184,26 @@ type AccountServiceServer interface {
 	CreateAccount(context.Context, *CreateAccountRequest) (*Account, error)
 	ListAccounts(context.Context, *ListAccountsRequest) (*ListAccountsResponse, error)
 	GetAccountStatus(context.Context, *AccountRef) (*AccountStatus, error)
+	// A connect that fails fails this call itself, with the Status ConnectAccount
+	// gives, before any stream exists (#250).
+	// An account with a stored identity (paired or logged out) gets
+	// FailedPrecondition: it would log in, and no QR or code would ever come
+	// (#253). To pair again, DeleteAccount and CreateAccount; pass the same
+	// external_ref to keep addressing it by that ref. Only the uuid changes.
 	PairWithQr(*PairWithQrRequest, grpc.ServerStreamingServer[PairingUpdate]) error
+	// A connect that fails fails this call itself, with the Status ConnectAccount
+	// gives, before any stream exists (#250).
+	// An account with a stored identity (paired or logged out) gets
+	// FailedPrecondition: it would log in, and no QR or code would ever come
+	// (#253). To pair again, DeleteAccount and CreateAccount; pass the same
+	// external_ref to keep addressing it by that ref. Only the uuid changes.
 	PairWithCode(*PairWithCodeRequest, grpc.ServerStreamingServer[PairingUpdate]) error
 	ConnectAccount(context.Context, *ConnectAccountRequest) (*AccountStatus, error)
 	DisconnectAccount(context.Context, *AccountRef) (*AccountStatus, error)
+	// Unlinks the device but keeps the account row and its stored identity,
+	// so the account cannot pair again (see PairWithQr). The core keeps no
+	// reset of its own: delete and create compose it, and external_ref
+	// carries the caller's key across (#255).
 	Logout(context.Context, *AccountRef) (*Empty, error)
 	DeleteAccount(context.Context, *AccountRef) (*Empty, error)
 	mustEmbedUnimplementedAccountServiceServer()
