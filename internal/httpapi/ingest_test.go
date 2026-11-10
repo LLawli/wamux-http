@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -692,4 +693,46 @@ func TestIngestContactsAndEngineEvents(t *testing.T) {
 	if n := len(star.Events("engine.event")); n != 0 {
 		t.Fatalf("a '*' webhook got %d engine.event", n)
 	}
+}
+
+// A receipt names the peer by its LID even for a message sent to its phone
+// number. My edit, revoke and reaction are not stored as messages, so their
+// acks name each one as its own event did, not by the receipt's chat (#3).
+func TestIngestAckOfMyProtocolMessageNamesItsEvent(t *testing.T) {
+	ie := startIngest(t, testenv.Options{}, nil)
+	const peerLID = "123456789012345@lid"
+	ie.emitMsg(text(t, peerJID, meJID, "ORIG", "antes", true))
+	ie.wait("message.any", byID("true_"+peerID+"_ORIG"))
+
+	ie.emitMsg(&pb.InboundMessage{
+		Key: &pb.MessageKey{Chat: jid(peerJID), Id: "E1", FromMe: true}, Chat: jid(peerJID), Sender: jid(meJID),
+		IsEdit: true, Text: "depois", ProtocolTarget: &pb.MessageKey{Chat: jid(peerJID), Id: "ORIG", FromMe: true},
+	})
+	ie.wait("message.edited", byID("true_"+peerID+"_E1"))
+	ie.emitMsg(&pb.InboundMessage{
+		Key: &pb.MessageKey{Chat: jid(peerJID), Id: "R1", FromMe: true}, Chat: jid(peerJID), Sender: jid(meJID),
+		Timestamp: time.Now().UnixMilli(), Reaction: "👍", ReactionTarget: &pb.MessageKey{Chat: jid(peerJID), Id: "ORIG", FromMe: true},
+	})
+	ie.wait("message.reaction", byID("true_"+peerID+"_R1"))
+	ie.emitMsg(&pb.InboundMessage{
+		Key: &pb.MessageKey{Chat: jid(peerJID), Id: "D1", FromMe: true}, Chat: jid(peerJID), Sender: jid(meJID),
+		IsDelete: true, ProtocolTarget: &pb.MessageKey{Chat: jid(peerJID), Id: "ORIG", FromMe: true},
+	})
+	ie.wait("message.revoked", func(p map[string]any) bool { return p["revokedMessageId"] == "ORIG" })
+
+	for _, id := range []string{"E1", "R1", "D1"} {
+		ie.emit(&pb.EventEnvelope{Event: &pb.EventEnvelope_Receipt{Receipt: &pb.ReceiptEvent{
+			Chat: jid("123456789012345:16@lid"), Sender: jid("123456789012345:16@lid"), MessageIds: []string{id}, Type: pb.ReceiptType_RECEIPT_TYPE_DELIVERED}}})
+	}
+	for _, id := range []string{"E1", "R1", "D1"} {
+		a := ie.wait("message.ack", func(p map[string]any) bool { return strings.HasSuffix(p["id"].(string), "_"+id) })
+		if a["id"] != "true_"+peerID+"_"+id || a["from"] != peerID {
+			t.Fatalf("ack of %s: %v", id, a)
+		}
+	}
+
+	// An id the edge never published keeps the receipt's chat, as GOWS does.
+	ie.emit(&pb.EventEnvelope{Event: &pb.EventEnvelope_Receipt{Receipt: &pb.ReceiptEvent{
+		Chat: jid(peerLID), Sender: jid(peerLID), MessageIds: []string{"ELSEWHERE"}, Type: pb.ReceiptType_RECEIPT_TYPE_DELIVERED}}})
+	ie.wait("message.ack", byID("true_"+peerLID+"_ELSEWHERE"))
 }

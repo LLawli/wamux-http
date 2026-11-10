@@ -36,6 +36,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   session started right after a logout could be stopped again. What the
   session's follower writes, and the `session.status` it publishes, now
   apply only while the session is still in the start it serves.
+- The `message.ack` of my own edit, revoke, reaction or poll vote named the
+  peer's LID chat when its event had named the phone chat, because the
+  receipt names the peer by LID (#3). Each ack now names the id its event
+  went out under.
 - Logging out or deleting a session left the device in the phone's linked
   devices: the edge stopped the session before asking the core to log out,
   and the core logs out only a connected account. The logout now comes

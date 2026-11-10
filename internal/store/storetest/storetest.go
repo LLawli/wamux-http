@@ -432,7 +432,21 @@ func purge(t *testing.T, s store.Store) {
 		must(t, s.UpsertMessages(ctx, []store.Message{{Session: name, ID: "m", WAID: "m", ChatID: "1@c.us", Body: json.RawMessage(`{}`)}}))
 		must(t, s.UpsertChat(ctx, store.Chat{Session: name, ID: "1@c.us"}))
 	}
+	must(t, s.PutMessageAlias(ctx, "p", "E1", "true_1@c.us_E1"))
+	must(t, s.PutMessageAlias(ctx, "q", "E1", "true_2@c.us_E1"))
+	if id, err := s.MessageAlias(ctx, "p", "E1"); err != nil || id != "true_1@c.us_E1" {
+		t.Fatalf("alias: %q %v", id, err)
+	}
+	if _, err := s.MessageAlias(ctx, "p", "E2"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("missing alias: %v", err)
+	}
 	must(t, s.PurgeSession(ctx, "p"))
+	if _, err := s.MessageAlias(ctx, "p", "E1"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("purge kept the alias: %v", err)
+	}
+	if id, err := s.MessageAlias(ctx, "q", "E1"); err != nil || id != "true_2@c.us_E1" {
+		t.Fatalf("purge touched another session's alias: %q %v", id, err)
+	}
 	if _, err := s.GetSession(ctx, "p"); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("purged session: %v", err)
 	}

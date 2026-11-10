@@ -575,4 +575,4 @@ func nowMs() int64 { return time.Now().UnixMilli() }
 // that adds one adds it here. The event log and the outbox are left alone:
 // deleting a session publishes a last session.status, which must still go
 // out, and the log's retention removes the rest.
-var purgeTables = []string{"messages", "chats", "contacts", "labels", "chat_labels", "poll_secrets", "status_posts", "presences"}
+var purgeTables = []string{"messages", "chats", "contacts", "labels", "chat_labels", "poll_secrets", "status_posts", "presences", "message_aliases"}

@@ -56,6 +56,20 @@ func (s *Store) GetMessageByWAID(ctx context.Context, session, waID string) (sto
 	return m, notFound(err)
 }
 
+// PutMessageAlias records the id an unstored event of mine went out under.
+func (s *Store) PutMessageAlias(ctx context.Context, session, waID, id string) error {
+	_, err := s.db.ExecContext(ctx, `INSERT INTO message_aliases (session, wa_id, id) VALUES (?,?,?)
+		ON CONFLICT (session, wa_id) DO UPDATE SET id = excluded.id`, session, waID, id)
+	return err
+}
+
+// MessageAlias returns the id recorded for waID.
+func (s *Store) MessageAlias(ctx context.Context, session, waID string) (string, error) {
+	var id string
+	err := s.db.QueryRowContext(ctx, `SELECT id FROM message_aliases WHERE session = ? AND wa_id = ?`, session, waID).Scan(&id)
+	return id, notFound(err)
+}
+
 // ListMessages pages one chat's messages (every chat's for ""), newest first
 // unless Ascending.
 func (s *Store) ListMessages(ctx context.Context, session, chatID string, f store.MessageFilter) ([]store.Message, error) {

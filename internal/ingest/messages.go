@@ -136,11 +136,20 @@ func (p *Processor) reaction(ctx context.Context, sess store.Session, mc waha.Me
 			text = rm.GetText()
 		}
 	}
-	if !publish {
+	msg := waha.NewMessage(m, mc)
+	if err := p.alias(ctx, sess, m, msg.ID); err != nil || !publish {
+		return err
+	}
+	return p.publish(ctx, sess, "message.reaction", waha.NewReaction(msg, waha.ReactionTargetID(target, mc.Me), text))
+}
+
+// alias records the id my own unstored event went out under, so its
+// receipts, which may name the peer by LID, ack that same id.
+func (p *Processor) alias(ctx context.Context, sess store.Session, m *pb.InboundMessage, id string) error {
+	if !m.GetKey().GetFromMe() || m.GetKey().GetId() == "" {
 		return nil
 	}
-	msg := waha.NewMessage(m, mc)
-	return p.publish(ctx, sess, "message.reaction", waha.NewReaction(msg, waha.ReactionTargetID(target, mc.Me), text))
+	return p.Store.PutMessageAlias(ctx, sess.Name, m.GetKey().GetId(), id)
 }
 
 // keyFromWA converts a raw WhatsApp message key to the core's.
@@ -178,6 +187,9 @@ func (p *Processor) edited(ctx context.Context, sess store.Session, mc waha.Mess
 		}
 	}
 	msg.Body = &text
+	if err := p.alias(ctx, sess, m, msg.ID); err != nil {
+		return err
+	}
 	target := protocolTarget(m, content)
 	if orig, err := p.Store.GetMessageByWAID(ctx, sess.Name, target); err == nil {
 		var om waha.Message
@@ -204,6 +216,9 @@ func (p *Processor) edited(ctx context.Context, sess store.Session, mc waha.Mess
 func (p *Processor) revoked(ctx context.Context, sess store.Session, mc waha.MessageContext, m *pb.InboundMessage, content *waE2E.Message, publish bool) error {
 	target := protocolTarget(m, content)
 	payload := waha.RevokedPayload{After: waha.NewMessage(m, mc), RevokedMessageID: target, Data: waha.ProtoJSON(m)}
+	if err := p.alias(ctx, sess, m, payload.After.ID); err != nil {
+		return err
+	}
 	if orig, err := p.Store.GetMessageByWAID(ctx, sess.Name, target); err == nil {
 		var before waha.Message
 		if json.Unmarshal(orig.Body, &before) == nil {
@@ -225,11 +240,11 @@ func (p *Processor) revoked(ctx context.Context, sess store.Session, mc waha.Mes
 // derivation needs) and publishes poll.vote, or poll.vote.failed when the
 // poll or its secret is unknown or the vote does not open.
 func (p *Processor) pollVote(ctx context.Context, sess store.Session, mc waha.MessageContext, m *pb.InboundMessage, content *waE2E.Message, publish bool) error {
-	if !publish {
-		return nil
-	}
 	upd := content.GetPollUpdateMessage()
 	voteID := waha.InboundID(m, mc.Me)
+	if err := p.alias(ctx, sess, m, voteID.String()); err != nil || !publish {
+		return err
+	}
 	pk := upd.GetPollCreationMessageKey()
 	pollID := waha.PollKey(voteID.Chat, voteID.FromMe, pk.GetRemoteJID(), pk.GetFromMe(), pk.GetID(), pk.GetParticipant(), mc.Me)
 	vote := waha.PollVote{

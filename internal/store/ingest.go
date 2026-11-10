@@ -101,6 +101,11 @@ type IngestStore interface {
 	SetAck(ctx context.Context, session string, waIDs []string, ack int) error
 	DeleteMessage(ctx context.Context, session, id string) error
 	DeleteChatMessages(ctx context.Context, session, chatID string) error
+	// PutMessageAlias records the serialized id an event of mine that is not
+	// stored as a message (an edit, a revoke, a reaction, a poll vote) went
+	// out under; MessageAlias returns it by WhatsApp id.
+	PutMessageAlias(ctx context.Context, session, waID, id string) error
+	MessageAlias(ctx context.Context, session, waID string) (string, error)
 
 	UpsertChat(ctx context.Context, c Chat) error
 	GetChat(ctx context.Context, session, id string) (Chat, error)

@@ -55,11 +55,17 @@ func (p *Processor) setAck(ctx context.Context, session string, waIDs []string, 
 }
 
 // ackedID is the serialized id of an acked message: the stored one when the
-// edge has it, else my message in that chat, as GOWS builds it (a receipt
-// is about a message I sent; in a group the participant is me).
+// edge has it, or the one my unstored edit, revoke, reaction or vote went
+// out under, else my message in that chat, as GOWS builds it (a receipt is
+// about a message I sent; in a group the participant is me).
 func (p *Processor) ackedID(ctx context.Context, session, waID, chat string, me waha.Me) waha.MessageID {
 	if m, err := p.Store.GetMessageByWAID(ctx, session, waID); err == nil {
 		if id, err := waha.ParseMessageID(m.ID); err == nil {
+			return id
+		}
+	}
+	if alias, err := p.Store.MessageAlias(ctx, session, waID); err == nil {
+		if id, err := waha.ParseMessageID(alias); err == nil {
 			return id
 		}
 	}
