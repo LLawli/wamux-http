@@ -1,6 +1,8 @@
 package httpapi_test
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -145,9 +147,33 @@ func TestDeleteDeliversTheLastStatus(t *testing.T) {
 		t.Fatalf("delete: %d %s", r.Status, r.Body)
 	}
 	e.Eventually("STOPPED webhook", 5*time.Second, func() bool {
-		evs := hook.Events("session.status")
-		return len(evs) > 0 && evs[len(evs)-1]["payload"].(map[string]any)["status"] == "STOPPED"
+		for _, ev := range hook.Events("session.status") {
+			if ev["payload"].(map[string]any)["status"] == "STOPPED" {
+				return true
+			}
+		}
+		return false
 	})
+	// Deliveries run in parallel and may arrive in any order, so the order
+	// that counts is the store's: STOPPED is the last status, and the
+	// logout's own LOGGED_OUT, still in the runner, does not follow it as
+	// FAILED. Give that runner time to try.
+	time.Sleep(200 * time.Millisecond)
+	evs, err := e.App.Store.EventsAfter(context.Background(), 0, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var statuses []string
+	for _, ev := range evs {
+		if ev.Session == "default" && ev.Type == "session.status" {
+			var env struct{ Payload struct{ Status string } }
+			_ = json.Unmarshal(ev.Body, &env)
+			statuses = append(statuses, env.Payload.Status)
+		}
+	}
+	if len(statuses) == 0 || statuses[len(statuses)-1] != "STOPPED" {
+		t.Fatalf("statuses %v, want STOPPED last", statuses)
+	}
 }
 
 // An excluded path opens that path only, not the routes under it.
