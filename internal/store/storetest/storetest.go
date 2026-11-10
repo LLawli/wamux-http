@@ -65,6 +65,32 @@ func sessions(t *testing.T, s store.Store) {
 	if _, err := s.UpdateSession(ctx, "nope", store.SessionPatch{Started: &started}); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("patch missing: %v", err)
 	}
+	// IfStartedAt: a write for one start loses to a stop or another start.
+	at, other, failed := int64(500), int64(501), "FAILED"
+	_, err = s.UpdateSession(ctx, "default", store.SessionPatch{StartedAt: &at})
+	must(t, err)
+	_, err = s.UpdateSession(ctx, "default", store.SessionPatch{Status: &status, IfStartedAt: &at})
+	must(t, err)
+	if _, err := s.UpdateSession(ctx, "default", store.SessionPatch{Status: &failed, IfStartedAt: &other}); !errors.Is(err, store.ErrStale) {
+		t.Fatalf("patch for another start: %v", err)
+	}
+	if _, err := s.AppendEvent(ctx, store.Event{ID: "evt_stale", Session: "default", Type: "session.status", Body: json.RawMessage(`{}`), IfStartedAt: &other}, nil); !errors.Is(err, store.ErrStale) {
+		t.Fatalf("event for another start: %v", err)
+	}
+	stopped := false
+	_, err = s.UpdateSession(ctx, "default", store.SessionPatch{Started: &stopped})
+	must(t, err)
+	if _, err := s.UpdateSession(ctx, "default", store.SessionPatch{Status: &failed, IfStartedAt: &at}); !errors.Is(err, store.ErrStale) {
+		t.Fatalf("patch for a stopped start: %v", err)
+	}
+	if got, _ := s.GetSession(ctx, "default"); got.Status != "STARTING" {
+		t.Fatalf("a stale patch was written: %s", got.Status)
+	}
+	if evs, _ := s.EventsAfter(ctx, 0, 100); len(evs) != 0 {
+		t.Fatalf("a stale event was appended: %v", evs)
+	}
+	_, err = s.UpdateSession(ctx, "default", store.SessionPatch{Started: &started})
+	must(t, err)
 	must(t, s.SetEventCheckpoint(ctx, "default", 42, 1700))
 	if got, _ := s.GetSession(ctx, "default"); got.EventSeq != 42 || got.EventTS != 1700 {
 		t.Fatalf("checkpoint: %d %d", got.EventSeq, got.EventTS)

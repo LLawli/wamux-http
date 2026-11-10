@@ -34,6 +34,10 @@ type runner struct {
 // errReleased ends a runner whose session is no longer ours to run.
 var errReleased = errors.New("session released")
 
+// errStale ends a connection whose start was stopped or replaced while it
+// handled an event: run() looks again at once.
+var errStale = errors.New("session start replaced")
+
 func (r *runner) run(ctx context.Context) {
 	log := r.m.Log.With("session", r.name)
 	// The lease is renewed by its own loop, never by the one that processes
@@ -54,8 +58,8 @@ func (r *runner) run(ctx context.Context) {
 		if errors.Is(err, errReleased) || ctx.Err() != nil {
 			return
 		}
-		if restarted {
-			continue // started again: reconnect for the new start at once
+		if restarted || errors.Is(err, errStale) {
+			continue // stopped or started again: look again at once
 		}
 		r.backoff = min(max(r.backoff*2, reconnectMin), reconnectMax)
 		log.Warn("session stream ended, retrying", "err", err, "in", r.backoff)
@@ -116,6 +120,35 @@ func (r *runner) still(ctx context.Context) (store.Session, error) {
 		return s, errReleased
 	}
 	return s, nil
+}
+
+// update writes the session only while it is still in the start this
+// connection serves, so a stop or a start made meanwhile is never
+// overwritten by an event of the old start (a logout's own LOGGED_OUT
+// marking a deleted session FAILED after its STOPPED).
+func (r *runner) update(ctx context.Context, p store.SessionPatch) (store.Session, error) {
+	p.IfStartedAt = r.serving()
+	s, err := r.m.Store.UpdateSession(ctx, r.name, p)
+	if errors.Is(err, store.ErrStale) {
+		return s, errStale
+	}
+	return s, err
+}
+
+// setStatus is Manager.SetStatus for the start this connection serves.
+func (r *runner) setStatus(ctx context.Context, s store.Session, status string, data any) (store.Session, error) {
+	s, err := r.m.setStatus(ctx, s, status, data, r.serving())
+	if errors.Is(err, store.ErrStale) {
+		return s, errStale
+	}
+	return s, err
+}
+
+func (r *runner) serving() *int64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	at := r.followFor
+	return &at
 }
 
 // ensureAccount makes sure the core has an account for the session.
@@ -319,36 +352,36 @@ func (r *runner) applyState(ctx context.Context, s store.Session, state pb.Conne
 			}
 		}
 		noQR := ""
-		if s, err = r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{QR: &noQR}); err != nil {
+		if s, err = r.update(ctx, store.SessionPatch{QR: &noQR}); err != nil {
 			return s, err
 		}
 		if s.Status != StatusWorking {
-			return r.m.SetStatus(ctx, s, StatusWorking, workingData(s))
+			return r.setStatus(ctx, s, StatusWorking, workingData(s))
 		}
 	case pb.ConnectionState_CONNECTING:
 		if s.Status != StatusStarting && s.Status != StatusScanQR {
-			return r.m.SetStatus(ctx, s, StatusStarting, nil)
+			return r.setStatus(ctx, s, StatusStarting, nil)
 		}
 	case pb.ConnectionState_DISCONNECTED:
 		if s.Status != StatusStarting {
-			if s, err = r.m.SetStatus(ctx, s, StatusStarting, nil); err != nil {
+			if s, err = r.setStatus(ctx, s, StatusStarting, nil); err != nil {
 				return s, err
 			}
 		}
 		return s, errors.New("account disconnected")
 	case pb.ConnectionState_LOGGED_OUT, pb.ConnectionState_BANNED:
 		noQR := ""
-		if s, err = r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{QR: &noQR}); err != nil {
+		if s, err = r.update(ctx, store.SessionPatch{QR: &noQR}); err != nil {
 			return s, err
 		}
 		if s.Status != StatusFailed {
-			if s, err = r.m.SetStatus(ctx, s, StatusFailed, nil); err != nil {
+			if s, err = r.setStatus(ctx, s, StatusFailed, nil); err != nil {
 				return s, err
 			}
 		}
 		// Hand the session back: nothing reconnects a logged-out account.
 		stopped := false
-		_, err = r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{Started: &stopped})
+		_, err = r.update(ctx, store.SessionPatch{Started: &stopped})
 		if err != nil {
 			return s, err
 		}
@@ -367,17 +400,17 @@ func (r *runner) applyPairing(ctx context.Context, u *pb.PairingUpdate, env *pb.
 	switch ev := u.GetEvent().(type) {
 	case *pb.PairingUpdate_QrCode:
 		qr := ev.QrCode
-		s, err = r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{QR: &qr})
+		s, err = r.update(ctx, store.SessionPatch{QR: &qr})
 		if err != nil {
 			return s, err
 		}
 		// WAHA publishes SCAN_QR_CODE again on every new QR.
-		return r.m.SetStatus(ctx, s, StatusScanQR, nil)
+		return r.setStatus(ctx, s, StatusScanQR, nil)
 	case *pb.PairingUpdate_Paired:
 		r.lid = ev.Paired.GetLid().GetValue()
 		return r.setMe(ctx, s, ev.Paired.GetJid().GetValue(), "")
 	case *pb.PairingUpdate_Error, *pb.PairingUpdate_CodeError:
-		return r.m.SetStatus(ctx, s, StatusFailed, nil)
+		return r.setStatus(ctx, s, StatusFailed, nil)
 	case *pb.PairingUpdate_QrCodesExhausted:
 		if ev.QrCodesExhausted.GetDisconnected() {
 			return s, errors.New("QR codes exhausted")
@@ -457,11 +490,11 @@ func (r *runner) setTimelock(ctx context.Context, s store.Session, u *pb.Reachou
 		return s, err
 	}
 	rm := json.RawMessage(raw)
-	if s, err = r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{Me: &rm}); err != nil {
+	if s, err = r.update(ctx, store.SessionPatch{Me: &rm}); err != nil {
 		return s, err
 	}
 	if s.Status == StatusWorking {
-		return r.m.SetStatus(ctx, s, StatusWorking, workingData(s))
+		return r.setStatus(ctx, s, StatusWorking, workingData(s))
 	}
 	return s, nil
 }
@@ -498,5 +531,5 @@ func (r *runner) setMe(ctx context.Context, s store.Session, jid, pushName strin
 		return s, err
 	}
 	rm := json.RawMessage(raw)
-	return r.m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{Me: &rm})
+	return r.update(ctx, store.SessionPatch{Me: &rm})
 }

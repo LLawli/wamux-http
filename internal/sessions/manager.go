@@ -445,6 +445,13 @@ type StatusPayload struct {
 // SetStatus records a status, keeps the last three in the history and
 // publishes session.status.
 func (m *Manager) SetStatus(ctx context.Context, s store.Session, status string, data any) (store.Session, error) {
+	return m.setStatus(ctx, s, status, data, nil)
+}
+
+// setStatus is SetStatus for the start ifStartedAt names, when not nil: a
+// status of a start already stopped or replaced is neither stored nor
+// published (store.ErrStale).
+func (m *Manager) setStatus(ctx context.Context, s store.Session, status string, data any, ifStartedAt *int64) (store.Session, error) {
 	var points []StatusPoint
 	_ = json.Unmarshal(s.Statuses, &points)
 	points = append(points, StatusPoint{Status: status, Timestamp: waha.NowMs()})
@@ -453,10 +460,10 @@ func (m *Manager) SetStatus(ctx context.Context, s store.Session, status string,
 	}
 	raw, _ := json.Marshal(points)
 	rm := json.RawMessage(raw)
-	s, err := m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{Status: &status, Statuses: &rm})
+	s, err := m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{Status: &status, Statuses: &rm, IfStartedAt: ifStartedAt})
 	if err != nil {
 		return s, err
 	}
-	_, err = m.Pub.Publish(ctx, s, "session.status", StatusPayload{Name: s.Name, Status: status, Statuses: points, Data: data})
+	_, err = m.Pub.PublishFor(ctx, s, ifStartedAt, "session.status", StatusPayload{Name: s.Name, Status: status, Statuses: points, Data: data})
 	return s, err
 }

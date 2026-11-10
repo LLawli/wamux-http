@@ -229,12 +229,20 @@ func (s *Store) UpdateSession(ctx context.Context, name string, p store.SessionP
 		add("started_at", *p.StartedAt)
 	}
 	add("updated_at", nowMs())
+	where := ` WHERE name = ?`
 	args = append(args, name)
-	res, err := s.db.ExecContext(ctx, `UPDATE sessions SET `+strings.Join(sets, ", ")+` WHERE name = ?`, args...)
+	if p.IfStartedAt != nil {
+		where += ` AND started = 1 AND started_at = ?`
+		args = append(args, *p.IfStartedAt)
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE sessions SET `+strings.Join(sets, ", ")+where, args...)
 	if err != nil {
 		return store.Session{}, err
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
+		if p.IfStartedAt != nil {
+			return store.Session{}, store.ErrStale
+		}
 		return store.Session{}, store.ErrNotFound
 	}
 	return s.GetSession(ctx, name)
@@ -449,6 +457,16 @@ func (s *Store) LeaseHolder(ctx context.Context, name string, now int64) (string
 func (s *Store) AppendEvent(ctx context.Context, e store.Event, ds []store.Delivery) (int64, error) {
 	var seq int64
 	err := s.tx(ctx, func(tx *sql.Tx) error {
+		if e.IfStartedAt != nil {
+			var one int
+			err := tx.QueryRowContext(ctx, `SELECT 1 FROM sessions WHERE name = ? AND started = 1 AND started_at = ?`, e.Session, *e.IfStartedAt).Scan(&one)
+			if errors.Is(err, sql.ErrNoRows) {
+				return store.ErrStale
+			}
+			if err != nil {
+				return err
+			}
+		}
 		res, err := tx.ExecContext(ctx, `INSERT INTO events (id, session, type, body, created_at) VALUES (?,?,?,?,?)`,
 			e.ID, e.Session, e.Type, string(e.Body), e.CreatedAt)
 		if err != nil {

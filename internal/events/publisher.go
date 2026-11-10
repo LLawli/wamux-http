@@ -23,6 +23,13 @@ type Publisher struct {
 
 // Publish records one event for a session. payload is marshalled as-is.
 func (p *Publisher) Publish(ctx context.Context, sess store.Session, event string, payload any) (waha.Envelope, error) {
+	return p.PublishFor(ctx, sess, nil, event, payload)
+}
+
+// PublishFor is Publish for the start ifStartedAt names, when not nil:
+// once that start was stopped or replaced nothing is recorded, and the
+// error is store.ErrStale.
+func (p *Publisher) PublishFor(ctx context.Context, sess store.Session, ifStartedAt *int64, event string, payload any) (waha.Envelope, error) {
 	cfg := waha.ParseSessionConfig(sess.Config)
 	me := sess.Me
 	if len(me) == 0 {
@@ -55,7 +62,7 @@ func (p *Publisher) Publish(ctx context.Context, sess store.Session, event strin
 		ds = append(ds, store.Delivery{URL: wh.URL, Body: body, Webhook: whJSON, NextAttemptAt: env.Timestamp})
 	}
 	_, err = p.Store.AppendEvent(ctx, store.Event{
-		ID: env.ID, Session: sess.Name, Type: event, Body: body, CreatedAt: env.Timestamp,
+		ID: env.ID, Session: sess.Name, Type: event, Body: body, CreatedAt: env.Timestamp, IfStartedAt: ifStartedAt,
 	}, ds)
 	return env, err
 }

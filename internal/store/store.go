@@ -15,6 +15,10 @@ var ErrNotFound = errors.New("not found")
 // ErrConflict is returned when a record that must be unique already exists.
 var ErrConflict = errors.New("already exists")
 
+// ErrStale is returned by a session update made with IfStartedAt when the
+// session was stopped, started again or removed in the meantime.
+var ErrStale = errors.New("session no longer in that start")
+
 // Session is a WAHA session: a named wamux account plus what the core does
 // not keep (config, desired state, last QR, last status).
 type Session struct {
@@ -44,6 +48,10 @@ type SessionPatch struct {
 	Me          *json.RawMessage
 	Statuses    *json.RawMessage
 	StartedAt   *int64
+	// IfStartedAt applies the patch only while the session is started and
+	// was last started at this time, else ErrStale: a stop or a new start
+	// made meanwhile wins over the write of whoever followed the old one.
+	IfStartedAt *int64
 }
 
 // APIKey is a key that is not the admin key from the environment. Only the
@@ -68,6 +76,9 @@ type Event struct {
 	Type      string // WAHA event name, e.g. "message"
 	Body      json.RawMessage
 	CreatedAt int64
+	// IfStartedAt, not stored, appends the event only while the session is
+	// in that start, as SessionPatch.IfStartedAt; ErrStale otherwise.
+	IfStartedAt *int64
 }
 
 // Delivery is one webhook request waiting in the outbox.

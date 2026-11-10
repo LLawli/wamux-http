@@ -30,6 +30,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   left it `FAILED` instead of asking for a QR: the core keeps a logged-out
   account's identity, logs it in, and WhatsApp answers 401. The edge now
   replaces such an account in the core with a new one under the same name.
+- A stop or a start could be overwritten by an event of the session's
+  previous start handled at the same moment: a deleted session could end
+  with `FAILED` after `STOPPED` (its own logout's `LOGGED_OUT`), and a
+  session started right after a logout could be stopped again. What the
+  session's follower writes, and the `session.status` it publishes, now
+  apply only while the session is still in the start it serves.
 - Logging out or deleting a session left the device in the phone's linked
   devices: the edge stopped the session before asking the core to log out,
   and the core logs out only a connected account. The logout now comes
