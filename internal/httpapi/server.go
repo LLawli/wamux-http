@@ -224,7 +224,13 @@ func (s *Server) waitStatus(ctx context.Context, name string, expected ...string
 		sess, err := s.Store.GetSession(ctx, name)
 		if err == nil {
 			if !sess.Started {
-				return sess, ErrSessionStatus(name, sessions.StatusStopped, expected...)
+				// A session that failed (a logout, QR codes run out) is
+				// handed back but still reads FAILED, as WAHA keeps it.
+				status := sessions.StatusStopped
+				if sess.Status == sessions.StatusFailed {
+					status = sessions.StatusFailed
+				}
+				return sess, ErrSessionStatus(name, status, expected...)
 			}
 			break
 		}

@@ -370,24 +370,30 @@ func (r *runner) applyState(ctx context.Context, s store.Session, state pb.Conne
 		}
 		return s, errors.New("account disconnected")
 	case pb.ConnectionState_LOGGED_OUT, pb.ConnectionState_BANNED:
-		noQR := ""
-		if s, err = r.update(ctx, store.SessionPatch{QR: &noQR}); err != nil {
-			return s, err
-		}
-		if s.Status != StatusFailed {
-			if s, err = r.setStatus(ctx, s, StatusFailed, nil); err != nil {
-				return s, err
-			}
-		}
-		// Hand the session back: nothing reconnects a logged-out account.
-		stopped := false
-		_, err = r.update(ctx, store.SessionPatch{Started: &stopped})
-		if err != nil {
-			return s, err
-		}
-		return s, errReleased
+		// Nothing reconnects a logged-out account.
+		return r.fail(ctx)
 	}
 	return s, nil
+}
+
+// fail ends the session's start as FAILED, with no QR left, and hands the
+// session back: it stays down until someone starts it again.
+func (r *runner) fail(ctx context.Context) (store.Session, error) {
+	noQR := ""
+	s, err := r.update(ctx, store.SessionPatch{QR: &noQR})
+	if err != nil {
+		return s, err
+	}
+	if s.Status != StatusFailed {
+		if s, err = r.setStatus(ctx, s, StatusFailed, nil); err != nil {
+			return s, err
+		}
+	}
+	stopped := false
+	if _, err = r.update(ctx, store.SessionPatch{Started: &stopped}); err != nil {
+		return s, err
+	}
+	return s, errReleased
 }
 
 func (r *runner) applyPairing(ctx context.Context, u *pb.PairingUpdate, env *pb.EventEnvelope) (store.Session, error) {
@@ -412,8 +418,11 @@ func (r *runner) applyPairing(ctx context.Context, u *pb.PairingUpdate, env *pb.
 	case *pb.PairingUpdate_Error, *pb.PairingUpdate_CodeError:
 		return r.setStatus(ctx, s, StatusFailed, nil)
 	case *pb.PairingUpdate_QrCodesExhausted:
+		// The core closed the connection: the pairing is over, as GOWS ends
+		// it on its QR timeout. Retrying kept SCAN_QR_CODE through the
+		// backoff with the last QR, which the phone no longer takes.
 		if ev.QrCodesExhausted.GetDisconnected() {
-			return s, errors.New("QR codes exhausted")
+			return r.fail(ctx)
 		}
 	}
 	return s, nil

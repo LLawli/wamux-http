@@ -229,6 +229,18 @@ func (c *Core) Disconnect(ref string, s pb.ConnectionState) {
 	}
 }
 
+// ExhaustQR ends an account's QR flow as the real core does when the
+// server's QR refs run out: qr_codes_exhausted, then the client disconnects.
+func (c *Core) ExhaustQR(ref string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if a := c.find(ref); a != nil {
+		c.emitLocked(a.UUID, &pb.EventEnvelope{Event: &pb.EventEnvelope_Pairing{Pairing: &pb.PairingUpdate{
+			Event: &pb.PairingUpdate_QrCodesExhausted{QrCodesExhausted: &pb.PairingQrCodesExhaustedInfo{Disconnected: true}}}}})
+		c.setState(a, pb.ConnectionState_DISCONNECTED)
+	}
+}
+
 func (c *Core) nextID() string {
 	c.ids++
 	return fmt.Sprintf("3EB0%016X", c.ids)

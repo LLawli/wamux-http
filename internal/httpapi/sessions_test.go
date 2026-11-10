@@ -188,6 +188,30 @@ func TestLoggedOutByPhoneFails(t *testing.T) {
 	}
 }
 
+// QR codes used up end the pairing as GOWS ends it: FAILED, no QR left to
+// scan and no retry, until the session is started again. Retrying kept
+// SCAN_QR_CODE through the backoff, serving a QR the phone no longer takes.
+func TestQRCodesExhaustedFails(t *testing.T) {
+	e := testenv.Start(t, testenv.Options{})
+	if r := e.Do("POST", "/api/sessions", map[string]any{"name": "s1", "start": true}); r.Status != 201 {
+		t.Fatalf("create: %d %s", r.Status, r.Body)
+	}
+	e.Eventually("SCAN_QR_CODE", 5*time.Second, func() bool { return e.Status("s1") == "SCAN_QR_CODE" })
+	e.Core.ExhaustQR("s1")
+	e.Eventually("FAILED", 5*time.Second, func() bool { return e.Status("s1") == "FAILED" })
+	if qr := e.Do("GET", "/api/s1/auth/qr?format=raw", nil); qr.Status != 422 || qr.Map(t)["status"] != "FAILED" {
+		t.Fatalf("an exhausted QR: %d %s", qr.Status, qr.Body)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if n := len(fakecore.Requests[*pb.ConnectAccountRequest](e.Core)); n != 1 {
+		t.Fatalf("an exhausted pairing was retried (%d connects)", n)
+	}
+	if r := e.Do("POST", "/api/sessions/s1/start", nil); r.Status != 201 {
+		t.Fatalf("start: %d %s", r.Status, r.Body)
+	}
+	e.Eventually("SCAN_QR_CODE after start", 5*time.Second, func() bool { return e.Status("s1") == "SCAN_QR_CODE" })
+}
+
 func TestDisconnectReconnects(t *testing.T) {
 	e := testenv.Start(t, testenv.Options{})
 	e.WorkingSession("s1", "5511888888888@s.whatsapp.net", nil)

@@ -36,6 +36,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   session started right after a logout could be stopped again. What the
   session's follower writes, and the `session.status` it publishes, now
   apply only while the session is still in the start it serves.
+- A session whose QR codes ran out stayed `SCAN_QR_CODE` and retried, and
+  between retries (up to a minute) it served the last QR, which the phone
+  no longer takes ("couldn't link device"). It now ends `FAILED`, as GOWS
+  ends its QR timeout, until it is started again. A route's 422 for a
+  `FAILED` session now says `FAILED`, not `STOPPED`.
 - The `message.ack` of my own edit, revoke, reaction or poll vote named the
   peer's LID chat when its event had named the phone chat, because the
   receipt names the peer by LID (#3). Each ack now names the id its event
