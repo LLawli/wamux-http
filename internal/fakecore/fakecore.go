@@ -48,6 +48,9 @@ type Account struct {
 	State             pb.ConnectionState
 	JID, PushName     string
 	Paired            bool
+	// LoggedOut keeps the identity a logout left: the core logs such an
+	// account in, WhatsApp answers 401, and no QR or code ever comes (#253).
+	LoggedOut bool
 }
 
 // Core is the running fake.
@@ -59,6 +62,7 @@ type Core struct {
 	acc map[string]*Account // by uuid
 	seq int64
 	ids int
+	uid int // accounts ever created, so a uuid is never reused
 	sub []chan *pb.EventEnvelope
 	// ring keeps each account's recent events, written before the broadcast,
 	// as the core's replay ring is.
@@ -219,7 +223,7 @@ func (c *Core) Disconnect(ref string, s pb.ConnectionState) {
 	defer c.mu.Unlock()
 	if a := c.find(ref); a != nil {
 		if s == pb.ConnectionState_LOGGED_OUT {
-			a.Paired, a.JID = false, ""
+			a.Paired, a.JID, a.LoggedOut = false, "", true
 		}
 		c.setState(a, s)
 	}
@@ -252,7 +256,8 @@ func (s *accounts) CreateAccount(_ context.Context, r *pb.CreateAccountRequest) 
 	if r.ExternalRef != nil && s.c.find(r.GetExternalRef()) != nil {
 		return nil, status.Errorf(codes.AlreadyExists, "external_ref %q taken", r.GetExternalRef())
 	}
-	a := &Account{UUID: fmt.Sprintf("00000000-0000-4000-8000-%012d", len(s.c.acc)+1), ExternalRef: r.GetExternalRef(), State: pb.ConnectionState_DISCONNECTED}
+	s.c.uid++
+	a := &Account{UUID: fmt.Sprintf("00000000-0000-4000-8000-%012d", s.c.uid), ExternalRef: r.GetExternalRef(), State: pb.ConnectionState_DISCONNECTED}
 	s.c.acc[a.UUID] = a
 	return &pb.Account{Uuid: a.UUID, ExternalRef: a.ExternalRef, State: a.State}, nil
 }
@@ -282,7 +287,8 @@ func (s *accounts) GetAccountStatus(_ context.Context, r *pb.AccountRef) (*pb.Ac
 }
 
 // ConnectAccount connects a paired account; an unpaired one starts the QR
-// flow on the event bus, as the real core does.
+// flow on the event bus, as the real core does. A logged-out account ends
+// LOGGED_OUT again, as WhatsApp's 401 leaves it.
 func (s *accounts) ConnectAccount(_ context.Context, r *pb.ConnectAccountRequest) (*pb.AccountStatus, error) {
 	s.c.record(r)
 	s.c.mu.Lock()
@@ -294,9 +300,12 @@ func (s *accounts) ConnectAccount(_ context.Context, r *pb.ConnectAccountRequest
 	if a.State == pb.ConnectionState_CONNECTED || a.State == pb.ConnectionState_CONNECTING {
 		return status2(a), nil
 	}
-	if a.Paired {
+	switch {
+	case a.LoggedOut:
+		s.c.setState(a, pb.ConnectionState_LOGGED_OUT)
+	case a.Paired:
 		s.c.setState(a, pb.ConnectionState_CONNECTED)
-	} else {
+	default:
 		s.c.setState(a, pb.ConnectionState_CONNECTING)
 		s.c.emitLocked(a.UUID, &pb.EventEnvelope{Event: &pb.EventEnvelope_Pairing{Pairing: &pb.PairingUpdate{
 			Event: &pb.PairingUpdate_QrCode{QrCode: "2@fake-qr-" + a.UUID}}}})
@@ -308,6 +317,9 @@ func (s *accounts) PairWithCode(r *pb.PairWithCodeRequest, stream pb.AccountServ
 	s.c.record(r)
 	s.c.mu.Lock()
 	a, err := s.c.resolve(r.GetAccount())
+	if err == nil && (a.Paired || a.LoggedOut) {
+		err = status.Errorf(codes.FailedPrecondition, "account %s holds a stored identity", a.UUID)
+	}
 	if err == nil && a.State != pb.ConnectionState_CONNECTING {
 		s.c.setState(a, pb.ConnectionState_CONNECTING)
 	}
@@ -346,7 +358,7 @@ func (s *accounts) Logout(_ context.Context, r *pb.AccountRef) (*pb.Empty, error
 	if a.State != pb.ConnectionState_CONNECTED {
 		return nil, status.Errorf(codes.FailedPrecondition, "account %s is not connected", a.UUID)
 	}
-	a.Paired, a.JID = false, ""
+	a.Paired, a.JID, a.LoggedOut = false, "", true
 	s.c.unpaired = append(s.c.unpaired, a.UUID)
 	s.c.setState(a, pb.ConnectionState_LOGGED_OUT)
 	return &pb.Empty{}, nil

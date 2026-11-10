@@ -121,11 +121,16 @@ func (r *runner) still(ctx context.Context) (store.Session, error) {
 // ensureAccount makes sure the core has an account for the session.
 func (r *runner) ensureAccount(ctx context.Context, s store.Session) (store.Session, error) {
 	if s.AccountUUID != "" {
-		_, err := r.m.Core.Accounts.GetAccountStatus(ctx, Ref(s))
-		if err == nil {
+		st, err := r.m.Core.Accounts.GetAccountStatus(ctx, Ref(s))
+		switch {
+		case err == nil && st.GetState() != pb.ConnectionState_LOGGED_OUT:
 			return s, nil
-		}
-		if core.CodeOf(err) != codes.NotFound {
+		case err == nil:
+			// Logged out from the phone: that account never pairs again.
+			if s, err = r.m.dropAccount(ctx, s); err != nil {
+				return s, err
+			}
+		case core.CodeOf(err) != codes.NotFound:
 			return s, err
 		}
 	}

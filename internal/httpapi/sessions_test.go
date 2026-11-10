@@ -117,8 +117,8 @@ func TestSessionLifecycle(t *testing.T) {
 		t.Fatalf("logout: %d %s", r.Status, r.Body)
 	}
 	e.Eventually("SCAN_QR_CODE after logout", 5*time.Second, func() bool { return e.Status("default") == "SCAN_QR_CODE" })
-	if acc, _ := e.Core.Account("default"); acc.Paired {
-		t.Fatal("logout left the account paired")
+	if acc, _ := e.Core.Account("default"); acc.Paired || acc.LoggedOut {
+		t.Fatal("logout left the account paired, or the session on the logged-out one")
 	}
 
 	if r := e.Do("DELETE", "/api/sessions/default", nil); r.Status != 200 || len(r.Body) != 0 {
@@ -176,6 +176,15 @@ func TestLoggedOutByPhoneFails(t *testing.T) {
 	time.Sleep(300 * time.Millisecond)
 	if n := len(fakecore.Requests[*pb.ConnectAccountRequest](e.Core)); n != 1 {
 		t.Fatalf("a logged-out session was reconnected (%d connects)", n)
+	}
+	// Starting it again asks for a QR. The core never pairs an account that
+	// holds a logged-out identity (#253), so the session gets a new one.
+	if r := e.Do("POST", "/api/sessions/s1/start", nil); r.Status != 201 {
+		t.Fatalf("start: %d %s", r.Status, r.Body)
+	}
+	e.Eventually("SCAN_QR_CODE after start", 5*time.Second, func() bool { return e.Status("s1") == "SCAN_QR_CODE" })
+	if acc, _ := e.Core.Account("s1"); acc.LoggedOut {
+		t.Fatal("the session kept the logged-out account")
 	}
 }
 

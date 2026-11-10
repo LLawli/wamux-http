@@ -265,6 +265,9 @@ func (m *Manager) Logout(ctx context.Context, name string) (store.Session, error
 	if s, err = m.Stop(ctx, name); err != nil {
 		return s, err
 	}
+	if s, err = m.dropAccount(ctx, s); err != nil {
+		return s, err
+	}
 	null := json.RawMessage(nil)
 	if s, err = m.Store.UpdateSession(ctx, name, store.SessionPatch{Me: &null}); err != nil {
 		return s, err
@@ -280,6 +283,24 @@ func (m *Manager) Logout(ctx context.Context, name string) (store.Session, error
 		return m.Start(ctx, name)
 	}
 	return s, nil
+}
+
+// dropAccount removes the session's account from the core and forgets it,
+// so the next start creates one under the same external_ref. The core keeps
+// a logged-out account's identity and never pairs it again (#253): its next
+// connect logs in, WhatsApp answers 401, and no QR ever comes.
+func (m *Manager) dropAccount(ctx context.Context, s store.Session) (store.Session, error) {
+	if s.AccountUUID == "" {
+		return s, nil
+	}
+	cctx, cancel := context.WithTimeout(ctx, coreCallTimeout)
+	_, err := m.Core.Accounts.DeleteAccount(cctx, Ref(s))
+	cancel()
+	if err != nil && core.CodeOf(err) != codes.NotFound {
+		return s, err
+	}
+	none := ""
+	return m.Store.UpdateSession(ctx, s.Name, store.SessionPatch{AccountUUID: &none})
 }
 
 // unpair tells WhatsApp to drop this device, so it leaves the phone's linked
