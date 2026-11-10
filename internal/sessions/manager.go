@@ -209,14 +209,19 @@ func (m *Manager) Start(ctx context.Context, name string) (store.Session, error)
 	if err != nil || s.Started {
 		return s, err
 	}
+	// STARTING goes out before the session is marked started: a runner acts
+	// only on a started session, so it never reads the old status and
+	// publishes a second STARTING of its own.
+	if s, err = m.SetStatus(ctx, s, StatusStarting, nil); err != nil {
+		return s, err
+	}
 	started, at := true, waha.NowMs()
 	if s, err = m.Store.UpdateSession(ctx, name, store.SessionPatch{Started: &started, StartedAt: &at}); err != nil {
 		return s, err
 	}
-	s, err = m.SetStatus(ctx, s, StatusStarting, nil)
 	m.nudge(name)
 	m.Kick()
-	return s, err
+	return s, nil
 }
 
 // Stop marks a session stopped and disconnects its account; pairing is kept.

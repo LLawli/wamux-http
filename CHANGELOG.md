@@ -41,6 +41,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   no longer takes ("couldn't link device"). It now ends `FAILED`, as GOWS
   ends its QR timeout, until it is started again. A route's 422 for a
   `FAILED` session now says `FAILED`, not `STOPPED`.
+- Starting a session could publish `STARTING` twice, when its follower read
+  the session between the start and its status.
 - The `message.ack` of my own edit, revoke, reaction or poll vote named the
   peer's LID chat when its event had named the phone chat, because the
   receipt names the peer by LID (#3). Each ack now names the id its event
