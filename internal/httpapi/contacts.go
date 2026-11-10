@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"net/http"
@@ -210,7 +211,10 @@ func (s *Server) registerContacts(r chi.Router) {
 }
 
 // contactInfo answers one contact from the store; an unknown one is still an
-// answer, with null names, as WAHA's "always returns result".
+// answer, with null names, as WAHA's "always returns result". A name the row
+// lacks comes from the peer's other id (its LID for a phone number, and the
+// reverse): a history sync names a peer under one of them only, where
+// whatsmeow keeps both.
 func (s *Server) contactInfo(c *Ctx, contactID string) error {
 	jid, err := dirJID(contactID)
 	if err != nil {
@@ -218,13 +222,34 @@ func (s *Server) contactInfo(c *Ctx, contactID string) error {
 	}
 	id := waha.FromPB(jid)
 	ct, err := s.Store.GetContact(c.R.Context(), c.Session, id)
-	if errors.Is(err, store.ErrNotFound) {
-		return c.JSON(http.StatusOK, waha.NewContact(id, "", ""))
-	}
-	if err != nil {
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return err
 	}
+	if ct.Name == "" || ct.PushName == "" {
+		if alt, ok := s.otherIDContact(c, jid.GetValue(), id); ok {
+			ct.Name = cmp.Or(ct.Name, alt.Name)
+			ct.PushName = cmp.Or(ct.PushName, alt.PushName)
+		}
+	}
 	return c.JSON(http.StatusOK, waha.NewContact(id, ct.Name, ct.PushName))
+}
+
+// otherIDContact is the stored contact under the peer's other id. A core that
+// cannot answer (the session is not running) leaves the lookup as stored.
+func (s *Server) otherIDContact(c *Ctx, jid, id string) (store.Contact, bool) {
+	m, err := s.resolveLid(c, jid)
+	if err != nil || m == nil {
+		return store.Contact{}, false
+	}
+	other := waha.FromPB(m.GetLid())
+	if other == id {
+		other = waha.FromPB(m.GetPn())
+	}
+	if other == "" || other == id {
+		return store.Contact{}, false
+	}
+	ct, err := s.Store.GetContact(c.R.Context(), c.Session, other)
+	return ct, err == nil
 }
 
 // allContacts reads every stored contact of a session.

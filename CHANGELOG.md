@@ -40,6 +40,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   peer's LID chat when its event had named the phone chat, because the
   receipt names the peer by LID (#3). Each ack now names the id its event
   went out under.
+- `GET /api/contacts` by phone number answered `pushname: null` for a peer
+  whose push name the edge had under its LID only (#4), as a history sync
+  or a message by LID leaves it. A lookup now fills a missing name from the
+  peer's other id, resolved by the core, and a message's push name is kept
+  under both of the sender's ids, as whatsmeow keeps it.
 - Logging out or deleting a session left the device in the phone's linked
   devices: the edge stopped the session before asking the core to log out,
   and the core logs out only a connected account. The logout now comes

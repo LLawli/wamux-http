@@ -86,8 +86,12 @@ func (p *Processor) regular(ctx context.Context, sess store.Session, mc waha.Mes
 		return err
 	}
 	if !msg.FromMe {
-		if err := p.contact(ctx, sess.Name, waha.SenderOf(m, mc.Me), "", m.GetPushName()); err != nil {
-			return err
+		// Under both of the sender's ids, as whatsmeow keeps it: a message by
+		// LID still answers a lookup by phone number.
+		for _, id := range []string{waha.SenderOf(m, mc.Me), waha.FromPB(m.GetSenderAlt())} {
+			if err := p.contact(ctx, sess.Name, id, "", m.GetPushName()); err != nil {
+				return err
+			}
 		}
 	}
 	if !publish || !p.firstSeen("msg|"+sess.Name+"|"+strconv.FormatBool(msg.FromMe)+"|"+m.GetKey().GetId()) {

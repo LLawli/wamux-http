@@ -736,3 +736,19 @@ func TestIngestAckOfMyProtocolMessageNamesItsEvent(t *testing.T) {
 		Chat: jid(peerLID), Sender: jid(peerLID), MessageIds: []string{"ELSEWHERE"}, Type: pb.ReceiptType_RECEIPT_TYPE_DELIVERED}}})
 	ie.wait("message.ack", byID("true_"+peerLID+"_ELSEWHERE"))
 }
+
+// A message from a peer's LID chat carries its phone number as sender_alt;
+// the push name is kept under both, so a lookup by phone finds it (#4).
+func TestIngestPushNameUnderBothIDs(t *testing.T) {
+	ie := startIngest(t, testenv.Options{}, nil)
+	const peerLID = "123456789012345@lid"
+	m := text(t, peerLID, "123456789012345:16@lid", "L1", "oi", false)
+	m.SenderAlt = jid("5511888888888:16@s.whatsapp.net")
+	ie.emitMsg(m)
+	ie.wait("message", byID("false_"+peerLID+"_L1"))
+	for _, id := range []string{peerID, peerLID} {
+		if r := ie.Do("GET", "/api/contacts?session=default&contactId="+id, nil); r.Status != 200 || r.Map(t)["pushname"] != "Bia" {
+			t.Fatalf("contact %s: %d %s", id, r.Status, r.Body)
+		}
+	}
+}

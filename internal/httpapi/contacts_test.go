@@ -268,3 +268,42 @@ func TestBlockContact(t *testing.T) {
 		t.Fatalf("read-only key: %d %s", r.Status, r.Body)
 	}
 }
+
+// A push name from a history sync or a message by LID is stored under the
+// LID only; a lookup by phone number finds it through the core's LID map,
+// and the reverse too (#4). A complete row asks the core nothing.
+func TestContactLookupReadsTheOtherID(t *testing.T) {
+	contacts := fakecore.NewContacts("Ana")
+	contacts.Lids = []*pb.LidPnMapping{
+		{Lid: &pb.Jid{Value: "100@lid"}, Pn: &pb.Jid{Value: "5511100000000@s.whatsapp.net"}},
+		{Lid: &pb.Jid{Value: "200@lid"}, Pn: &pb.Jid{Value: "5511200000000@s.whatsapp.net"}},
+	}
+	e := directoryEnv(t, fakecore.Options{Contacts: contacts})
+	ctx := context.Background()
+	for _, c := range []store.Contact{
+		{Session: "default", ID: "100@lid", PushName: "Bia"},
+		{Session: "default", ID: "5511200000000@c.us", Name: "Zeca"},
+		{Session: "default", ID: "200@lid", PushName: "Z"},
+		{Session: "default", ID: "5511300000000@c.us", Name: "Ana", PushName: "A"},
+	} {
+		if err := e.App.Store.UpsertContact(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for path, want := range map[string]string{
+		"/api/contacts?session=default&contactId=5511100000000@c.us": `{"id":"5511100000000@c.us","name":null,"pushname":"Bia"}`,
+		"/api/default/contacts/200@lid":                              `{"id":"200@lid","name":"Zeca","pushname":"Z"}`,
+		"/api/default/contacts/5511200000000@c.us":                   `{"id":"5511200000000@c.us","name":"Zeca","pushname":"Z"}`,
+	} {
+		if r := e.Do("GET", path, nil); r.Status != 200 || string(r.Body) != want+"\n" {
+			t.Fatalf("%s: %d %s", path, r.Status, r.Body)
+		}
+	}
+	asked := len(fakecore.Logged[*pb.ResolveLidPnRequest](&contacts.RequestLog))
+	if r := e.Do("GET", "/api/default/contacts/5511300000000@c.us", nil); r.Status != 200 || r.Map(t)["pushname"] != "A" {
+		t.Fatalf("complete row: %d %s", r.Status, r.Body)
+	}
+	if n := len(fakecore.Logged[*pb.ResolveLidPnRequest](&contacts.RequestLog)); n != asked {
+		t.Fatalf("a complete row asked the core for its LID")
+	}
+}
